@@ -1,56 +1,56 @@
-# 大A后勤部
+# Free & Awesome A-Share Market Ops
 
-大A后勤部是一套面向 A 股盘中观察和收盘复盘的轻量桌面应用。项目主体使用原生 HTML、CSS、JavaScript 和 Node.js，Windows 版通过本地服务与 WebView2 运行。
+Free & Awesome A-Share Market Ops is an open-source desktop application for monitoring the Chinese A-share market intraday and reviewing market structure after the close. It uses native HTML, CSS, JavaScript, and Node.js. The Windows edition runs through a local service and Microsoft Edge WebView2.
 
-当前开源版本为 `2.6.5`。
+Current open-source version: `2.6.5`.
 
-## 功能范围
+## Features
 
-- 主要指数分时、成交额和板块资金拐点标注
-- 二级行业与概念板块资金流向
-- 涨停、跌停、昨日涨停延续和昨日炸板修复
-- 市场结构、赚钱效应与历史交易日对比
-- 政策新闻、下周大事件、机构动向、历史回放和个股搜索
-- 本地数据服务、历史数据缓存和桌面应用封装
+- Intraday charts for major indices, turnover, and sector-driven turning points
+- Capital flow tracking for secondary industries and concept sectors
+- Limit-up, limit-down, previous-day continuation, and failed-breakout recovery analysis
+- Market structure, breadth, trading effectiveness, and historical session comparisons
+- Policy news, upcoming events, institutional positioning, historical replay, and stock search
+- Local data services, historical caching, and Windows desktop packaging
 
-## 开源说明
+## Open Source
 
-项目源代码按 [GNU AGPL v3](LICENSE) 发布，可用于学习、审查、修改和符合许可证要求的再分发。
+The source code is released under the [GNU AGPL v3](LICENSE). You may inspect, modify, and redistribute it in compliance with the license.
 
-- `app/` 保存前端页面、本地服务和数据处理代码。
-- `windows-launcher/` 保存 Windows 单文件启动器源码。
-- `scripts/` 保存语法检查和公开仓库检查脚本。
-- `app/data/` 中的数据用于开发演示和结构兼容，不承诺实时性或完整性。
-- 仓库不包含私钥、访问令牌或生产环境凭据。
+- `app/` contains the frontend, local services, and data-processing code.
+- `windows-launcher/` contains the Windows single-file launcher source.
+- `scripts/` contains syntax and public-source audit tools.
+- Data under `app/data/` is provided for development and format compatibility only. It is not guaranteed to be complete or real-time.
+- Private keys, access tokens, and production credentials are not included.
 
-详细范围见 [开源范围](docs/开源范围.md)。
+See [Open-Source Scope](docs/open-source-scope.md) for details.
 
-## 本地运行
+## Run Locally
 
-要求 Node.js 20 或更高版本：
+Node.js 20 or later is required:
 
 ```powershell
 npm start
 ```
 
-浏览器打开：
+Open the application at:
 
 ```text
 http://127.0.0.1:18765/app/
 ```
 
-运行公开源码检查：
+Run the public-source checks:
 
 ```powershell
 npm test
 ```
 
-完整说明见 [构建与运行](docs/构建与运行.md)。
+See [Build and Run](docs/build-and-run.md) for complete instructions.
 
-## 许可证
+## License
 
-程序代码按 [GNU AGPL v3](LICENSE) 发布。品牌标识、数据文件和第三方素材可能适用单独的权利说明，详见 [NOTICE](NOTICE.md)。
+Program code is released under the [GNU AGPL v3](LICENSE). Branding, data files, and third-party assets may be subject to separate terms described in [NOTICE](NOTICE.md).
 
-## 风险提示
+## Disclaimer
 
-本软件仅用于市场数据整理和复盘分析，不构成投资建议。市场有风险，交易决策需独立完成。
+This project is intended for market-data organization and review. It does not provide investment advice. Users are responsible for validating data and making independent trading decisions.

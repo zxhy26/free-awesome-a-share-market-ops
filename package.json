@@ -1,13 +1,13 @@
 {
-  "name": "da-a-hou-qin-bu",
+  "name": "free-awesome-a-share-market-ops",
   "version": "2.6.5",
-  "description": "A股盘中观察与收盘复盘桌面应用",
+  "description": "Free and awesome open-source desktop app for A-share market monitoring and review",
   "license": "AGPL-3.0-only",
   "private": false,
   "scripts": {
     "start": "node app/backend/复盘同步服务.js",
-    "check:js": "node scripts/检查JavaScript语法.js",
-    "check:source": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/公开源码检查.ps1",
+    "check:js": "node scripts/check-javascript-syntax.js",
+    "check:source": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-public-source.ps1",
     "test": "npm run check:js && npm run check:source"
   },
   "engines": {

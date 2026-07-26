@@ -29,4 +29,4 @@ for (const filePath of files) {
   }
 }
 
-process.stdout.write(`JavaScript 语法检查通过：${files.length} 个文件\n`);
+process.stdout.write(`JavaScript syntax check passed: ${files.length} files\n`);

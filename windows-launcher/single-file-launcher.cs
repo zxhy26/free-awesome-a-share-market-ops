@@ -9,19 +9,19 @@ using System.Threading;
 using System.Windows.Forms;
 
 #if NO_QUANT_SELF_EDITION
-[assembly: AssemblyTitle("复盘软件无量化自用版")]
-[assembly: AssemblyProduct("复盘软件无量化自用版")]
-[assembly: AssemblyDescription("不含量化选股、保留全部复盘功能和会员管理的 A 股复盘自用版")]
+[assembly: AssemblyTitle("Free & Awesome A-Share Market Ops - Personal")]
+[assembly: AssemblyProduct("Free & Awesome A-Share Market Ops")]
+[assembly: AssemblyDescription("Personal A-share market review edition without quantitative stock selection")]
 #elif SELF_EDITION
-[assembly: AssemblyTitle("复盘软件自用版")]
-[assembly: AssemblyProduct("复盘软件自用版")]
-[assembly: AssemblyDescription("包含量化选股和会员激活码管理的 A 股复盘自用版")]
+[assembly: AssemblyTitle("Free & Awesome A-Share Market Ops - Personal Pro")]
+[assembly: AssemblyProduct("Free & Awesome A-Share Market Ops")]
+[assembly: AssemblyDescription("Personal A-share market review edition with quantitative stock selection")]
 #else
-[assembly: AssemblyTitle("复盘软件会员版")]
-[assembly: AssemblyProduct("复盘软件会员版")]
-[assembly: AssemblyDescription("支持设备会员授权的 A 股复盘会员版")]
+[assembly: AssemblyTitle("Free & Awesome A-Share Market Ops")]
+[assembly: AssemblyProduct("Free & Awesome A-Share Market Ops")]
+[assembly: AssemblyDescription("Open-source desktop application for A-share market monitoring and review")]
 #endif
-[assembly: AssemblyCompany("A股复盘")]
+[assembly: AssemblyCompany("Free & Awesome A-Share Market Ops")]
 [assembly: AssemblyCopyright("Copyright 2026")]
 [assembly: AssemblyVersion("2.6.5.0")]
 [assembly: AssemblyFileVersion("2.6.5.0")]

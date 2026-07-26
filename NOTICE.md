@@ -1,16 +1,16 @@
-# 授权说明
+# Licensing Notice
 
-## AGPL 授权部分
+## AGPL-Covered Materials
 
-仓库中的程序代码、页面结构和通用构建脚本按 GNU AGPL v3 发布。
+Program code, page structure, and general-purpose build scripts in this repository are released under the GNU AGPL v3.
 
-## 其他内容
+## Other Materials
 
-以下内容不因程序代码采用 AGPL 而自动获得相同授权：
+The following materials do not automatically receive the same license solely because the program code is distributed under the AGPL:
 
-- “大A后勤部”名称、应用图标和品牌识别
-- 仓库内单独标注来源或授权方式的图片、字体和第三方素材
-- 市场数据快照、商业数据接口及其上游数据
-- 私钥、访问令牌和生产环境配置
+- The “Free & Awesome A-Share Market Ops” name, application icon, and brand identity
+- Images, fonts, and third-party assets with separately identified sources or terms
+- Market-data snapshots, commercial data interfaces, and upstream data
+- Private keys, access tokens, and production configuration
 
-公开仓库中的市场数据文件仅作开发演示，不承诺实时性、完整性或商业使用授权。
+Market-data files in the public repository are development samples. No guarantee is made regarding timeliness, completeness, or commercial-use rights.

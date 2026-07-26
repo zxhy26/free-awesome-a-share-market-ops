@@ -1,7 +1,7 @@
-# 安全说明
+# Security
 
-请不要在公开 Issue 中发布私钥、访问令牌、用户数据、设备标识或其他敏感信息。
+Do not post private keys, access tokens, user data, device identifiers, or other sensitive information in a public issue.
 
-发现敏感信息泄露、远程代码执行、路径穿越或数据接口安全问题时，请通过仓库所有者的 GitHub 主页私下联系，并提供可复现步骤。正式修复前不要公开利用细节。
+Report sensitive-data exposure, remote-code-execution risks, path traversal, or data-interface vulnerabilities privately through the repository owner's GitHub profile. Include clear reproduction steps and avoid publishing exploit details before a fix is available.
 
-公开仓库不得提交任何私钥、生产环境令牌或真实用户数据。
+The public repository must not contain private keys, production tokens, or real user data.

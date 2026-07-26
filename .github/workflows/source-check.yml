@@ -1,4 +1,4 @@
-name: 源码检查
+name: Source Check
 
 on:
   push:
@@ -11,14 +11,14 @@ jobs:
   audit:
     runs-on: windows-latest
     steps:
-      - name: 检出源码
+      - name: Check out source
         uses: actions/checkout@v4
 
-      - name: 配置 Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: 验证公开源码
+      - name: Validate public source
         shell: powershell
         run: npm test

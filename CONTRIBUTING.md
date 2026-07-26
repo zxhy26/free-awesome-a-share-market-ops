@@ -1,17 +1,17 @@
-# 参与贡献
+# Contributing
 
-欢迎提交错误修复、数据口径改进、可访问性优化和性能改进。
+Bug fixes, data-definition improvements, accessibility work, and performance improvements are welcome.
 
-提交前请运行：
+Run the checks before submitting a change:
 
 ```powershell
 npm test
 ```
 
-请勿提交以下内容：
+Do not submit:
 
-- 私钥、访问令牌或生产环境凭据
-- 真实用户数据、设备标识或订单数据
-- 来源不明或无权再分发的数据
+- Private keys, access tokens, or production credentials
+- Real user data, device identifiers, or order records
+- Data from unknown sources or data that cannot be legally redistributed
 
-提交内容应说明修改范围、验证方法和可能影响的数据口径。
+Each contribution should describe its scope, verification method, and any affected data definitions.
