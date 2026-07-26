@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#eef0f2">
+  <title>机构动向｜A股复盘</title>
+  <link rel="icon" href="../assets/icons/favicon-32.png">
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/layout.css?v=20260725-2">
+  <link rel="stylesheet" href="../assets/css/components.css?v=20260725-2">
+  <link rel="stylesheet" href="../assets/css/upgrade.css?v=20260715-1">
+  <link rel="stylesheet" href="../assets/css/responsive.css?v=20260725-2">
+  <link rel="stylesheet" href="../assets/css/derivatives-page.css?v=20260725-2">
+  <script type="module" src="../assets/js/membership-guard.js?v=20260725-1"></script>
+</head>
+<body class="detail-page derivatives-page">
+  <main class="detail-shell derivatives-shell">
+    <header class="detail-header">
+      <div>
+        <h1>机构股指衍生品动向</h1>
+        <p>股指期货、股指期权与重点期货公司代客席位的日增减仓变化</p>
+      </div>
+      <nav class="detail-actions" aria-label="页面操作">
+        <a class="button" href="/app/">返回首页</a>
+        <button class="button button-primary" id="refreshDerivatives" type="button">刷新机构数据</button>
+        <fieldset class="theme-segment" aria-label="主题模式">
+          <button type="button" data-theme-choice="system">跟随</button>
+          <button type="button" data-theme-choice="light">浅色</button>
+          <button type="button" data-theme-choice="dark">深色</button>
+        </fieldset>
+      </nav>
+    </header>
+
+    <div class="notice-bar" id="derivativesNotice" hidden></div>
+
+    <section class="derivatives-page-status" aria-label="数据状态">
+      <div>
+        <span class="metric-label">数据状态</span>
+        <strong id="derivativesStatus" class="status-label">读取中</strong>
+      </div>
+      <div>
+        <span class="metric-label">榜单交易日</span>
+        <strong id="derivativesDate">--</strong>
+      </div>
+      <div>
+        <span class="metric-label">最近读取</span>
+        <strong id="derivativesFetchedAt">--</strong>
+      </div>
+    </section>
+
+    <section class="derivatives-page-panel" aria-live="polite">
+      <div id="derivativesContent" class="derivatives-layout">
+        <div class="loading-state">机构动向数据读取中</div>
+      </div>
+      <p id="derivativesDisclosure" class="derivatives-disclosure"></p>
+    </section>
+
+    <section class="derivatives-method">
+      <header>
+        <h2>口径说明</h2>
+        <p>先看公开榜单中的可见变化，再结合现货市场、基差和期限结构判断，不把单一席位当成市场结论。</p>
+      </header>
+      <div>
+        <p><strong>期货方向</strong> 多单日变减去空单日变，用于观察公开样本的净方向变化。</p>
+        <p><strong>期权变化</strong> 认购与认沽混合在买卖方榜单中，不能只凭买方或卖方增仓直接判定多空。</p>
+        <p><strong>席位属性</strong> 中信期货、中金期货等名称对应期货公司结算会员代客榜单，不代表券商或投行自营仓位。</p>
+        <p><strong>未披露</strong> 未进入前二十或联网可见样本不等于零持仓，也不应推断为已清仓。</p>
+      </div>
+    </section>
+
+    <footer class="app-footer">
+      <p>数据来源：中国金融期货交易所成交持仓排名；移动独立更新补充东方财富公开数据中心的中金所期货公司席位数据。</p>
+      <p>本栏目仅用于市场数据整理和复盘分析，不构成任何投资建议。</p>
+    </footer>
+  </main>
+  <script type="module" src="../assets/js/derivatives-page.js?v=20260725-2"></script>
+</body>
+</html>

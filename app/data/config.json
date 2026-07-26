@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "emotion": {
+    "strong": {
+      "limitUpMin": 70,
+      "limitDownMax": 5,
+      "promotionRateMin": 25,
+      "redRateMin": 55
+    },
+    "repair": {
+      "limitUpMin": 40,
+      "brokenRepairMin": 55
+    },
+    "divergence": {
+      "promotionRateMax": 15
+    },
+    "weak": {
+      "limitDownMin": 10,
+      "redRateMax": 35
+    },
+    "ebb": {
+      "limitDownMin": 20
+    }
+  },
+  "freshness": {
+    "intradayStaleMinutes": 5,
+    "closedStaleHours": 24,
+    "historicalStaleDays": 4
+  },
+  "formulas": {
+    "redRate": "上涨家数 / (上涨家数 + 下跌家数 + 平盘家数)",
+    "promotionRate": "今日继续涨停数量 / 昨日涨停总数",
+    "yesterdayBrokenPositiveRate": "今日上涨的昨日炸板数量 / 昨日炸板总数",
+    "yesterdayBrokenLimitRate": "今日涨停的昨日炸板数量 / 昨日炸板总数",
+    "brokenRate": "当日炸板数量 / 当日触及涨停数量"
+  }
+}

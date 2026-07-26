@@ -1,0 +1,284 @@
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.IO.Compression;
+using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
+using System.Windows.Forms;
+
+#if NO_QUANT_SELF_EDITION
+[assembly: AssemblyTitle("复盘软件无量化自用版")]
+[assembly: AssemblyProduct("复盘软件无量化自用版")]
+[assembly: AssemblyDescription("不含量化选股、保留全部复盘功能和会员管理的 A 股复盘自用版")]
+#elif SELF_EDITION
+[assembly: AssemblyTitle("复盘软件自用版")]
+[assembly: AssemblyProduct("复盘软件自用版")]
+[assembly: AssemblyDescription("包含量化选股和会员激活码管理的 A 股复盘自用版")]
+#else
+[assembly: AssemblyTitle("复盘软件会员版")]
+[assembly: AssemblyProduct("复盘软件会员版")]
+[assembly: AssemblyDescription("支持设备会员授权的 A 股复盘会员版")]
+#endif
+[assembly: AssemblyCompany("A股复盘")]
+[assembly: AssemblyCopyright("Copyright 2026")]
+[assembly: AssemblyVersion("2.6.5.0")]
+[assembly: AssemblyFileVersion("2.6.5.0")]
+
+internal static class Program
+{
+#if NO_QUANT_SELF_EDITION
+    private const string EditionName = "无量化自用版";
+    private const string RuntimeTag = "版本_20260726-2.6.5-无量化自用版";
+    private const string MutexName = "Local\\AshareReviewLauncher_NoQuantSelf_2650";
+#elif SELF_EDITION
+    private const string EditionName = "自用版";
+    private const string RuntimeTag = "版本_20260726-2.6.5-自用版";
+    private const string MutexName = "Local\\AshareReviewLauncher_Self_2650";
+#else
+    private const string EditionName = "会员版";
+    private const string RuntimeTag = "版本_20260726-2.6.5-会员版";
+    private const string MutexName = "Local\\AshareReviewLauncher_Member_2650";
+#endif
+    private const string PayloadResource = "AshareReviewPayload";
+    private const string HashResource = "AshareReviewPayloadHash";
+    private const string InnerExecutable = "A股复盘Windows版.exe";
+
+    [STAThread]
+    private static void Main()
+    {
+        bool testOnly = string.Equals(
+            Environment.GetEnvironmentVariable("A_SHARE_REVIEW_LAUNCHER_TEST_ONLY"),
+            "1",
+            StringComparison.Ordinal
+        );
+        string resultPath = Environment.GetEnvironmentVariable("A_SHARE_REVIEW_LAUNCHER_TEST_RESULT") ?? "";
+        bool createdNew;
+        using (Mutex mutex = new Mutex(false, MutexName, out createdNew))
+        {
+            bool acquired = false;
+            try
+            {
+                acquired = mutex.WaitOne(TimeSpan.FromSeconds(45));
+                if (!acquired) throw new InvalidOperationException("另一个启动任务仍在释放运行文件，请稍后再试。");
+
+                string expectedHash = ReadHashResource();
+                string runtimeRoot = ResolveRuntimeRoot();
+                EnsurePayload(runtimeRoot, expectedHash);
+                string innerPath = Path.Combine(runtimeRoot, InnerExecutable);
+                if (!File.Exists(innerPath)) throw new FileNotFoundException("复盘程序入口缺失。", innerPath);
+
+                if (testOnly)
+                {
+                    WriteTestResult(resultPath, true, runtimeRoot, expectedHash, "载荷释放验证通过");
+                    return;
+                }
+
+                ProcessStartInfo startInfo = new ProcessStartInfo();
+                startInfo.FileName = innerPath;
+                startInfo.WorkingDirectory = runtimeRoot;
+                startInfo.UseShellExecute = true;
+                Process.Start(startInfo);
+            }
+            catch (Exception error)
+            {
+                Environment.ExitCode = 1;
+                if (testOnly)
+                {
+                    WriteTestResult(resultPath, false, "", "", error.Message);
+                    return;
+                }
+                MessageBox.Show(
+                    "复盘软件启动失败：\r\n" + error.Message,
+                    "复盘软件" + EditionName,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            }
+            finally
+            {
+                if (acquired) mutex.ReleaseMutex();
+            }
+        }
+    }
+
+    private static string ResolveRuntimeRoot()
+    {
+        string testRoot = Environment.GetEnvironmentVariable("A_SHARE_REVIEW_LAUNCHER_TEST_ROOT") ?? "";
+        string baseRoot = string.IsNullOrWhiteSpace(testRoot)
+            ? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
+            : Path.GetFullPath(testRoot);
+        return Path.Combine(baseRoot, "A股复盘软件运行文件", EditionName, RuntimeTag);
+    }
+
+    private static string ReadHashResource()
+    {
+        using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(HashResource))
+        {
+            if (stream == null) throw new InvalidOperationException("载荷校验资源缺失。");
+            using (StreamReader reader = new StreamReader(stream, Encoding.ASCII))
+            {
+                string value = reader.ReadToEnd().Trim().ToUpperInvariant();
+                if (value.Length != 64) throw new InvalidOperationException("载荷校验值无效。");
+                return value;
+            }
+        }
+    }
+
+    private static void EnsurePayload(string runtimeRoot, string expectedHash)
+    {
+        string markerPath = Path.Combine(runtimeRoot, ".payload.sha256");
+        if (File.Exists(Path.Combine(runtimeRoot, InnerExecutable))
+            && File.Exists(markerPath)
+            && string.Equals(File.ReadAllText(markerPath).Trim(), expectedHash, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        string parent = Path.GetDirectoryName(runtimeRoot);
+        if (string.IsNullOrEmpty(parent)) throw new InvalidOperationException("运行目录无效。");
+        Directory.CreateDirectory(parent);
+        string temporaryRoot = runtimeRoot + ".extract-" + Guid.NewGuid().ToString("N");
+        string temporaryZip = Path.Combine(Path.GetTempPath(), "AshareReviewPayload-" + Guid.NewGuid().ToString("N") + ".zip");
+
+        try
+        {
+            CopyAndVerifyPayload(temporaryZip, expectedHash);
+            Directory.CreateDirectory(temporaryRoot);
+            ExtractPayload(temporaryZip, temporaryRoot);
+            if (!File.Exists(Path.Combine(temporaryRoot, InnerExecutable)))
+            {
+                throw new InvalidDataException("载荷中找不到复盘程序入口。");
+            }
+            File.WriteAllText(Path.Combine(temporaryRoot, ".payload.sha256"), expectedHash, Encoding.ASCII);
+
+            if (Directory.Exists(runtimeRoot))
+            {
+                string safeParent = Path.GetFullPath(parent).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                string safeRuntime = Path.GetFullPath(runtimeRoot);
+                if (!safeRuntime.StartsWith(safeParent, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("拒绝清理运行目录之外的路径。");
+                }
+                Directory.Delete(runtimeRoot, true);
+            }
+            Directory.Move(temporaryRoot, runtimeRoot);
+        }
+        finally
+        {
+            TryDeleteFile(temporaryZip);
+            TryDeleteDirectory(temporaryRoot);
+        }
+    }
+
+    private static void CopyAndVerifyPayload(string targetZip, string expectedHash)
+    {
+        using (Stream source = Assembly.GetExecutingAssembly().GetManifestResourceStream(PayloadResource))
+        {
+            if (source == null) throw new InvalidOperationException("内置运行载荷缺失。");
+            using (FileStream destination = new FileStream(targetZip, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            using (SHA256 sha256 = SHA256.Create())
+            using (CryptoStream hashingStream = new CryptoStream(destination, sha256, CryptoStreamMode.Write))
+            {
+                source.CopyTo(hashingStream);
+                hashingStream.FlushFinalBlock();
+                string actualHash = ToHex(sha256.Hash);
+                if (!string.Equals(actualHash, expectedHash, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidDataException("内置运行载荷校验失败。");
+                }
+            }
+        }
+    }
+
+    private static void ExtractPayload(string zipPath, string targetRoot)
+    {
+        string root = Path.GetFullPath(targetRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        using (ZipArchive archive = ZipFile.OpenRead(zipPath))
+        {
+            foreach (ZipArchiveEntry entry in archive.Entries)
+            {
+                string relative = entry.FullName.Replace('/', Path.DirectorySeparatorChar);
+                if (string.IsNullOrWhiteSpace(relative)) continue;
+                string targetPath = Path.GetFullPath(Path.Combine(targetRoot, relative));
+                if (!targetPath.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidDataException("载荷包含越界路径。");
+                }
+                if (entry.FullName.EndsWith("/", StringComparison.Ordinal))
+                {
+                    Directory.CreateDirectory(targetPath);
+                    continue;
+                }
+                string directory = Path.GetDirectoryName(targetPath);
+                if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+                using (Stream source = entry.Open())
+                using (FileStream destination = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    source.CopyTo(destination);
+                }
+                if (entry.LastWriteTime.Year >= 1980)
+                {
+                    File.SetLastWriteTime(targetPath, entry.LastWriteTime.LocalDateTime);
+                }
+            }
+        }
+    }
+
+    private static void WriteTestResult(string resultPath, bool ok, string runtimeRoot, string hash, string message)
+    {
+        if (string.IsNullOrWhiteSpace(resultPath)) return;
+        string directory = Path.GetDirectoryName(Path.GetFullPath(resultPath));
+        if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+        int fileCount = Directory.Exists(runtimeRoot) ? Directory.GetFiles(runtimeRoot, "*", SearchOption.AllDirectories).Length : 0;
+        string json = "{"
+            + "\"ok\":" + (ok ? "true" : "false") + ","
+            + "\"edition\":\"" + JsonEscape(EditionName) + "\","
+            + "\"runtimeRoot\":\"" + JsonEscape(runtimeRoot) + "\","
+            + "\"payloadSha256\":\"" + JsonEscape(hash) + "\","
+            + "\"innerExecutable\":\"" + JsonEscape(string.IsNullOrEmpty(runtimeRoot) ? "" : Path.Combine(runtimeRoot, InnerExecutable)) + "\","
+            + "\"fileCount\":" + fileCount.ToString() + ","
+            + "\"message\":\"" + JsonEscape(message) + "\""
+            + "}";
+        File.WriteAllText(resultPath, json, new UTF8Encoding(false));
+    }
+
+    private static string JsonEscape(string value)
+    {
+        return (value ?? "")
+            .Replace("\\", "\\\\")
+            .Replace("\"", "\\\"")
+            .Replace("\r", "\\r")
+            .Replace("\n", "\\n");
+    }
+
+    private static string ToHex(byte[] bytes)
+    {
+        StringBuilder builder = new StringBuilder(bytes.Length * 2);
+        foreach (byte value in bytes) builder.Append(value.ToString("X2"));
+        return builder.ToString();
+    }
+
+    private static void TryDeleteFile(string filePath)
+    {
+        try
+        {
+            if (File.Exists(filePath)) File.Delete(filePath);
+        }
+        catch
+        {
+        }
+    }
+
+    private static void TryDeleteDirectory(string directoryPath)
+    {
+        try
+        {
+            if (Directory.Exists(directoryPath)) Directory.Delete(directoryPath, true);
+        }
+        catch
+        {
+        }
+    }
+}

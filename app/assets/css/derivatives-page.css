@@ -1,0 +1,219 @@
+.derivatives-shell {
+  width: min(1480px, calc(100% - 24px));
+}
+
+.derivatives-page-status {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-block: 1px solid var(--border);
+}
+
+.derivatives-page-status > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-right: 1px solid var(--border);
+}
+
+.derivatives-page-status > div:last-child {
+  border-right: 0;
+}
+
+.derivatives-page-status strong {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.derivatives-page-panel {
+  border-bottom: 1px solid var(--border);
+}
+
+.derivatives-page-panel .derivatives-layout {
+  min-height: 285px;
+}
+
+.derivatives-page-panel .derivatives-overview,
+.derivatives-page-panel .derivatives-members,
+.derivatives-page-panel .derivatives-interpretation {
+  padding: 14px;
+}
+
+.derivatives-page-panel .derivatives-headline {
+  font-size: 12px;
+}
+
+.derivatives-page-panel .derivative-product-row,
+.derivatives-page-panel .derivative-member-row {
+  font-size: 11px;
+}
+
+.derivatives-page-panel .derivative-member-head,
+.derivatives-page-panel .derivative-member-row {
+  min-width: 0;
+}
+
+.derivatives-method {
+  padding: 18px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.derivatives-method > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.derivatives-method h2 {
+  font-size: 16px;
+}
+
+.derivatives-method header p {
+  max-width: 920px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: right;
+}
+
+.derivatives-method > div {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--border);
+}
+
+.derivatives-method > div p {
+  min-width: 0;
+  padding: 10px;
+  color: var(--text-soft);
+  border-right: 1px solid var(--border);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.derivatives-method > div p:last-child {
+  border-right: 0;
+}
+
+.derivatives-method > div strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--text);
+  font-size: 11px;
+}
+
+@media (max-width: 1000px) {
+  .derivatives-method > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .derivatives-method > div p:nth-child(2) {
+    border-right: 0;
+  }
+
+  .derivatives-method > div p:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 680px) {
+  .derivatives-shell {
+    width: 100%;
+  }
+
+  .derivatives-page-status {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .derivatives-page-status > div:nth-child(2) {
+    border-right: 0;
+  }
+
+  .derivatives-page-status > div:last-child {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--border);
+  }
+
+  .derivatives-page-panel .derivatives-layout {
+    min-height: 0;
+  }
+
+  .derivatives-page-panel .derivative-member-head {
+    display: none;
+  }
+
+  .derivatives-page-panel .derivative-member-row {
+    grid-template-columns: minmax(92px, 1fr) 58px 58px 48px;
+    grid-template-areas:
+      "name long short stance"
+      "name net net stance";
+    min-height: 48px;
+    gap: 3px 6px;
+  }
+
+  .derivatives-page-panel .member-name {
+    grid-area: name;
+    align-self: center;
+    white-space: normal;
+  }
+
+  .derivatives-page-panel .member-long {
+    grid-area: long;
+  }
+
+  .derivatives-page-panel .member-short {
+    grid-area: short;
+  }
+
+  .derivatives-page-panel .member-net {
+    grid-area: net;
+    padding-top: 2px;
+    border-top: 1px solid var(--border);
+  }
+
+  .derivatives-page-panel .member-net::before {
+    color: var(--muted);
+    content: "净方向 ";
+  }
+
+  .derivatives-page-panel .member-stance {
+    grid-area: stance;
+    align-self: center;
+  }
+
+  .derivatives-method > header {
+    display: block;
+  }
+
+  .derivatives-method header p {
+    margin-top: 5px;
+    text-align: left;
+  }
+
+  .derivatives-method > div {
+    grid-template-columns: 1fr;
+  }
+
+  .derivatives-method > div p {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .derivatives-method > div p:last-child {
+    border-bottom: 0;
+  }
+}
+
+@media (max-width: 390px) {
+  .derivatives-page-panel .derivative-product-row {
+    grid-template-columns: 24px 54px minmax(64px, 1fr) 58px;
+  }
+
+  .derivatives-page-panel .derivative-member-row {
+    grid-template-columns: minmax(78px, 1fr) 52px 52px 44px;
+    font-size: 9px;
+  }
+}

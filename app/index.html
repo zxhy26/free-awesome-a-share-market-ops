@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#eef0f2">
+  <title>A股复盘</title>
+  <link rel="icon" href="assets/icons/favicon-32.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="assets/css/variables.css">
+  <link rel="stylesheet" href="assets/css/layout.css?v=20260715-2">
+  <link rel="stylesheet" href="assets/css/components.css?v=20260716-2">
+  <link rel="stylesheet" href="assets/css/responsive.css?v=20260715-2">
+  <link rel="stylesheet" href="assets/css/membership.css?v=20260726-7">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand-block">
+      <h1>A股复盘</h1>
+      <div class="freshness-line" aria-live="polite">
+        <strong id="tradeDate">--</strong>
+        <span id="marketState" class="status-label">读取中</span>
+        <span id="lastSync">最后同步 --</span>
+        <span id="syncAge">--</span>
+      </div>
+    </div>
+    <nav class="toolbar" aria-label="主要操作">
+      <button class="button button-primary" id="syncButton" type="button">
+        <span aria-hidden="true">⟳</span><span>同步市场</span>
+      </button>
+      <a class="button" href="/app/pages/stock-search.html" data-member-feature="个股搜索"><span aria-hidden="true">⌕</span><span>个股搜索</span></a>
+      <a class="button" href="/app/pages/policy-news.html" data-member-feature="政策新闻"><span aria-hidden="true">▦</span><span>政策新闻</span></a>
+      <a class="button" href="/app/pages/next-week-events.html" data-member-feature="下周大事件"><span aria-hidden="true">▣</span><span>下周大事件</span></a>
+      <a class="button" href="/app/pages/derivatives.html" data-member-feature="机构动向"><span aria-hidden="true">⇄</span><span>机构动向</span></a>
+      <a class="button" href="/app/pages/data-health.html"><span aria-hidden="true">●</span><span>数据状态</span></a>
+      <a class="button" href="/app/pages/history.html" data-member-feature="历史回放"><span aria-hidden="true">◷</span><span>历史回放</span></a>
+      <button class="button" id="summaryButton" type="button" data-member-feature="市场总结"><span aria-hidden="true">▤</span><span>市场总结</span></button>
+      <button class="button membership-trigger" id="membershipButton" type="button"><span aria-hidden="true">◇</span><span id="membershipButtonLabel">开通会员</span></button>
+      <button class="icon-button" id="reloadButton" type="button" title="刷新页面" aria-label="刷新页面">↻</button>
+      <fieldset class="theme-segment" aria-label="主题模式">
+        <legend class="visually-hidden">主题模式</legend>
+        <button type="button" data-theme-choice="system">跟随</button>
+        <button type="button" data-theme-choice="light">浅色</button>
+        <button type="button" data-theme-choice="dark">深色</button>
+      </fieldset>
+    </nav>
+  </header>
+
+  <div id="noticeBar" class="notice-bar" role="status" aria-live="polite" hidden></div>
+  <div id="dataAlert" class="data-alert" role="alert" hidden></div>
+
+  <main class="app-main">
+    <section class="overview-band" aria-labelledby="overviewTitle">
+      <h2 id="overviewTitle" class="visually-hidden">市场复盘总览</h2>
+      <div class="overview-lead">
+        <div class="metric-label">市场情绪</div>
+        <div class="metric-emphasis" id="emotionValue">--</div>
+        <div class="metric-note" id="emotionReason">数据读取中</div>
+      </div>
+      <div class="risk-gauge" aria-label="整体风险等级">
+        <div class="metric-label">整体风险</div>
+        <div class="gauge-track"><span id="riskGauge"></span></div>
+        <strong id="riskValue">--</strong>
+        <div class="metric-note" id="riskReason">--</div>
+      </div>
+      <div id="headlineMetrics" class="headline-metrics" aria-label="核心市场数据"></div>
+    </section>
+
+    <div class="work-grid">
+      <div class="left-stack">
+        <section class="work-panel index-panel" aria-labelledby="indicesTitle">
+        <div class="panel-heading">
+          <div><h2 id="indicesTitle">主要指数分时</h2><p>指数、涨跌点数、成交额与持续行业资金标注同步</p></div>
+          <div class="playback-controls">
+            <button class="icon-button" id="playButton" type="button" aria-label="播放分时" title="播放分时">▶</button>
+            <select id="speedSelect" aria-label="播放速度">
+              <option value="1">1倍速</option>
+              <option value="5" selected>5倍速</option>
+              <option value="10">10倍速</option>
+            </select>
+            <strong id="timelineTime">15:00</strong>
+          </div>
+        </div>
+        <div id="indexGrid" class="index-grid" aria-live="polite"></div>
+        <div class="timeline-wrap">
+          <span>09:30</span>
+          <input id="timeline" type="range" min="0" max="240" step="0.001" value="240" aria-label="分时时间轴">
+          <span id="timelineEnd">15:00</span>
+        </div>
+        </section>
+
+        <section class="work-panel structure-panel" aria-labelledby="structureTitle">
+        <div class="panel-heading">
+          <div><h2 id="structureTitle">市场结构</h2><p>主线、支线与板块间轮动</p></div>
+          <button class="text-button" id="structureHelp" type="button">评分口径</button>
+        </div>
+        <div id="marketStructure" class="structure-layout"></div>
+        </section>
+      </div>
+
+      <div class="sector-stack">
+        <section class="work-panel sector-panel industry-panel" aria-labelledby="industryTitle">
+          <div class="panel-heading">
+            <div><h2 id="industryTitle">二级行业资金流</h2><p>分时前十轨迹与前十长度排名</p></div>
+            <div class="flow-tabs" data-flow-tabs="industry">
+              <button type="button" data-flow-view="inflow" aria-pressed="true">流入前十</button>
+              <button type="button" data-flow-view="outflow" aria-pressed="false">流出前十</button>
+            </div>
+          </div>
+          <div id="industryFlowChart" class="sector-flow-chart" aria-label="二级行业资金流分时动态图"></div>
+          <div id="industryFlow" class="flow-table"></div>
+        </section>
+
+        <section class="work-panel sector-panel concept-panel" aria-labelledby="conceptTitle">
+          <div class="panel-heading">
+            <div><h2 id="conceptTitle">概念板块资金流</h2><p>分时前十轨迹与前十长度排名</p></div>
+            <div class="flow-tabs" data-flow-tabs="concept">
+              <button type="button" data-flow-view="inflow" aria-pressed="true">流入前十</button>
+              <button type="button" data-flow-view="outflow" aria-pressed="false">流出前十</button>
+            </div>
+          </div>
+          <div id="conceptFlowChart" class="sector-flow-chart" aria-label="概念板块资金流分时动态图"></div>
+          <div id="conceptFlow" class="flow-table"></div>
+        </section>
+      </div>
+    </div>
+
+    <section class="work-panel money-panel" aria-labelledby="moneyTitle">
+      <div class="panel-heading">
+        <div><h2 id="moneyTitle">赚钱效应</h2><p>统一口径，分母为零时显示暂无数据</p></div>
+        <div class="detail-links" aria-label="市场详情">
+          <a href="/app/pages/limit-up.html">涨停个股</a>
+          <a href="/app/pages/limit-down.html">跌停个股</a>
+          <a href="/app/pages/yesterday-limit.html">延续个股</a>
+          <a href="/app/pages/yesterday-broken.html">修复个股</a>
+        </div>
+      </div>
+      <div id="moneyMetrics" class="money-metrics"></div>
+      <p id="moneySummary" class="money-summary" aria-live="polite">赚钱效应结论读取中</p>
+    </section>
+
+    <section class="work-panel history-panel" aria-labelledby="historyTitle">
+      <div class="panel-heading">
+        <div><h2 id="historyTitle">近期交易日对比</h2><p>用于判断情绪、量能与主线持续性</p></div>
+      </div>
+      <div id="historyTable" class="history-table-wrap"></div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p id="sourceNote">数据来源读取中。</p>
+    <p>本软件仅用于市场数据整理和复盘分析，不构成任何投资建议。市场有风险，决策需独立判断。</p>
+  </footer>
+
+  <div class="dialog-backdrop" id="summaryBackdrop" hidden>
+    <section class="summary-dialog" id="summaryDialog" role="dialog" aria-modal="true" aria-labelledby="summaryTitle" tabindex="-1">
+      <header>
+        <div><h2 id="summaryTitle">市场总结</h2><p id="summaryDate">--</p></div>
+        <div class="dialog-actions">
+          <button class="icon-button" id="copySummary" type="button" title="复制总结" aria-label="复制总结">⧉</button>
+          <button class="icon-button" id="exportSummary" type="button" title="导出文本" aria-label="导出文本">⇩</button>
+          <button class="icon-button" id="printSummary" type="button" title="打印总结" aria-label="打印总结">▣</button>
+          <button class="icon-button" id="closeSummary" type="button" title="关闭" aria-label="关闭">×</button>
+        </div>
+      </header>
+      <div id="summaryContent" class="summary-content"></div>
+    </section>
+  </div>
+
+  <div class="update-toast" id="updateToast" hidden>
+    <span>发现新版本。</span><button type="button" id="applyUpdate">刷新后更新</button>
+  </div>
+
+  <script type="module" src="assets/js/membership.js?v=20260726-6"></script>
+  <script type="module" src="assets/js/app.js?v=20260726-1"></script>
+</body>
+</html>

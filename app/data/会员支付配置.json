@@ -1,0 +1,16 @@
+{
+  "mode": "manual-qrcode",
+  "monthlyPrice": 72,
+  "annualPrice": 699,
+  "wechatQr": "assets/payment/微信支付二维码.png",
+  "alipayQr": "assets/payment/支付宝支付二维码.png",
+  "creatorWechatQr": "assets/payment/创作者微信二维码.png",
+  "supportName": "官方客服：藏锋",
+  "supportNote": "开通会员服务请添加微信，付款后发送付款截图和设备码。",
+  "officialAdapter": {
+    "enabled": false,
+    "provider": "wechatpay-v3",
+    "endpoint": "",
+    "pollSeconds": 3
+  }
+}

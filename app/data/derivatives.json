@@ -1,0 +1,1823 @@
+{
+  "version": 1,
+  "tradeDate": "2026-07-24",
+  "targetTradeDate": "2026-07-24",
+  "fetchedAt": "2026-07-25T08:06:52.864Z",
+  "status": "ok",
+  "stale": false,
+  "staleReason": "",
+  "source": {
+    "name": "中国金融期货交易所成交持仓排名",
+    "home": "http://www.cffex.com.cn/ccpm/",
+    "urls": [
+      "http://www.cffex.com.cn/sj/ccpm/202607/24/IF_1.csv",
+      "http://www.cffex.com.cn/sj/ccpm/202607/24/IH_1.csv",
+      "http://www.cffex.com.cn/sj/ccpm/202607/24/IC_1.csv",
+      "http://www.cffex.com.cn/sj/ccpm/202607/24/IM_1.csv",
+      "http://www.cffex.com.cn/sj/ccpm/202607/24/IO_1.csv",
+      "http://www.cffex.com.cn/sj/ccpm/202607/24/HO_1.csv",
+      "http://www.cffex.com.cn/sj/ccpm/202607/24/MO_1.csv"
+    ],
+    "dataScope": "达到交易所披露条件的合约及前20名期货公司结算会员榜单可见数据",
+    "disclosure": "期货公司当前无自营业务，交易所披露的是前20名期货公司结算会员经纪业务代客持仓榜单；榜单可见持仓不等于会员全部客户持仓，也不等于机构自营观点。"
+  },
+  "methodology": {
+    "futures": "期货净方向变化=榜单可见多单日增减-榜单可见空单日增减。",
+    "options": "期权买方和卖方变化用于观察期权参与度；因同时包含看涨与看跌合约，不直接映射指数方向。",
+    "missing": "席位未进入榜单时保留为未披露，不按零持仓解释。"
+  },
+  "products": [
+    {
+      "code": "IF",
+      "name": "沪深300股指期货",
+      "shortName": "沪深300",
+      "type": "futures",
+      "contractCount": 3,
+      "rowCount": 60,
+      "memberCount": 34,
+      "visibleLongPosition": 189488,
+      "visibleLongChange": 6164,
+      "visibleShortPosition": 216604,
+      "visibleShortChange": 6797,
+      "sourceUrl": "http://www.cffex.com.cn/sj/ccpm/202607/24/IF_1.csv"
+    },
+    {
+      "code": "IH",
+      "name": "上证50股指期货",
+      "shortName": "上证50",
+      "type": "futures",
+      "contractCount": 3,
+      "rowCount": 60,
+      "memberCount": 37,
+      "visibleLongPosition": 86171,
+      "visibleLongChange": 3881,
+      "visibleShortPosition": 106247,
+      "visibleShortChange": 3452,
+      "sourceUrl": "http://www.cffex.com.cn/sj/ccpm/202607/24/IH_1.csv"
+    },
+    {
+      "code": "IC",
+      "name": "中证500股指期货",
+      "shortName": "中证500",
+      "type": "futures",
+      "contractCount": 4,
+      "rowCount": 80,
+      "memberCount": 41,
+      "visibleLongPosition": 236386,
+      "visibleLongChange": 9376,
+      "visibleShortPosition": 267454,
+      "visibleShortChange": 7926,
+      "sourceUrl": "http://www.cffex.com.cn/sj/ccpm/202607/24/IC_1.csv"
+    },
+    {
+      "code": "IM",
+      "name": "中证1000股指期货",
+      "shortName": "中证1000",
+      "type": "futures",
+      "contractCount": 4,
+      "rowCount": 80,
+      "memberCount": 37,
+      "visibleLongPosition": 353179,
+      "visibleLongChange": 5526,
+      "visibleShortPosition": 412165,
+      "visibleShortChange": 1956,
+      "sourceUrl": "http://www.cffex.com.cn/sj/ccpm/202607/24/IM_1.csv"
+    },
+    {
+      "code": "IO",
+      "name": "沪深300股指期权",
+      "shortName": "沪深300期权",
+      "type": "options",
+      "contractCount": 2,
+      "rowCount": 40,
+      "memberCount": 30,
+      "visibleLongPosition": 107395,
+      "visibleLongChange": 3383,
+      "visibleShortPosition": 119521,
+      "visibleShortChange": 2856,
+      "sourceUrl": "http://www.cffex.com.cn/sj/ccpm/202607/24/IO_1.csv"
+    },
+    {
+      "code": "HO",
+      "name": "上证50股指期权",
+      "shortName": "上证50期权",
+      "type": "options",
+      "contractCount": 1,
+      "rowCount": 20,
+      "memberCount": 27,
+      "visibleLongPosition": 26488,
+      "visibleLongChange": 1255,
+      "visibleShortPosition": 28653,
+      "visibleShortChange": 1659,
+      "sourceUrl": "http://www.cffex.com.cn/sj/ccpm/202607/24/HO_1.csv"
+    },
+    {
+      "code": "MO",
+      "name": "中证1000股指期权",
+      "shortName": "中证1000期权",
+      "type": "options",
+      "contractCount": 4,
+      "rowCount": 80,
+      "memberCount": 32,
+      "visibleLongPosition": 286238,
+      "visibleLongChange": 2028,
+      "visibleShortPosition": 316118,
+      "visibleShortChange": 4568,
+      "sourceUrl": "http://www.cffex.com.cn/sj/ccpm/202607/24/MO_1.csv"
+    }
+  ],
+  "institutions": [
+    {
+      "member": "中信期货",
+      "futures": {
+        "longPosition": 168785,
+        "longChange": 8213,
+        "shortPosition": 234182,
+        "shortChange": 8035,
+        "netPosition": -65397,
+        "netChange": 178,
+        "activity": 16248,
+        "contracts": [
+          "IC2608",
+          "IC2609",
+          "IC2612",
+          "IC2703",
+          "IF2608",
+          "IF2609",
+          "IF2612",
+          "IH2608",
+          "IH2609",
+          "IH2612",
+          "IM2608",
+          "IM2609",
+          "IM2612",
+          "IM2703"
+        ],
+        "appearanceCount": 14,
+        "stance": "中性",
+        "products": [
+          {
+            "code": "IC",
+            "name": "中证500股指期货",
+            "shortName": "中证500",
+            "longPosition": 51436,
+            "longChange": 4247,
+            "shortPosition": 60178,
+            "shortChange": 3636,
+            "contracts": [
+              "IC2608",
+              "IC2609",
+              "IC2612",
+              "IC2703"
+            ],
+            "netPosition": -8742,
+            "netChange": 611,
+            "stance": "中性"
+          },
+          {
+            "code": "IF",
+            "name": "沪深300股指期货",
+            "shortName": "沪深300",
+            "longPosition": 30556,
+            "longChange": 1408,
+            "shortPosition": 43262,
+            "shortChange": 1742,
+            "contracts": [
+              "IF2608",
+              "IF2609",
+              "IF2612"
+            ],
+            "netPosition": -12706,
+            "netChange": -334,
+            "stance": "中性"
+          },
+          {
+            "code": "IH",
+            "name": "上证50股指期货",
+            "shortName": "上证50",
+            "longPosition": 17153,
+            "longChange": 2318,
+            "shortPosition": 27164,
+            "shortChange": 1084,
+            "contracts": [
+              "IH2608",
+              "IH2609",
+              "IH2612"
+            ],
+            "netPosition": -10011,
+            "netChange": 1234,
+            "stance": "偏多"
+          },
+          {
+            "code": "IM",
+            "name": "中证1000股指期货",
+            "shortName": "中证1000",
+            "longPosition": 69640,
+            "longChange": 240,
+            "shortPosition": 103578,
+            "shortChange": 1573,
+            "contracts": [
+              "IM2608",
+              "IM2609",
+              "IM2612",
+              "IM2703"
+            ],
+            "netPosition": -33938,
+            "netChange": -1333,
+            "stance": "偏空"
+          }
+        ]
+      },
+      "options": {
+        "longPosition": 53181,
+        "longChange": 220,
+        "shortPosition": 57741,
+        "shortChange": -332,
+        "netPosition": -4560,
+        "netChange": 552,
+        "activity": 552,
+        "contracts": [
+          "HO2608",
+          "IO2608",
+          "IO2609",
+          "MO2608",
+          "MO2609",
+          "MO2612",
+          "MO2703"
+        ],
+        "appearanceCount": 7,
+        "stance": "",
+        "products": [
+          {
+            "code": "HO",
+            "name": "上证50股指期权",
+            "shortName": "上证50期权",
+            "longPosition": 3863,
+            "longChange": 46,
+            "shortPosition": 2730,
+            "shortChange": 108,
+            "contracts": [
+              "HO2608"
+            ],
+            "netPosition": 1133,
+            "netChange": -62,
+            "stance": ""
+          },
+          {
+            "code": "IO",
+            "name": "沪深300股指期权",
+            "shortName": "沪深300期权",
+            "longPosition": 11500,
+            "longChange": 722,
+            "shortPosition": 16386,
+            "shortChange": 740,
+            "contracts": [
+              "IO2608",
+              "IO2609"
+            ],
+            "netPosition": -4886,
+            "netChange": -18,
+            "stance": ""
+          },
+          {
+            "code": "MO",
+            "name": "中证1000股指期权",
+            "shortName": "中证1000期权",
+            "longPosition": 37818,
+            "longChange": -548,
+            "shortPosition": 38625,
+            "shortChange": -1180,
+            "contracts": [
+              "MO2608",
+              "MO2609",
+              "MO2612",
+              "MO2703"
+            ],
+            "netPosition": -807,
+            "netChange": 632,
+            "stance": ""
+          }
+        ]
+      },
+      "required": true,
+      "stance": "中性"
+    },
+    {
+      "member": "中金期货",
+      "futures": {
+        "longPosition": 2815,
+        "longChange": -2,
+        "shortPosition": 16729,
+        "shortChange": 49,
+        "netPosition": -13914,
+        "netChange": -51,
+        "activity": 51,
+        "contracts": [
+          "IC2608",
+          "IF2608",
+          "IF2612",
+          "IH2609",
+          "IH2612",
+          "IM2608",
+          "IM2609",
+          "IM2612"
+        ],
+        "appearanceCount": 8,
+        "stance": "样本不足",
+        "products": [
+          {
+            "code": "IC",
+            "name": "中证500股指期货",
+            "shortName": "中证500",
+            "longPosition": 0,
+            "longChange": 0,
+            "shortPosition": 1003,
+            "shortChange": 0,
+            "contracts": [
+              "IC2608"
+            ],
+            "netPosition": -1003,
+            "netChange": 0,
+            "stance": "样本不足"
+          },
+          {
+            "code": "IF",
+            "name": "沪深300股指期货",
+            "shortName": "沪深300",
+            "longPosition": 2815,
+            "longChange": -2,
+            "shortPosition": 4035,
+            "shortChange": -2,
+            "contracts": [
+              "IF2608",
+              "IF2612"
+            ],
+            "netPosition": -1220,
+            "netChange": 0,
+            "stance": "样本不足"
+          },
+          {
+            "code": "IH",
+            "name": "上证50股指期货",
+            "shortName": "上证50",
+            "longPosition": 0,
+            "longChange": 0,
+            "shortPosition": 2897,
+            "shortChange": 0,
+            "contracts": [
+              "IH2609",
+              "IH2612"
+            ],
+            "netPosition": -2897,
+            "netChange": 0,
+            "stance": "样本不足"
+          },
+          {
+            "code": "IM",
+            "name": "中证1000股指期货",
+            "shortName": "中证1000",
+            "longPosition": 0,
+            "longChange": 0,
+            "shortPosition": 8794,
+            "shortChange": 51,
+            "contracts": [
+              "IM2608",
+              "IM2609",
+              "IM2612"
+            ],
+            "netPosition": -8794,
+            "netChange": -51,
+            "stance": "样本不足"
+          }
+        ]
+      },
+      "options": {
+        "longPosition": 0,
+        "longChange": 0,
+        "shortPosition": 0,
+        "shortChange": 0,
+        "netPosition": 0,
+        "netChange": 0,
+        "activity": 0,
+        "contracts": [],
+        "appearanceCount": 0,
+        "stance": "",
+        "products": []
+      },
+      "required": true,
+      "stance": "样本不足"
+    },
+    {
+      "member": "国泰君安",
+      "futures": {
+        "longPosition": 163170,
+        "longChange": 4991,
+        "shortPosition": 161589,
+        "shortChange": 6583,
+        "netPosition": 1581,
+        "netChange": -1592,
+        "activity": 11574,
+        "contracts": [
+          "IC2608",
+          "IC2609",
+          "IC2612",
+          "IC2703",
+          "IF2608",
+          "IF2609",
+          "IF2612",
+          "IH2608",
+          "IH2609",
+          "IH2612",
+          "IM2608",
+          "IM2609",
+          "IM2612",
+          "IM2703"
+        ],
+        "appearanceCount": 14,
+        "stance": "偏空",
+        "products": [
+          {
+            "code": "IC",
+            "name": "中证500股指期货",
+            "shortName": "中证500",
+            "longPosition": 46550,
+            "longChange": 692,
+            "shortPosition": 48822,
+            "shortChange": 257,
+            "contracts": [
+              "IC2608",
+              "IC2609",
+              "IC2612",
+              "IC2703"
+            ],
+            "netPosition": -2272,
+            "netChange": 435,
+            "stance": "中性"
+          },
+          {
+            "code": "IF",
+            "name": "沪深300股指期货",
+            "shortName": "沪深300",
+            "longPosition": 36457,
+            "longChange": 1547,
+            "shortPosition": 31770,
+            "shortChange": 1798,
+            "contracts": [
+              "IF2608",
+              "IF2609",
+              "IF2612"
+            ],
+            "netPosition": 4687,
+            "netChange": -251,
+            "stance": "中性"
+          },
+          {
+            "code": "IH",
+            "name": "上证50股指期货",
+            "shortName": "上证50",
+            "longPosition": 14244,
+            "longChange": 6,
+            "shortPosition": 14361,
+            "shortChange": 1297,
+            "contracts": [
+              "IH2608",
+              "IH2609",
+              "IH2612"
+            ],
+            "netPosition": -117,
+            "netChange": -1291,
+            "stance": "偏空"
+          },
+          {
+            "code": "IM",
+            "name": "中证1000股指期货",
+            "shortName": "中证1000",
+            "longPosition": 65919,
+            "longChange": 2746,
+            "shortPosition": 66636,
+            "shortChange": 3231,
+            "contracts": [
+              "IM2608",
+              "IM2609",
+              "IM2612",
+              "IM2703"
+            ],
+            "netPosition": -717,
+            "netChange": -485,
+            "stance": "中性"
+          }
+        ]
+      },
+      "options": {
+        "longPosition": 49013,
+        "longChange": -604,
+        "shortPosition": 63944,
+        "shortChange": 1069,
+        "netPosition": -14931,
+        "netChange": -1673,
+        "activity": 1673,
+        "contracts": [
+          "HO2608",
+          "IO2608",
+          "IO2609",
+          "MO2608",
+          "MO2609",
+          "MO2612",
+          "MO2703"
+        ],
+        "appearanceCount": 7,
+        "stance": "",
+        "products": [
+          {
+            "code": "HO",
+            "name": "上证50股指期权",
+            "shortName": "上证50期权",
+            "longPosition": 4742,
+            "longChange": -260,
+            "shortPosition": 3921,
+            "shortChange": 311,
+            "contracts": [
+              "HO2608"
+            ],
+            "netPosition": 821,
+            "netChange": -571,
+            "stance": ""
+          },
+          {
+            "code": "IO",
+            "name": "沪深300股指期权",
+            "shortName": "沪深300期权",
+            "longPosition": 12877,
+            "longChange": -704,
+            "shortPosition": 17589,
+            "shortChange": -230,
+            "contracts": [
+              "IO2608",
+              "IO2609"
+            ],
+            "netPosition": -4712,
+            "netChange": -474,
+            "stance": ""
+          },
+          {
+            "code": "MO",
+            "name": "中证1000股指期权",
+            "shortName": "中证1000期权",
+            "longPosition": 31394,
+            "longChange": 360,
+            "shortPosition": 42434,
+            "shortChange": 988,
+            "contracts": [
+              "MO2608",
+              "MO2609",
+              "MO2612",
+              "MO2703"
+            ],
+            "netPosition": -11040,
+            "netChange": -628,
+            "stance": ""
+          }
+        ]
+      },
+      "required": false,
+      "stance": "偏空"
+    },
+    {
+      "member": "华泰期货",
+      "futures": {
+        "longPosition": 37404,
+        "longChange": 1012,
+        "shortPosition": 75031,
+        "shortChange": -1232,
+        "netPosition": -37627,
+        "netChange": 2244,
+        "activity": 2244,
+        "contracts": [
+          "IC2608",
+          "IC2609",
+          "IC2612",
+          "IC2703",
+          "IF2608",
+          "IF2609",
+          "IF2612",
+          "IH2608",
+          "IH2609",
+          "IH2612",
+          "IM2608",
+          "IM2609",
+          "IM2612",
+          "IM2703"
+        ],
+        "appearanceCount": 14,
+        "stance": "偏多",
+        "products": [
+          {
+            "code": "IC",
+            "name": "中证500股指期货",
+            "shortName": "中证500",
+            "longPosition": 9737,
+            "longChange": 392,
+            "shortPosition": 18175,
+            "shortChange": 394,
+            "contracts": [
+              "IC2608",
+              "IC2609",
+              "IC2612",
+              "IC2703"
+            ],
+            "netPosition": -8438,
+            "netChange": -2,
+            "stance": "中性"
+          },
+          {
+            "code": "IF",
+            "name": "沪深300股指期货",
+            "shortName": "沪深300",
+            "longPosition": 7899,
+            "longChange": 8,
+            "shortPosition": 24513,
+            "shortChange": -118,
+            "contracts": [
+              "IF2608",
+              "IF2609",
+              "IF2612"
+            ],
+            "netPosition": -16614,
+            "netChange": 126,
+            "stance": "样本不足"
+          },
+          {
+            "code": "IH",
+            "name": "上证50股指期货",
+            "shortName": "上证50",
+            "longPosition": 3820,
+            "longChange": 114,
+            "shortPosition": 2785,
+            "shortChange": -386,
+            "contracts": [
+              "IH2608",
+              "IH2609",
+              "IH2612"
+            ],
+            "netPosition": 1035,
+            "netChange": 500,
+            "stance": "偏多"
+          },
+          {
+            "code": "IM",
+            "name": "中证1000股指期货",
+            "shortName": "中证1000",
+            "longPosition": 15948,
+            "longChange": 498,
+            "shortPosition": 29558,
+            "shortChange": -1122,
+            "contracts": [
+              "IM2608",
+              "IM2609",
+              "IM2612",
+              "IM2703"
+            ],
+            "netPosition": -13610,
+            "netChange": 1620,
+            "stance": "偏多"
+          }
+        ]
+      },
+      "options": {
+        "longPosition": 27509,
+        "longChange": 918,
+        "shortPosition": 30035,
+        "shortChange": 1727,
+        "netPosition": -2526,
+        "netChange": -809,
+        "activity": 2645,
+        "contracts": [
+          "HO2608",
+          "IO2608",
+          "IO2609",
+          "MO2608",
+          "MO2609",
+          "MO2612",
+          "MO2703"
+        ],
+        "appearanceCount": 7,
+        "stance": "",
+        "products": [
+          {
+            "code": "HO",
+            "name": "上证50股指期权",
+            "shortName": "上证50期权",
+            "longPosition": 1459,
+            "longChange": 168,
+            "shortPosition": 2997,
+            "shortChange": 316,
+            "contracts": [
+              "HO2608"
+            ],
+            "netPosition": -1538,
+            "netChange": -148,
+            "stance": ""
+          },
+          {
+            "code": "IO",
+            "name": "沪深300股指期权",
+            "shortName": "沪深300期权",
+            "longPosition": 4329,
+            "longChange": 136,
+            "shortPosition": 4778,
+            "shortChange": 190,
+            "contracts": [
+              "IO2608",
+              "IO2609"
+            ],
+            "netPosition": -449,
+            "netChange": -54,
+            "stance": ""
+          },
+          {
+            "code": "MO",
+            "name": "中证1000股指期权",
+            "shortName": "中证1000期权",
+            "longPosition": 21721,
+            "longChange": 614,
+            "shortPosition": 22260,
+            "shortChange": 1221,
+            "contracts": [
+              "MO2608",
+              "MO2609",
+              "MO2612",
+              "MO2703"
+            ],
+            "netPosition": -539,
+            "netChange": -607,
+            "stance": ""
+          }
+        ]
+      },
+      "required": false,
+      "stance": "偏多"
+    },
+    {
+      "member": "东证期货",
+      "futures": {
+        "longPosition": 53886,
+        "longChange": 1326,
+        "shortPosition": 49503,
+        "shortChange": 1642,
+        "netPosition": 4383,
+        "netChange": -316,
+        "activity": 2968,
+        "contracts": [
+          "IC2608",
+          "IC2609",
+          "IC2612",
+          "IC2703",
+          "IF2608",
+          "IF2609",
+          "IF2612",
+          "IH2608",
+          "IH2609",
+          "IH2612",
+          "IM2608",
+          "IM2609",
+          "IM2612",
+          "IM2703"
+        ],
+        "appearanceCount": 14,
+        "stance": "中性",
+        "products": [
+          {
+            "code": "IC",
+            "name": "中证500股指期货",
+            "shortName": "中证500",
+            "longPosition": 12583,
+            "longChange": 58,
+            "shortPosition": 12066,
+            "shortChange": -140,
+            "contracts": [
+              "IC2608",
+              "IC2609",
+              "IC2612",
+              "IC2703"
+            ],
+            "netPosition": 517,
+            "netChange": 198,
+            "stance": "样本不足"
+          },
+          {
+            "code": "IF",
+            "name": "沪深300股指期货",
+            "shortName": "沪深300",
+            "longPosition": 10250,
+            "longChange": 53,
+            "shortPosition": 12149,
+            "shortChange": 357,
+            "contracts": [
+              "IF2608",
+              "IF2609",
+              "IF2612"
+            ],
+            "netPosition": -1899,
+            "netChange": -304,
+            "stance": "中性"
+          },
+          {
+            "code": "IH",
+            "name": "上证50股指期货",
+            "shortName": "上证50",
+            "longPosition": 7012,
+            "longChange": 796,
+            "shortPosition": 4410,
+            "shortChange": 820,
+            "contracts": [
+              "IH2608",
+              "IH2609",
+              "IH2612"
+            ],
+            "netPosition": 2602,
+            "netChange": -24,
+            "stance": "中性"
+          },
+          {
+            "code": "IM",
+            "name": "中证1000股指期货",
+            "shortName": "中证1000",
+            "longPosition": 24041,
+            "longChange": 419,
+            "shortPosition": 20878,
+            "shortChange": 605,
+            "contracts": [
+              "IM2608",
+              "IM2609",
+              "IM2612",
+              "IM2703"
+            ],
+            "netPosition": 3163,
+            "netChange": -186,
+            "stance": "中性"
+          }
+        ]
+      },
+      "options": {
+        "longPosition": 37593,
+        "longChange": 442,
+        "shortPosition": 42489,
+        "shortChange": 1136,
+        "netPosition": -4896,
+        "netChange": -694,
+        "activity": 1578,
+        "contracts": [
+          "HO2608",
+          "IO2608",
+          "IO2609",
+          "MO2608",
+          "MO2609",
+          "MO2612",
+          "MO2703"
+        ],
+        "appearanceCount": 7,
+        "stance": "",
+        "products": [
+          {
+            "code": "HO",
+            "name": "上证50股指期权",
+            "shortName": "上证50期权",
+            "longPosition": 1373,
+            "longChange": 71,
+            "shortPosition": 2450,
+            "shortChange": 145,
+            "contracts": [
+              "HO2608"
+            ],
+            "netPosition": -1077,
+            "netChange": -74,
+            "stance": ""
+          },
+          {
+            "code": "IO",
+            "name": "沪深300股指期权",
+            "shortName": "沪深300期权",
+            "longPosition": 9951,
+            "longChange": 261,
+            "shortPosition": 9184,
+            "shortChange": 620,
+            "contracts": [
+              "IO2608",
+              "IO2609"
+            ],
+            "netPosition": 767,
+            "netChange": -359,
+            "stance": ""
+          },
+          {
+            "code": "MO",
+            "name": "中证1000股指期权",
+            "shortName": "中证1000期权",
+            "longPosition": 26269,
+            "longChange": 110,
+            "shortPosition": 30855,
+            "shortChange": 371,
+            "contracts": [
+              "MO2608",
+              "MO2609",
+              "MO2612",
+              "MO2703"
+            ],
+            "netPosition": -4586,
+            "netChange": -261,
+            "stance": ""
+          }
+        ]
+      },
+      "required": false,
+      "stance": "中性"
+    },
+    {
+      "member": "海通期货",
+      "futures": {
+        "longPosition": 51069,
+        "longChange": 1753,
+        "shortPosition": 74190,
+        "shortChange": 1706,
+        "netPosition": -23121,
+        "netChange": 47,
+        "activity": 3459,
+        "contracts": [
+          "IC2608",
+          "IC2609",
+          "IC2612",
+          "IC2703",
+          "IF2608",
+          "IF2609",
+          "IF2612",
+          "IH2608",
+          "IH2609",
+          "IH2612",
+          "IM2608",
+          "IM2609",
+          "IM2612",
+          "IM2703"
+        ],
+        "appearanceCount": 14,
+        "stance": "中性",
+        "products": [
+          {
+            "code": "IC",
+            "name": "中证500股指期货",
+            "shortName": "中证500",
+            "longPosition": 15043,
+            "longChange": 1730,
+            "shortPosition": 22198,
+            "shortChange": 1693,
+            "contracts": [
+              "IC2608",
+              "IC2609",
+              "IC2612",
+              "IC2703"
+            ],
+            "netPosition": -7155,
+            "netChange": 37,
+            "stance": "中性"
+          },
+          {
+            "code": "IF",
+            "name": "沪深300股指期货",
+            "shortName": "沪深300",
+            "longPosition": 12504,
+            "longChange": 307,
+            "shortPosition": 13821,
+            "shortChange": 1122,
+            "contracts": [
+              "IF2608",
+              "IF2609",
+              "IF2612"
+            ],
+            "netPosition": -1317,
+            "netChange": -815,
+            "stance": "偏空"
+          },
+          {
+            "code": "IH",
+            "name": "上证50股指期货",
+            "shortName": "上证50",
+            "longPosition": 4675,
+            "longChange": 9,
+            "shortPosition": 9092,
+            "shortChange": 74,
+            "contracts": [
+              "IH2608",
+              "IH2609",
+              "IH2612"
+            ],
+            "netPosition": -4417,
+            "netChange": -65,
+            "stance": "样本不足"
+          },
+          {
+            "code": "IM",
+            "name": "中证1000股指期货",
+            "shortName": "中证1000",
+            "longPosition": 18847,
+            "longChange": -293,
+            "shortPosition": 29079,
+            "shortChange": -1183,
+            "contracts": [
+              "IM2608",
+              "IM2609",
+              "IM2612",
+              "IM2703"
+            ],
+            "netPosition": -10232,
+            "netChange": 890,
+            "stance": "偏多"
+          }
+        ]
+      },
+      "options": {
+        "longPosition": 8736,
+        "longChange": -59,
+        "shortPosition": 7102,
+        "shortChange": 108,
+        "netPosition": 1634,
+        "netChange": -167,
+        "activity": 167,
+        "contracts": [
+          "HO2608",
+          "IO2609",
+          "MO2608",
+          "MO2609",
+          "MO2612",
+          "MO2703"
+        ],
+        "appearanceCount": 6,
+        "stance": "",
+        "products": [
+          {
+            "code": "HO",
+            "name": "上证50股指期权",
+            "shortName": "上证50期权",
+            "longPosition": 506,
+            "longChange": -141,
+            "shortPosition": 0,
+            "shortChange": 0,
+            "contracts": [
+              "HO2608"
+            ],
+            "netPosition": 506,
+            "netChange": -141,
+            "stance": ""
+          },
+          {
+            "code": "IO",
+            "name": "沪深300股指期权",
+            "shortName": "沪深300期权",
+            "longPosition": 0,
+            "longChange": 0,
+            "shortPosition": 828,
+            "shortChange": 34,
+            "contracts": [
+              "IO2609"
+            ],
+            "netPosition": -828,
+            "netChange": -34,
+            "stance": ""
+          },
+          {
+            "code": "MO",
+            "name": "中证1000股指期权",
+            "shortName": "中证1000期权",
+            "longPosition": 8230,
+            "longChange": 82,
+            "shortPosition": 6274,
+            "shortChange": 74,
+            "contracts": [
+              "MO2608",
+              "MO2609",
+              "MO2612",
+              "MO2703"
+            ],
+            "netPosition": 1956,
+            "netChange": 8,
+            "stance": ""
+          }
+        ]
+      },
+      "required": false,
+      "stance": "中性"
+    },
+    {
+      "member": "广发期货",
+      "futures": {
+        "longPosition": 32141,
+        "longChange": 448,
+        "shortPosition": 32873,
+        "shortChange": -439,
+        "netPosition": -732,
+        "netChange": 887,
+        "activity": 887,
+        "contracts": [
+          "IC2608",
+          "IC2609",
+          "IC2612",
+          "IC2703",
+          "IF2608",
+          "IF2609",
+          "IF2612",
+          "IH2608",
+          "IH2609",
+          "IH2612",
+          "IM2608",
+          "IM2609",
+          "IM2612"
+        ],
+        "appearanceCount": 13,
+        "stance": "偏多",
+        "products": [
+          {
+            "code": "IC",
+            "name": "中证500股指期货",
+            "shortName": "中证500",
+            "longPosition": 7054,
+            "longChange": -112,
+            "shortPosition": 8276,
+            "shortChange": -80,
+            "contracts": [
+              "IC2608",
+              "IC2609",
+              "IC2612",
+              "IC2703"
+            ],
+            "netPosition": -1222,
+            "netChange": -32,
+            "stance": "样本不足"
+          },
+          {
+            "code": "IF",
+            "name": "沪深300股指期货",
+            "shortName": "沪深300",
+            "longPosition": 9786,
+            "longChange": 59,
+            "shortPosition": 7096,
+            "shortChange": 225,
+            "contracts": [
+              "IF2608",
+              "IF2609",
+              "IF2612"
+            ],
+            "netPosition": 2690,
+            "netChange": -166,
+            "stance": "样本不足"
+          },
+          {
+            "code": "IH",
+            "name": "上证50股指期货",
+            "shortName": "上证50",
+            "longPosition": 2623,
+            "longChange": 253,
+            "shortPosition": 2932,
+            "shortChange": -63,
+            "contracts": [
+              "IH2608",
+              "IH2609",
+              "IH2612"
+            ],
+            "netPosition": -309,
+            "netChange": 316,
+            "stance": "中性"
+          },
+          {
+            "code": "IM",
+            "name": "中证1000股指期货",
+            "shortName": "中证1000",
+            "longPosition": 12678,
+            "longChange": 248,
+            "shortPosition": 14569,
+            "shortChange": -521,
+            "contracts": [
+              "IM2608",
+              "IM2609",
+              "IM2612"
+            ],
+            "netPosition": -1891,
+            "netChange": 769,
+            "stance": "偏多"
+          }
+        ]
+      },
+      "options": {
+        "longPosition": 24912,
+        "longChange": 315,
+        "shortPosition": 27956,
+        "shortChange": 408,
+        "netPosition": -3044,
+        "netChange": -93,
+        "activity": 723,
+        "contracts": [
+          "HO2608",
+          "IO2608",
+          "IO2609",
+          "MO2608",
+          "MO2609",
+          "MO2612",
+          "MO2703"
+        ],
+        "appearanceCount": 7,
+        "stance": "",
+        "products": [
+          {
+            "code": "HO",
+            "name": "上证50股指期权",
+            "shortName": "上证50期权",
+            "longPosition": 791,
+            "longChange": -5,
+            "shortPosition": 0,
+            "shortChange": 0,
+            "contracts": [
+              "HO2608"
+            ],
+            "netPosition": 791,
+            "netChange": -5,
+            "stance": ""
+          },
+          {
+            "code": "IO",
+            "name": "沪深300股指期权",
+            "shortName": "沪深300期权",
+            "longPosition": 8941,
+            "longChange": 433,
+            "shortPosition": 11443,
+            "shortChange": 418,
+            "contracts": [
+              "IO2608",
+              "IO2609"
+            ],
+            "netPosition": -2502,
+            "netChange": 15,
+            "stance": ""
+          },
+          {
+            "code": "MO",
+            "name": "中证1000股指期权",
+            "shortName": "中证1000期权",
+            "longPosition": 15180,
+            "longChange": -113,
+            "shortPosition": 16513,
+            "shortChange": -10,
+            "contracts": [
+              "MO2608",
+              "MO2609",
+              "MO2612",
+              "MO2703"
+            ],
+            "netPosition": -1333,
+            "netChange": -103,
+            "stance": ""
+          }
+        ]
+      },
+      "required": false,
+      "stance": "偏多"
+    },
+    {
+      "member": "银河期货",
+      "futures": {
+        "longPosition": 45037,
+        "longChange": -254,
+        "shortPosition": 35915,
+        "shortChange": 480,
+        "netPosition": 9122,
+        "netChange": -734,
+        "activity": 734,
+        "contracts": [
+          "IC2608",
+          "IC2609",
+          "IC2612",
+          "IC2703",
+          "IF2608",
+          "IF2609",
+          "IF2612",
+          "IH2608",
+          "IH2609",
+          "IH2612",
+          "IM2608",
+          "IM2609",
+          "IM2612",
+          "IM2703"
+        ],
+        "appearanceCount": 14,
+        "stance": "偏空",
+        "products": [
+          {
+            "code": "IC",
+            "name": "中证500股指期货",
+            "shortName": "中证500",
+            "longPosition": 12642,
+            "longChange": -15,
+            "shortPosition": 8515,
+            "shortChange": 488,
+            "contracts": [
+              "IC2608",
+              "IC2609",
+              "IC2612",
+              "IC2703"
+            ],
+            "netPosition": 4127,
+            "netChange": -503,
+            "stance": "偏空"
+          },
+          {
+            "code": "IF",
+            "name": "沪深300股指期货",
+            "shortName": "沪深300",
+            "longPosition": 11333,
+            "longChange": -19,
+            "shortPosition": 8848,
+            "shortChange": 144,
+            "contracts": [
+              "IF2608",
+              "IF2609",
+              "IF2612"
+            ],
+            "netPosition": 2485,
+            "netChange": -163,
+            "stance": "样本不足"
+          },
+          {
+            "code": "IH",
+            "name": "上证50股指期货",
+            "shortName": "上证50",
+            "longPosition": 3409,
+            "longChange": 116,
+            "shortPosition": 4270,
+            "shortChange": -181,
+            "contracts": [
+              "IH2608",
+              "IH2609",
+              "IH2612"
+            ],
+            "netPosition": -861,
+            "netChange": 297,
+            "stance": "样本不足"
+          },
+          {
+            "code": "IM",
+            "name": "中证1000股指期货",
+            "shortName": "中证1000",
+            "longPosition": 17653,
+            "longChange": -336,
+            "shortPosition": 14282,
+            "shortChange": 29,
+            "contracts": [
+              "IM2608",
+              "IM2609",
+              "IM2612",
+              "IM2703"
+            ],
+            "netPosition": 3371,
+            "netChange": -365,
+            "stance": "中性"
+          }
+        ]
+      },
+      "options": {
+        "longPosition": 22027,
+        "longChange": 351,
+        "shortPosition": 13703,
+        "shortChange": 261,
+        "netPosition": 8324,
+        "netChange": 90,
+        "activity": 612,
+        "contracts": [
+          "HO2608",
+          "IO2608",
+          "IO2609",
+          "MO2608",
+          "MO2609",
+          "MO2612",
+          "MO2703"
+        ],
+        "appearanceCount": 7,
+        "stance": "",
+        "products": [
+          {
+            "code": "HO",
+            "name": "上证50股指期权",
+            "shortName": "上证50期权",
+            "longPosition": 1099,
+            "longChange": 56,
+            "shortPosition": 785,
+            "shortChange": 30,
+            "contracts": [
+              "HO2608"
+            ],
+            "netPosition": 314,
+            "netChange": 26,
+            "stance": ""
+          },
+          {
+            "code": "IO",
+            "name": "沪深300股指期权",
+            "shortName": "沪深300期权",
+            "longPosition": 6152,
+            "longChange": 226,
+            "shortPosition": 3720,
+            "shortChange": 72,
+            "contracts": [
+              "IO2608",
+              "IO2609"
+            ],
+            "netPosition": 2432,
+            "netChange": 154,
+            "stance": ""
+          },
+          {
+            "code": "MO",
+            "name": "中证1000股指期权",
+            "shortName": "中证1000期权",
+            "longPosition": 14776,
+            "longChange": 69,
+            "shortPosition": 9198,
+            "shortChange": 159,
+            "contracts": [
+              "MO2608",
+              "MO2609",
+              "MO2612",
+              "MO2703"
+            ],
+            "netPosition": 5578,
+            "netChange": -90,
+            "stance": ""
+          }
+        ]
+      },
+      "required": false,
+      "stance": "偏空"
+    },
+    {
+      "member": "中信建投",
+      "futures": {
+        "longPosition": 18766,
+        "longChange": -355,
+        "shortPosition": 23123,
+        "shortChange": 76,
+        "netPosition": -4357,
+        "netChange": -431,
+        "activity": 431,
+        "contracts": [
+          "IC2608",
+          "IC2609",
+          "IC2612",
+          "IC2703",
+          "IF2608",
+          "IF2609",
+          "IF2612",
+          "IH2608",
+          "IH2609",
+          "IH2612",
+          "IM2608",
+          "IM2609",
+          "IM2612",
+          "IM2703"
+        ],
+        "appearanceCount": 14,
+        "stance": "中性",
+        "products": [
+          {
+            "code": "IC",
+            "name": "中证500股指期货",
+            "shortName": "中证500",
+            "longPosition": 4020,
+            "longChange": 133,
+            "shortPosition": 6352,
+            "shortChange": 198,
+            "contracts": [
+              "IC2608",
+              "IC2609",
+              "IC2612",
+              "IC2703"
+            ],
+            "netPosition": -2332,
+            "netChange": -65,
+            "stance": "中性"
+          },
+          {
+            "code": "IF",
+            "name": "沪深300股指期货",
+            "shortName": "沪深300",
+            "longPosition": 3395,
+            "longChange": -420,
+            "shortPosition": 2997,
+            "shortChange": -48,
+            "contracts": [
+              "IF2608",
+              "IF2609",
+              "IF2612"
+            ],
+            "netPosition": 398,
+            "netChange": -372,
+            "stance": "中性"
+          },
+          {
+            "code": "IH",
+            "name": "上证50股指期货",
+            "shortName": "上证50",
+            "longPosition": 1347,
+            "longChange": -40,
+            "shortPosition": 2300,
+            "shortChange": -59,
+            "contracts": [
+              "IH2608",
+              "IH2609",
+              "IH2612"
+            ],
+            "netPosition": -953,
+            "netChange": 19,
+            "stance": "样本不足"
+          },
+          {
+            "code": "IM",
+            "name": "中证1000股指期货",
+            "shortName": "中证1000",
+            "longPosition": 10004,
+            "longChange": -28,
+            "shortPosition": 11474,
+            "shortChange": -15,
+            "contracts": [
+              "IM2608",
+              "IM2609",
+              "IM2612",
+              "IM2703"
+            ],
+            "netPosition": -1470,
+            "netChange": -13,
+            "stance": "样本不足"
+          }
+        ]
+      },
+      "options": {
+        "longPosition": 19608,
+        "longChange": -74,
+        "shortPosition": 22201,
+        "shortChange": 256,
+        "netPosition": -2593,
+        "netChange": -330,
+        "activity": 330,
+        "contracts": [
+          "HO2608",
+          "IO2608",
+          "IO2609",
+          "MO2608",
+          "MO2609",
+          "MO2612",
+          "MO2703"
+        ],
+        "appearanceCount": 7,
+        "stance": "",
+        "products": [
+          {
+            "code": "HO",
+            "name": "上证50股指期权",
+            "shortName": "上证50期权",
+            "longPosition": 1001,
+            "longChange": 41,
+            "shortPosition": 1833,
+            "shortChange": 355,
+            "contracts": [
+              "HO2608"
+            ],
+            "netPosition": -832,
+            "netChange": -314,
+            "stance": ""
+          },
+          {
+            "code": "IO",
+            "name": "沪深300股指期权",
+            "shortName": "沪深300期权",
+            "longPosition": 5131,
+            "longChange": -161,
+            "shortPosition": 5776,
+            "shortChange": 255,
+            "contracts": [
+              "IO2608",
+              "IO2609"
+            ],
+            "netPosition": -645,
+            "netChange": -416,
+            "stance": ""
+          },
+          {
+            "code": "MO",
+            "name": "中证1000股指期权",
+            "shortName": "中证1000期权",
+            "longPosition": 13476,
+            "longChange": 46,
+            "shortPosition": 14592,
+            "shortChange": -354,
+            "contracts": [
+              "MO2608",
+              "MO2609",
+              "MO2612",
+              "MO2703"
+            ],
+            "netPosition": -1116,
+            "netChange": 400,
+            "stance": ""
+          }
+        ]
+      },
+      "required": false,
+      "stance": "中性"
+    },
+    {
+      "member": "摩根大通",
+      "futures": {
+        "longPosition": 0,
+        "longChange": 0,
+        "shortPosition": 23110,
+        "shortChange": -126,
+        "netPosition": -23110,
+        "netChange": 126,
+        "activity": 126,
+        "contracts": [
+          "IC2608",
+          "IC2609",
+          "IC2612",
+          "IC2703",
+          "IF2608",
+          "IF2609",
+          "IH2608",
+          "IM2608"
+        ],
+        "appearanceCount": 8,
+        "stance": "样本不足",
+        "products": [
+          {
+            "code": "IC",
+            "name": "中证500股指期货",
+            "shortName": "中证500",
+            "longPosition": 0,
+            "longChange": 0,
+            "shortPosition": 8874,
+            "shortChange": -27,
+            "contracts": [
+              "IC2608",
+              "IC2609",
+              "IC2612",
+              "IC2703"
+            ],
+            "netPosition": -8874,
+            "netChange": 27,
+            "stance": "样本不足"
+          },
+          {
+            "code": "IF",
+            "name": "沪深300股指期货",
+            "shortName": "沪深300",
+            "longPosition": 0,
+            "longChange": 0,
+            "shortPosition": 6173,
+            "shortChange": -118,
+            "contracts": [
+              "IF2608",
+              "IF2609"
+            ],
+            "netPosition": -6173,
+            "netChange": 118,
+            "stance": "样本不足"
+          },
+          {
+            "code": "IH",
+            "name": "上证50股指期货",
+            "shortName": "上证50",
+            "longPosition": 0,
+            "longChange": 0,
+            "shortPosition": 399,
+            "shortChange": 0,
+            "contracts": [
+              "IH2608"
+            ],
+            "netPosition": -399,
+            "netChange": 0,
+            "stance": "样本不足"
+          },
+          {
+            "code": "IM",
+            "name": "中证1000股指期货",
+            "shortName": "中证1000",
+            "longPosition": 0,
+            "longChange": 0,
+            "shortPosition": 7664,
+            "shortChange": 19,
+            "contracts": [
+              "IM2608"
+            ],
+            "netPosition": -7664,
+            "netChange": -19,
+            "stance": "样本不足"
+          }
+        ]
+      },
+      "options": {
+        "longPosition": 0,
+        "longChange": 0,
+        "shortPosition": 0,
+        "shortChange": 0,
+        "netPosition": 0,
+        "netChange": 0,
+        "activity": 0,
+        "contracts": [],
+        "appearanceCount": 0,
+        "stance": "",
+        "products": []
+      },
+      "required": false,
+      "stance": "样本不足"
+    }
+  ],
+  "analysis": {
+    "stance": "中性",
+    "score": 1,
+    "confidence": "较低",
+    "futuresLongChange": 17132,
+    "futuresShortChange": 16774,
+    "futuresNetChange": 358,
+    "positiveCount": 2,
+    "negativeCount": 2,
+    "neutralCount": 6,
+    "optionLongChange": 1509,
+    "optionShortChange": 4633,
+    "optionBalanceChange": -3124,
+    "optionTone": "期权卖方持仓增加更明显",
+    "futuresProducts": [
+      {
+        "code": "IF",
+        "name": "沪深300股指期货",
+        "shortName": "沪深300",
+        "longChange": 2941,
+        "shortChange": 5102,
+        "netChange": -2161,
+        "stance": "偏空"
+      },
+      {
+        "code": "IH",
+        "name": "上证50股指期货",
+        "shortName": "上证50",
+        "longChange": 3572,
+        "shortChange": 2586,
+        "netChange": 986,
+        "stance": "偏多"
+      },
+      {
+        "code": "IC",
+        "name": "中证500股指期货",
+        "shortName": "中证500",
+        "longChange": 7125,
+        "shortChange": 6419,
+        "netChange": 706,
+        "stance": "中性"
+      },
+      {
+        "code": "IM",
+        "name": "中证1000股指期货",
+        "shortName": "中证1000",
+        "longChange": 3494,
+        "shortChange": 2667,
+        "netChange": 827,
+        "stance": "偏多"
+      }
+    ],
+    "optionProducts": [
+      {
+        "code": "IO",
+        "name": "沪深300股指期权",
+        "shortName": "沪深300期权",
+        "longChange": 913,
+        "shortChange": 2099,
+        "balanceChange": -1186
+      },
+      {
+        "code": "HO",
+        "name": "上证50股指期权",
+        "shortName": "上证50期权",
+        "longChange": -24,
+        "shortChange": 1265,
+        "balanceChange": -1289
+      },
+      {
+        "code": "MO",
+        "name": "中证1000股指期权",
+        "shortName": "中证1000期权",
+        "longChange": 620,
+        "shortChange": 1269,
+        "balanceChange": -649
+      }
+    ],
+    "headline": "主要席位期货净方向变化+358手，综合判断中性，置信度较低。",
+    "paragraphs": [
+      "主要机构席位榜单可见多单日变动+17,132手、空单日变动+16,774手，净方向变化+358手；沪深300偏空(-2,161手)、上证50偏多(+986手)、中证1000偏多(+827手)。",
+      "中信期货榜单可见多单变动+8,213手、空单变动+8,035手，净方向变化+178手，信号为中性。中金期货榜单可见多单变动-2手、空单变动+49手，净方向变化-51手，信号为样本不足。",
+      "期权榜单可见买方持仓变动+1,509手、卖方持仓变动+4,633手，期权卖方持仓增加更明显。期权买方同时包含看涨和看跌，卖方也包含两类合约，因此该项只反映期权参与和风险偏好，不直接判定涨跌方向。",
+      "主要席位多空变化接近，衍生品暂未给出清晰单边信号。"
+    ]
+  }
+}
