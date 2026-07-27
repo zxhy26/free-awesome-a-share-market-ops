@@ -148,7 +148,8 @@ function addAxis(svg, maximum, view, minute, scaleMode) {
     const range = scaleMode === "relative" ? 100 : maximum;
     const magnitude = view === "both" ? range * (1 - ratio * 2) : range * (1 - ratio);
     if (scaleMode === "relative") {
-      label.textContent = `${magnitude > 0 ? "+" : ""}${magnitude.toFixed(0)}%`;
+      const signedMagnitude = view === "outflow" ? -magnitude : magnitude;
+      label.textContent = `${signedMagnitude > 0 ? "+" : ""}${signedMagnitude.toFixed(0)}%`;
     } else {
       const signedMagnitude = view === "outflow" ? -magnitude : magnitude;
       label.textContent = `${signedMagnitude > 0 && view === "both" ? "+" : ""}${signedMagnitude.toFixed(maximum < 10 ? 1 : 0)}`;

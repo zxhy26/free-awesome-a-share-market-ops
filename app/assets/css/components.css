@@ -147,12 +147,6 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .contribution-empty { min-height: 96px; display: grid; place-items: center; margin: 0; color: var(--muted); font-size: 10px; text-align: center; }
 .contribution-empty-panel { grid-column: 1 / -1; min-height: 168px; }
 
-.flow-direction-key { display: inline-flex; flex: 0 0 auto; gap: 9px; align-items: center; color: var(--muted); font-size: 10px; font-weight: 800; }
-.flow-direction-key span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-.flow-direction-key span::before { width: 8px; height: 8px; border-radius: 2px; background: currentColor; content: ""; }
-.flow-direction-key .inflow { color: var(--gain); }
-.flow-direction-key .outflow { color: var(--loss); }
-
 .sector-flow-chart { min-height: 0; padding: 6px 8px 5px; overflow: hidden; border-bottom: 1px solid var(--border); background: var(--surface-raised); }
 .sector-flow-chart-header { min-height: 21px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10px; }
 .sector-flow-chart-header strong { color: var(--text-soft); font-size: 11px; }
@@ -171,6 +165,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .sector-flow-line.series-1, .sector-flow-line.series-2, .sector-flow-line.series-3 { stroke-width: 2.15; opacity: 1; }
 .sector-flow-dot { fill: var(--series-color); stroke: var(--surface-raised); stroke-width: 1; vector-effect: non-scaling-stroke; pointer-events: none; transition: opacity .14s ease; }
 .sector-flow-legend { height: 82px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: start; overflow-y: auto; scrollbar-gutter: stable; }
+.sector-flow-chart:not(.both) .sector-flow-legend { grid-template-columns: minmax(0, 1fr); }
 .sector-flow-legend-group { min-width: 0; }
 .sector-flow-legend-heading { position: sticky; z-index: 1; top: 0; height: 16px; display: flex; align-items: center; justify-content: space-between; padding: 0 2px; background: var(--surface-raised); color: var(--muted); font-size: 8px; font-weight: 800; }
 .sector-flow-legend-heading.inflow { color: var(--gain); }
@@ -197,16 +192,67 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .sector-flow-empty { height: 139px; display: grid; place-items: center; color: var(--muted); font-size: 11px; text-align: center; }
 .sector-flow-empty[hidden] { display: none; }
 
-.flow-table { min-height: 270px; max-height: 324px; overflow: auto; scrollbar-gutter: stable; }
-.flow-rank-section + .flow-rank-section { border-top: 2px solid var(--border-strong); }
-.flow-section-title { height: 27px; display: flex; align-items: center; justify-content: space-between; padding: 0 9px; background: var(--surface-raised); border-bottom: 1px solid var(--border); font-size: 10px; font-weight: 850; }
-.flow-section-title span:last-child { color: var(--muted); font-size: 9px; font-weight: 650; }
-.flow-rank-section.inflow .flow-section-title span:first-child { color: var(--gain); }
-.flow-rank-section.outflow .flow-section-title span:first-child { color: var(--loss); }
-.flow-head, .flow-row { display: grid; grid-template-columns: 32px minmax(90px, 1fr) 66px minmax(130px, 1.7fr) 45px; align-items: center; gap: 7px; min-width: 450px; }
-.flow-head { height: 28px; padding: 0 9px; background: var(--surface-soft); color: var(--muted); border-bottom: 1px solid var(--border); font-size: 10px; font-weight: 700; }
-.flow-row { height: 29px; padding: 0 9px; border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); font-size: 11px; }
+.flow-direction-panel .panel-heading { min-height: 52px; padding-inline: 8px; }
+.flow-direction-panel .panel-heading h2 { font-size: 13px; }
+.flow-direction-panel .panel-heading p { font-size: 9px; }
+.flow-direction-panel.inflow-panel .panel-heading h2 { color: var(--gain); }
+.flow-direction-panel.outflow-panel .panel-heading h2 { color: var(--loss); }
+.flow-direction-panel .sector-flow-chart-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: 21px 16px;
+  gap: 1px 5px;
+}
+.flow-direction-panel .sector-flow-chart-header > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.flow-direction-panel .sector-flow-chart-header > span {
+  min-width: 0;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.flow-direction-panel .sector-flow-scale { grid-column: 2; grid-row: 1; }
+
+.flow-table { min-height: 270px; max-height: 348px; overflow: auto; scrollbar-gutter: stable; }
+.flow-direction-table .flow-head {
+  height: 26px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 58px 34px;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 0 6px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  font-weight: 700;
+}
+.flow-direction-table .flow-head > :nth-child(3) { text-align: right; }
+.flow-direction-table .flow-head > :last-child { text-align: center; }
+.flow-direction-table .flow-row {
+  height: 32px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 58px 34px;
+  grid-template-rows: 15px 7px;
+  align-items: center;
+  gap: 2px 4px;
+  min-width: 0;
+  padding: 3px 6px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  font-size: 10px;
+}
 .flow-row:hover { background: var(--surface-hover); }
+.flow-direction-table .flow-rank { grid-column: 1; grid-row: 1; }
+.flow-direction-table .flow-name { grid-column: 2; grid-row: 1; }
+.flow-direction-table .flow-value { grid-column: 3; grid-row: 1; }
+.flow-direction-table .flow-bar-track { grid-column: 2 / 4; grid-row: 2; height: 7px; }
+.flow-direction-table .k-button { grid-column: 4; grid-row: 1 / span 2; min-width: 30px; height: 24px; padding: 0 3px; }
 .flow-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 .flow-value { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
 .flow-bar-track { position: relative; height: 12px; overflow: hidden; background: var(--surface-hover); border: 1px solid var(--border); border-radius: 2px; }

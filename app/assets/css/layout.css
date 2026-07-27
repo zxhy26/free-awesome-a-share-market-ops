@@ -112,9 +112,16 @@ h3 { font-size: 13px; line-height: 1.3; font-weight: 800; }
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
+.sector-direction-pair {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: start;
+}
 .sector-stack .sector-panel { min-height: 0; display: flex; flex-direction: column; }
-.sector-stack .sector-flow-chart { flex: 0 0 218px; }
-.sector-stack .flow-table { min-height: 318px; max-height: 318px; flex: 0 0 318px; }
+.sector-stack .sector-flow-chart { flex: 0 0 232px; }
+.sector-stack .flow-table { min-height: 348px; max-height: 348px; flex: 0 0 348px; }
 
 .panel-heading {
   min-height: 46px;

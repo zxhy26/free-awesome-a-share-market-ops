@@ -8,9 +8,9 @@
   <link rel="icon" href="assets/icons/favicon-32.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="assets/css/variables.css">
-  <link rel="stylesheet" href="assets/css/layout.css?v=20260727-1">
-  <link rel="stylesheet" href="assets/css/components.css?v=20260727-4">
-  <link rel="stylesheet" href="assets/css/responsive.css?v=20260727-1">
+  <link rel="stylesheet" href="assets/css/layout.css?v=20260727-2">
+  <link rel="stylesheet" href="assets/css/components.css?v=20260727-5">
+  <link rel="stylesheet" href="assets/css/responsive.css?v=20260727-2">
   <link rel="stylesheet" href="assets/css/membership.css?v=20260727-2">
 </head>
 <body>
@@ -100,29 +100,39 @@
       </div>
 
       <div class="sector-stack">
-        <section class="work-panel sector-panel industry-panel" aria-labelledby="industryTitle">
-          <div class="panel-heading">
-            <div><h2 id="industryTitle">二级行业资金流</h2><p>每秒真实快照、流入流出同屏与长度排名</p></div>
-            <div class="flow-direction-key" aria-label="流入流出同屏显示">
-              <span class="inflow">流入前十</span>
-              <span class="outflow">流出前十</span>
+        <div class="sector-direction-pair" aria-label="二级行业资金流">
+          <section class="work-panel sector-panel flow-direction-panel inflow-panel" aria-labelledby="industryInflowTitle">
+            <div class="panel-heading">
+              <div><h2 id="industryInflowTitle">二级行业流入</h2><p>净流入前十与独立走势</p></div>
             </div>
-          </div>
-          <div id="industryFlowChart" class="sector-flow-chart" aria-label="二级行业资金流分时动态图"></div>
-          <div id="industryFlow" class="flow-table"></div>
-        </section>
+            <div id="industryInflowChart" class="sector-flow-chart" aria-label="二级行业净流入分时动态图"></div>
+            <div id="industryInflow" class="flow-table flow-direction-table"></div>
+          </section>
+          <section class="work-panel sector-panel flow-direction-panel outflow-panel" aria-labelledby="industryOutflowTitle">
+            <div class="panel-heading">
+              <div><h2 id="industryOutflowTitle">二级行业流出</h2><p>净流出前十与独立走势</p></div>
+            </div>
+            <div id="industryOutflowChart" class="sector-flow-chart" aria-label="二级行业净流出分时动态图"></div>
+            <div id="industryOutflow" class="flow-table flow-direction-table"></div>
+          </section>
+        </div>
 
-        <section class="work-panel sector-panel concept-panel" aria-labelledby="conceptTitle">
-          <div class="panel-heading">
-            <div><h2 id="conceptTitle">概念板块资金流</h2><p>每秒真实快照、流入流出同屏与长度排名</p></div>
-            <div class="flow-direction-key" aria-label="流入流出同屏显示">
-              <span class="inflow">流入前十</span>
-              <span class="outflow">流出前十</span>
+        <div class="sector-direction-pair" aria-label="概念板块资金流">
+          <section class="work-panel sector-panel flow-direction-panel inflow-panel" aria-labelledby="conceptInflowTitle">
+            <div class="panel-heading">
+              <div><h2 id="conceptInflowTitle">概念板块流入</h2><p>净流入前十与独立走势</p></div>
             </div>
-          </div>
-          <div id="conceptFlowChart" class="sector-flow-chart" aria-label="概念板块资金流分时动态图"></div>
-          <div id="conceptFlow" class="flow-table"></div>
-        </section>
+            <div id="conceptInflowChart" class="sector-flow-chart" aria-label="概念板块净流入分时动态图"></div>
+            <div id="conceptInflow" class="flow-table flow-direction-table"></div>
+          </section>
+          <section class="work-panel sector-panel flow-direction-panel outflow-panel" aria-labelledby="conceptOutflowTitle">
+            <div class="panel-heading">
+              <div><h2 id="conceptOutflowTitle">概念板块流出</h2><p>净流出前十与独立走势</p></div>
+            </div>
+            <div id="conceptOutflowChart" class="sector-flow-chart" aria-label="概念板块净流出分时动态图"></div>
+            <div id="conceptOutflow" class="flow-table flow-direction-table"></div>
+          </section>
+        </div>
       </div>
     </div>
 
@@ -184,6 +194,6 @@
   </div>
 
   <script type="module" src="assets/js/membership.js?v=20260727-3"></script>
-  <script type="module" src="assets/js/app.js?v=20260727-5"></script>
+  <script type="module" src="assets/js/app.js?v=20260727-6"></script>
 </body>
 </html>

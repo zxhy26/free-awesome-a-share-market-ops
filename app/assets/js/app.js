@@ -3,7 +3,7 @@ import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNum
 import {createIndexCharts, createPlaybackController, marketMinuteToTime, selectSectorAttributions, updateIndexCharts, visiblePoints} from "./charts.js?v=20260727-1";
 import {createSummaryDialog} from "./dialog.js";
 import {initializePwa} from "./pwa.js?v=20260719-2";
-import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260727-1";
+import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260727-2";
 import {initializeTheme} from "./theme.js";
 import {inTradingWindow} from "./market-session.js?v=20260727-4";
 
@@ -31,10 +31,14 @@ const dom = {
   timelineEnd: document.querySelector("#timelineEnd"),
   playButton: document.querySelector("#playButton"),
   speedSelect: document.querySelector("#speedSelect"),
-  industryFlowChart: document.querySelector("#industryFlowChart"),
-  industryFlow: document.querySelector("#industryFlow"),
-  conceptFlowChart: document.querySelector("#conceptFlowChart"),
-  conceptFlow: document.querySelector("#conceptFlow"),
+  industryInflowChart: document.querySelector("#industryInflowChart"),
+  industryInflow: document.querySelector("#industryInflow"),
+  industryOutflowChart: document.querySelector("#industryOutflowChart"),
+  industryOutflow: document.querySelector("#industryOutflow"),
+  conceptInflowChart: document.querySelector("#conceptInflowChart"),
+  conceptInflow: document.querySelector("#conceptInflow"),
+  conceptOutflowChart: document.querySelector("#conceptOutflowChart"),
+  conceptOutflow: document.querySelector("#conceptOutflow"),
   marketStructure: document.querySelector("#marketStructure"),
   moneyMetrics: document.querySelector("#moneyMetrics"),
   moneySummary: document.querySelector("#moneySummary"),
@@ -57,7 +61,10 @@ const state = {
   analysis: null,
   charts: [],
   playback: null,
-  flowCharts: {industry: null, concept: null},
+  flowCharts: {
+    industry: {inflow: null, outflow: null},
+    concept: {inflow: null, outflow: null},
+  },
   flowRenderVersion: {industry: 0, concept: 0},
   contributionIndexKey: "",
   contributionTabsSignature: "",
@@ -521,29 +528,22 @@ function renderHeaderAndOverview() {
   if (messages.length) dom.dataAlert.textContent = `部分数据异常：${messages.slice(0, 2).join("；")}${messages.length > 2 ? `（另有${messages.length - 2}项）` : ""}`;
 }
 
-function ensureFlowSection(target, view) {
-  let section = target.querySelector(`[data-flow-section="${view}"]`);
-  if (section) return section;
-  section = el("section", `flow-rank-section ${view}`);
-  section.dataset.flowSection = view;
-  const title = el("div", "flow-section-title");
-  title.append(
-    el("span", "", view === "inflow" ? "净流入前十" : "净流出前十"),
-    el("span", "flow-section-count", "0/10"),
-  );
+function ensureFlowTable(target, view) {
+  let rowsTarget = target.querySelector(".flow-rows");
+  if (rowsTarget) return rowsTarget;
+  target.dataset.flowDirection = view;
   const head = el("div", "flow-head");
-  ["排名", "板块", view === "inflow" ? "净流入↓" : "净流出↓", "资金长度", "日K"].forEach((text) => {
+  ["排名", "板块", view === "inflow" ? "净流入↓" : "净流出↓", "日K"].forEach((text) => {
     head.append(el("span", "", text));
   });
-  section.append(title, head, el("div", "flow-rows"));
-  target.append(section);
-  return section;
+  rowsTarget = el("div", "flow-rows");
+  target.replaceChildren(head, rowsTarget);
+  return rowsTarget;
 }
 
-function renderFlowSection(groupName, target, view, rows, maximum, renderVersion) {
-  const section = ensureFlowSection(target, view);
-  const rowsTarget = section.querySelector(".flow-rows");
-  section.querySelector(".flow-section-count").textContent = `${rows.length}/10`;
+function renderFlowTable(groupName, target, view, rows, maximum, renderVersion) {
+  const rowsTarget = ensureFlowTable(target, view);
+  target.dataset.flowCount = String(rows.length);
   rowsTarget.querySelector(".empty-state")?.remove();
   const existing = new Map([...rowsTarget.querySelectorAll(".flow-row")].map((line) => [line.dataset.flowKey, line]));
   const activeKeys = new Set();
@@ -616,7 +616,9 @@ function renderFlowSection(groupName, target, view, rows, maximum, renderVersion
 }
 
 function renderFlow(groupName, minute) {
-  const target = groupName === "industry" ? dom.industryFlow : dom.conceptFlow;
+  const targets = groupName === "industry"
+    ? {inflow: dom.industryInflow, outflow: dom.industryOutflow}
+    : {inflow: dom.conceptInflow, outflow: dom.conceptOutflow};
   const group = flowGroupAtMinute(groupName, minute);
   if (!group) return;
   const rows = (group.rows || []).map((row) => ({...row, currentAmount: currentFlowAmount(row, minute)}));
@@ -631,13 +633,18 @@ function renderFlow(groupName, minute) {
   const inflowMaximum = stableFlowMaximum(group, "inflow");
   const outflowMaximum = stableFlowMaximum(group, "outflow");
   const renderVersion = ++state.flowRenderVersion[groupName];
-  state.flowCharts[groupName]?.render(group, {
+  state.flowCharts[groupName].inflow?.render(group, {
     minute,
-    view: "both",
-    maximum: Math.max(inflowMaximum, outflowMaximum),
+    view: "inflow",
+    maximum: inflowMaximum,
   });
-  renderFlowSection(groupName, target, "inflow", inflowRows, inflowMaximum, renderVersion);
-  renderFlowSection(groupName, target, "outflow", outflowRows, outflowMaximum, renderVersion);
+  state.flowCharts[groupName].outflow?.render(group, {
+    minute,
+    view: "outflow",
+    maximum: outflowMaximum,
+  });
+  renderFlowTable(groupName, targets.inflow, "inflow", inflowRows, inflowMaximum, renderVersion);
+  renderFlowTable(groupName, targets.outflow, "outflow", outflowRows, outflowMaximum, renderVersion);
 }
 
 function scoreDetails(row) {
@@ -830,8 +837,10 @@ async function syncMarket() {
 function setupInteractions() {
   initializeTheme();
   initializePwa();
-  state.flowCharts.industry = createSectorFlowChart(dom.industryFlowChart);
-  state.flowCharts.concept = createSectorFlowChart(dom.conceptFlowChart);
+  state.flowCharts.industry.inflow = createSectorFlowChart(dom.industryInflowChart);
+  state.flowCharts.industry.outflow = createSectorFlowChart(dom.industryOutflowChart);
+  state.flowCharts.concept.inflow = createSectorFlowChart(dom.conceptInflowChart);
+  state.flowCharts.concept.outflow = createSectorFlowChart(dom.conceptOutflowChart);
   dom.reloadButton.addEventListener("click", () => location.reload());
   dom.syncButton.addEventListener("click", syncMarket);
   dom.contributionTabs?.addEventListener("click", (event) => {
@@ -840,7 +849,7 @@ function setupInteractions() {
     state.contributionIndexKey = button.dataset.contributionIndex;
     renderIndexContribution(Number(dom.timeline.value));
   });
-  [dom.industryFlow, dom.conceptFlow].forEach((container) => {
+  [dom.industryInflow, dom.industryOutflow, dom.conceptInflow, dom.conceptOutflow].forEach((container) => {
     container.addEventListener("click", async (event) => {
       const button = event.target.closest("button[data-stock-open]");
       if (!button || button.disabled) return;
