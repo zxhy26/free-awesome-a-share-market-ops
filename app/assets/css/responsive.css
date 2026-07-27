@@ -18,6 +18,9 @@
   .headline-metrics { grid-column: 1 / -1; border-top: 1px solid var(--border); }
   .risk-gauge { border-right: 0; }
   .work-grid { grid-template-columns: 1fr; }
+  .contribution-heading { align-items: flex-start; flex-direction: column; }
+  .contribution-tabs { width: 100%; max-width: none; justify-content: flex-start; }
+  .contribution-layout { grid-template-columns: minmax(190px, .55fr) repeat(2, minmax(0, 1fr)); }
   .sector-stack {
     max-height: none;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -50,6 +53,10 @@
   .index-card:nth-last-child(-n+4) { border-bottom: 1px solid var(--border); }
   .index-card:nth-last-child(-n+2) { border-bottom: 0; }
   .structure-layout { grid-template-columns: 1fr; }
+  .contribution-layout { grid-template-columns: 1fr; }
+  .contribution-summary, .contribution-column { border-right: 0; border-bottom: 1px solid var(--border); }
+  .contribution-column:last-child { border-bottom: 0; }
+  .contribution-note { max-width: none; }
   .sector-stack {
     grid-template-columns: 1fr;
     grid-auto-rows: max-content;

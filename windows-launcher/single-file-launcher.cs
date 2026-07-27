@@ -23,23 +23,23 @@ using System.Windows.Forms;
 #endif
 [assembly: AssemblyCompany("Free & Awesome A-Share Market Ops")]
 [assembly: AssemblyCopyright("Copyright 2026")]
-[assembly: AssemblyVersion("2.7.0.0")]
-[assembly: AssemblyFileVersion("2.7.0.0")]
+[assembly: AssemblyVersion("2.8.0.0")]
+[assembly: AssemblyFileVersion("2.8.0.0")]
 
 internal static class Program
 {
 #if NO_QUANT_SELF_EDITION
     private const string EditionName = "无量化自用版";
-    private const string RuntimeTag = "版本_20260727-2.7.0-无量化自用版";
-    private const string MutexName = "Local\\AshareReviewLauncher_NoQuantSelf_2700";
+    private const string RuntimeTag = "版本_20260727-2.8.0-无量化自用版";
+    private const string MutexName = "Local\\AshareReviewLauncher_NoQuantSelf_2800";
 #elif SELF_EDITION
     private const string EditionName = "自用版";
-    private const string RuntimeTag = "版本_20260727-2.7.0-自用版";
-    private const string MutexName = "Local\\AshareReviewLauncher_Self_2700";
+    private const string RuntimeTag = "版本_20260727-2.8.0-自用版";
+    private const string MutexName = "Local\\AshareReviewLauncher_Self_2800";
 #else
     private const string EditionName = "会员版";
-    private const string RuntimeTag = "版本_20260727-2.7.0-会员版";
-    private const string MutexName = "Local\\AshareReviewLauncher_Member_2700";
+    private const string RuntimeTag = "版本_20260727-2.8.0-会员版";
+    private const string MutexName = "Local\\AshareReviewLauncher_Member_2800";
 #endif
     private const string PayloadResource = "AshareReviewPayload";
     private const string HashResource = "AshareReviewPayloadHash";

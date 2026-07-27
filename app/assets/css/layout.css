@@ -148,7 +148,12 @@ h3 { font-size: 13px; line-height: 1.3; font-weight: 800; }
 
 .structure-layout { min-height: 205px; display: grid; grid-template-columns: 1fr 1fr minmax(220px, .9fr); }
 
-.money-panel, .history-panel { margin-top: 10px; }
+.contribution-panel, .money-panel, .history-panel { margin-top: 10px; }
+.contribution-layout {
+  min-height: 168px;
+  display: grid;
+  grid-template-columns: minmax(210px, .62fr) repeat(2, minmax(0, 1fr));
+}
 .app-footer { max-width: 1920px; margin: 0 auto; padding: 14px 16px 24px; color: var(--muted); font-size: 11px; }
 .app-footer p + p { margin-top: 5px; color: var(--text-soft); }
 

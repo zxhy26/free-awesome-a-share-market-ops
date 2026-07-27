@@ -1,6 +1,6 @@
 import {getHealth, loadCoreData, logTechnicalError, openTdxStock, requestMarketSync} from "./api.js?v=20260719-2";
 import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNumber, formatPercent, formatYi, signed, summarizeMoneyEffect, valueClass} from "./analysis.js?v=20260726-1";
-import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts} from "./charts.js?v=20260719-2";
+import {createIndexCharts, createPlaybackController, marketMinuteToTime, selectSectorAttributions, updateIndexCharts, visiblePoints} from "./charts.js?v=20260727-1";
 import {createSummaryDialog} from "./dialog.js";
 import {initializePwa} from "./pwa.js?v=20260719-2";
 import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260719-2";
@@ -23,6 +23,8 @@ const dom = {
   riskReason: document.querySelector("#riskReason"),
   headlineMetrics: document.querySelector("#headlineMetrics"),
   indexGrid: document.querySelector("#indexGrid"),
+  contributionTabs: document.querySelector("#contributionTabs"),
+  indexContribution: document.querySelector("#indexContribution"),
   timeline: document.querySelector("#timeline"),
   timelineTime: document.querySelector("#timelineTime"),
   timelineEnd: document.querySelector("#timelineEnd"),
@@ -58,6 +60,8 @@ const state = {
   flowView: {industry: "inflow", concept: "inflow"},
   flowRenderedView: {industry: "", concept: ""},
   flowRenderVersion: {industry: 0, concept: 0},
+  contributionIndexKey: "",
+  contributionTabsSignature: "",
   autoReloadTimer: 0,
   liveRefreshRunning: false,
   summaryText: "",
@@ -77,6 +81,137 @@ function showNotice(message, type = "", persistent = false) {
   dom.noticeBar.className = `notice-bar ${type}`.trim();
   dom.noticeBar.hidden = false;
   if (!persistent) setTimeout(() => { if (dom.noticeBar.textContent === message) dom.noticeBar.hidden = true; }, 4200);
+}
+
+function contributionChartKey(chart, index = 0) {
+  return String(chart?.data?.code || chart?.data?.name || index);
+}
+
+function isAshareContributionChart(chart) {
+  const index = chart?.data;
+  return Boolean(index && index.session !== "us" && index.code !== "IXIC" && index.name !== "纳斯达克");
+}
+
+function contributionPointAtMinute(index, minute) {
+  const point = visiblePoints(index?.points || [], minute).at(-1) || {};
+  const price = finiteNumber(point.price);
+  const preClose = finiteNumber(index?.preClose);
+  const change = price !== null && preClose !== null ? price - preClose : null;
+  return {
+    price,
+    change,
+    pct: change !== null && preClose ? (change / preClose) * 100 : null,
+    minute: finiteNumber(point.minute) ?? minute,
+  };
+}
+
+function contributionRows(events, direction, limit = 5) {
+  const sectorNames = new Set();
+  return [...(events || [])]
+    .filter((item) => Math.sign(Number(item.flowDirection)) === direction)
+    .sort((left, right) => (
+      Number(right.minute || 0) - Number(left.minute || 0)
+      || Number(right.strength || 0) - Number(left.strength || 0)
+    ))
+    .filter((item) => {
+      const name = String(item.sectorName || "").trim();
+      if (!name || sectorNames.has(name)) return false;
+      sectorNames.add(name);
+      return true;
+    })
+    .slice(0, limit);
+}
+
+function formatContributionAmount(value) {
+  const amount = finiteNumber(value);
+  if (amount === null) return "--";
+  const digits = Math.abs(amount) >= 100 ? 0 : 1;
+  return `${amount > 0 ? "+" : ""}${amount.toFixed(digits)}亿`;
+}
+
+function renderContributionTabs(charts) {
+  const signature = charts.map((chart, index) => `${contributionChartKey(chart, index)}:${chart.data?.name || ""}`).join("|");
+  if (signature !== state.contributionTabsSignature) {
+    const fragment = document.createDocumentFragment();
+    charts.forEach((chart, index) => {
+      const key = contributionChartKey(chart, index);
+      const button = el("button", "contribution-tab", chart.data?.name || "指数");
+      button.type = "button";
+      button.dataset.contributionIndex = key;
+      button.setAttribute("role", "tab");
+      fragment.append(button);
+    });
+    dom.contributionTabs.replaceChildren(fragment);
+    state.contributionTabsSignature = signature;
+  }
+  dom.contributionTabs.querySelectorAll("[data-contribution-index]").forEach((button) => {
+    const selected = button.dataset.contributionIndex === state.contributionIndexKey;
+    button.setAttribute("aria-selected", String(selected));
+    button.tabIndex = selected ? 0 : -1;
+  });
+}
+
+function contributionColumn(title, rows, direction) {
+  const column = el("section", `contribution-column ${direction > 0 ? "gain-side" : "loss-side"}`);
+  const heading = el("div", "contribution-column-heading");
+  heading.append(el("h3", "", title), el("span", "", `${rows.length}个已确认行业`));
+  column.append(heading);
+  if (!rows.length) {
+    column.append(el("p", "contribution-empty", "当前时间点暂无已确认归因"));
+    return column;
+  }
+  const list = el("div", "contribution-list");
+  rows.forEach((item, index) => {
+    const row = el("div", "contribution-row");
+    const rank = el("span", "contribution-rank", String(index + 1).padStart(2, "0"));
+    const identity = el("div", "contribution-identity");
+    identity.append(
+      el("strong", "contribution-name", item.sectorName || "行业板块"),
+      el("span", "contribution-meta", `拐点 ${marketMinuteToTime(item.minute)} · 确认 ${marketMinuteToTime(item.revealMinute ?? item.minute)}`),
+    );
+    const values = el("div", "contribution-values");
+    values.append(
+      el("strong", "contribution-amount", formatContributionAmount(item.flowAmount)),
+      el("span", "contribution-delta", `窗口 ${formatContributionAmount(item.flowDelta)}`),
+    );
+    const confidence = el("span", "contribution-confidence", `${item.confidenceLabel || "观察"} ${formatNumber(item.confidence)}`);
+    confidence.title = "归因置信度";
+    row.append(rank, identity, values, confidence);
+    list.append(row);
+  });
+  column.append(list);
+  return column;
+}
+
+function renderIndexContribution(minute) {
+  if (!dom.contributionTabs || !dom.indexContribution) return;
+  const charts = state.charts.filter(isAshareContributionChart);
+  if (!charts.length) {
+    dom.contributionTabs.replaceChildren();
+    dom.indexContribution.replaceChildren(el("p", "contribution-empty contribution-empty-panel", "暂无可用的A股指数归因数据"));
+    return;
+  }
+  const selectedExists = charts.some((chart, index) => contributionChartKey(chart, index) === state.contributionIndexKey);
+  if (!selectedExists) state.contributionIndexKey = contributionChartKey(charts[0], 0);
+  renderContributionTabs(charts);
+  const chart = charts.find((item, index) => contributionChartKey(item, index) === state.contributionIndexKey) || charts[0];
+  const snapshot = contributionPointAtMinute(chart.data, minute);
+  const events = selectSectorAttributions(chart.attributionEvents, minute);
+  const summary = el("section", "contribution-summary");
+  const name = el("span", "contribution-index-name", chart.data?.name || "指数");
+  const price = el("strong", "contribution-index-price", snapshot.price === null
+    ? "--"
+    : snapshot.price.toLocaleString("zh-CN", {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+  const change = el("div", `contribution-index-change ${valueClass(snapshot.change)}`);
+  change.append(el("span", "", signed(snapshot.change, 2)), el("span", "", signed(snapshot.pct, 2, "%")));
+  const status = el("p", "contribution-status", `${marketMinuteToTime(snapshot.minute)} · 已确认 ${events.length} 个资金拐点`);
+  const note = el("p", "contribution-note", "按指数拐点方向匹配同期二级行业累计净流入/流出，不等同于成分股权重的精确点数贡献。");
+  summary.append(name, price, change, status, note);
+  dom.indexContribution.replaceChildren(
+    summary,
+    contributionColumn("拉动贡献", contributionRows(events, 1), 1),
+    contributionColumn("拖累贡献", contributionRows(events, -1), -1),
+  );
 }
 
 function currentFlowAmount(row, minute) {
@@ -432,6 +567,7 @@ function renderAll() {
   const industryAttributionRows = state.data.sectors?.industry?.attributionRows || state.data.sectors?.industry?.rows || [];
   state.charts = createIndexCharts(dom.indexGrid, state.data.indices.items || [], industryAttributionRows);
   updateIndexCharts(state.charts, Number(dom.timeline.value));
+  renderIndexContribution(Number(dom.timeline.value));
   renderFlow("industry", Number(dom.timeline.value));
   renderFlow("concept", Number(dom.timeline.value));
   renderStructure();
@@ -458,6 +594,7 @@ function initializePlayback() {
     speedSelect: dom.speedSelect,
     onFrame: (minute) => {
       updateIndexCharts(state.charts, minute);
+      renderIndexContribution(minute);
       renderFlow("industry", minute);
       renderFlow("concept", minute);
     },
@@ -504,6 +641,12 @@ function setupInteractions() {
   state.flowCharts.concept = createSectorFlowChart(dom.conceptFlowChart);
   dom.reloadButton.addEventListener("click", () => location.reload());
   dom.syncButton.addEventListener("click", syncMarket);
+  dom.contributionTabs?.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-contribution-index]");
+    if (!button) return;
+    state.contributionIndexKey = button.dataset.contributionIndex;
+    renderIndexContribution(Number(dom.timeline.value));
+  });
   [dom.industryFlow, dom.conceptFlow].forEach((container) => {
     container.addEventListener("click", async (event) => {
       const button = event.target.closest("button[data-stock-open]");
