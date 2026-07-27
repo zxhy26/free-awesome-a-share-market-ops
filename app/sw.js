@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v61-member-creator-content-qr";
+const CACHE_VERSION = "a-share-review-v62-security-real-snapshot";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [
@@ -43,10 +43,7 @@ const CORE_ASSETS = [
   "/app/data/sectors.json",
   "/app/data/stocks.json",
   "/app/data/analysis.json",
-  "/app/data/derivatives.json",
-  "/app/data/policy-news.json",
   "/app/data/health.json",
-  "/app/data/history-index.json",
   "/app/data/config.json",
   "/app/data/会员支付配置.json",
   "/app/assets/payment/微信支付二维码.png",
@@ -57,6 +54,18 @@ const CORE_ASSETS = [
   "/app/assets/icons/icon-512.png",
   "/app/manifest.webmanifest"
 ];
+
+const PROTECTED_PATHS = new Set([
+  "/app/pages/policy-news.html",
+  "/app/pages/next-week-events.html",
+  "/app/pages/derivatives.html",
+  "/app/pages/history.html",
+  "/app/pages/stock-search.html",
+  "/app/data/policy-news.json",
+  "/app/data/next-week-events.json",
+  "/app/data/derivatives.json",
+  "/app/data/history-index.json",
+]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CORE_CACHE).then((cache) => cache.addAll(CORE_ASSETS)));
@@ -111,6 +120,7 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin || !url.pathname.startsWith("/app/")) return;
+  if (PROTECTED_PATHS.has(url.pathname)) return;
   if (url.pathname.startsWith("/app/data/") || url.pathname.endsWith(".json")) {
     event.respondWith(networkFirst(request, DATA_CACHE));
     return;

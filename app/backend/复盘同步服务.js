@@ -4,10 +4,13 @@ const path = require("path");
 const { spawn } = require("child_process");
 const { createMembershipService } = require("./会员授权服务");
 const { createStockAnalysisService } = require("./个股分析服务");
+const { applyLocalResponseHeaders, validateLocalRequest } = require("./local-request-security");
+const { derivativesPublicationState, mergeHealthModule } = require("./health-semantics");
 
 const PORT = Number(process.env.A_SHARE_REVIEW_PORT) || 18765;
 const HOST = process.env.A_SHARE_REVIEW_HOST || "127.0.0.1";
-const SERVICE_VERSION = "3.6.2";
+const SERVICE_VERSION = "3.7.1";
+const ALLOW_REMOTE = process.env.A_SHARE_REVIEW_ALLOW_REMOTE === "1";
 const TEST_MODE = process.env.A_SHARE_REVIEW_TEST_MODE === "1";
 const DISABLE_SCHEDULES = process.env.A_SHARE_REVIEW_DISABLE_SCHEDULES === "1";
 const WORK_DIR = __dirname;
@@ -223,6 +226,33 @@ function derivativesStatus() {
   return status;
 }
 
+function derivativesHealthModule(status = derivativesStatus(), now = new Date(), expectedTradeDate = "") {
+  const publication = derivativesPublicationState(status, now, undefined, expectedTradeDate);
+  const completeness = publication.status === "ok" || publication.status === "pending"
+    ? 100
+    : status.exists && !status.parseError
+      ? 70
+      : 0;
+  return {
+    key: "derivatives",
+    label: "机构股指衍生品",
+    status: publication.status,
+    completeness,
+    tradeDate: status.tradeDate,
+    syncedAt: status.fetchedAt,
+    sources: ["中国金融期货交易所成交持仓排名"],
+    sample: {
+      productCount: status.productCount,
+      institutionCount: status.institutionCount,
+      stance: status.stance,
+      targetTradeDate: status.targetTradeDate,
+    },
+    detail: publication.detail || "当前榜单已更新",
+    warnings: publication.status === "warning" ? [publication.detail] : [],
+    errors: publication.status === "error" ? [publication.detail] : [],
+  };
+}
+
 function pad2(value) {
   return String(value).padStart(2, "0");
 }
@@ -259,17 +289,14 @@ function log(message) {
   console.log(line);
 }
 
-function cors(res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Cache-Control", "no-store");
-}
-
 function sendJson(res, status, body) {
-  cors(res);
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(body));
+}
+
+function methodNotAllowed(res, allowed = "POST") {
+  res.setHeader("Allow", allowed);
+  sendJson(res, 405, {ok: false, errorCode: "METHOD_NOT_ALLOWED", message: `该接口只接受 ${allowed} 请求。`});
 }
 
 const API_DATASETS = {
@@ -420,10 +447,11 @@ function serveAppFile(url, req, res) {
   const extension = path.extname(filePath).toLowerCase();
   const headers = {
     "Content-Type": MIME_TYPES[extension] || "application/octet-stream",
-    "Cache-Control": /\.(?:html|json|webmanifest)$/i.test(extension) || path.basename(filePath) === "sw.js"
-      ? "no-cache"
-      : "public, max-age=86400",
+    "Cache-Control": "no-cache",
   };
+  if (extension === ".html") {
+    headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'";
+  }
   res.writeHead(200, headers);
   if (req.method === "HEAD") {
     res.end();
@@ -897,7 +925,12 @@ function startAsyncRefresh(source = "manual") {
 }
 
 const server = http.createServer(async (req, res) => {
-  cors(res);
+  const security = validateLocalRequest(req, {port: PORT, allowRemote: ALLOW_REMOTE});
+  applyLocalResponseHeaders(res, security.ok ? security.corsOrigin : "");
+  if (!security.ok) {
+    sendJson(res, security.statusCode, {ok: false, errorCode: security.code, message: security.message});
+    return;
+  }
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     res.end();
@@ -909,6 +942,10 @@ const server = http.createServer(async (req, res) => {
 
   const protectedAppFeature = membership.protectedFeatureForPath(url.pathname);
   if (protectedAppFeature && !membership.hasAccess()) {
+    if (url.pathname.startsWith("/app/data/")) {
+      membership.sendPaymentRequired(res, protectedAppFeature);
+      return;
+    }
     res.writeHead(302, {
       Location: `/app/?member=required&feature=${encodeURIComponent(protectedAppFeature)}`,
       "Cache-Control": "no-store",
@@ -947,7 +984,7 @@ const server = http.createServer(async (req, res) => {
       appData: appDataStatus(),
       flowData: flowDataStatus(),
       historyCount: listHistoryDates().length,
-      endpoints: ["/api/v1/market/snapshot", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "POST /api/v1/sync", "/derivatives-refresh", "/next-week-events-refresh"],
+      endpoints: ["/api/v1/market/snapshot", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "POST /api/v1/sync", "POST /derivatives-refresh", "POST /next-week-events-refresh"],
     });
     return;
   }
@@ -1005,20 +1042,8 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === "/api/v1/health" && req.method === "GET") {
     const health = readJsonFile(path.join(DATA_DIR, "health.json"), {});
     const derivatives = derivativesStatus();
-    const modules = Array.isArray(health.modules) ? health.modules.filter((item) => item.key !== "derivatives") : [];
-    modules.push({
-      key: "derivatives",
-      label: "机构股指衍生品",
-      status: derivatives.exists && !derivatives.stale && !derivatives.parseError ? "ok" : "warning",
-      completeness: derivatives.exists && !derivatives.parseError ? (derivatives.stale ? 70 : 100) : 0,
-      tradeDate: derivatives.tradeDate,
-      syncedAt: derivatives.fetchedAt,
-      sources: ["中国金融期货交易所成交持仓排名"],
-      sample: {productCount: derivatives.productCount, institutionCount: derivatives.institutionCount, stance: derivatives.stance},
-      warnings: derivatives.exists ? (derivatives.stale ? ["当前沿用最近有效交易日榜单"] : []) : ["尚未取得中金所成交持仓排名"],
-      errors: derivatives.parseError ? [derivatives.parseError] : [],
-    });
-    sendJson(res, 200, {...health, modules, derivatives, service: apiServiceState()});
+    const mergedHealth = mergeHealthModule(health, derivativesHealthModule(derivatives, new Date(), health.tradeDate));
+    sendJson(res, 200, {...mergedHealth, derivatives, service: apiServiceState()});
     return;
   }
 
@@ -1118,6 +1143,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/refresh") {
+    if (req.method !== "POST") {
+      methodNotAllowed(res);
+      return;
+    }
     refreshRequestCount += 1;
     if (url.searchParams.get("async") === "1") {
       sendJson(res, 202, startAsyncRefresh("manual"));
@@ -1129,30 +1158,50 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/policy-refresh") {
+    if (req.method !== "POST") {
+      methodNotAllowed(res);
+      return;
+    }
     const result = await runPolicyNews({source: "manual", force: true});
     sendJson(res, result.ok ? 200 : result.running ? 202 : 500, result);
     return;
   }
 
   if (url.pathname === "/next-week-events-refresh") {
+    if (req.method !== "POST") {
+      methodNotAllowed(res);
+      return;
+    }
     const result = await runNextWeekEvents({source: "manual", force: true});
     sendJson(res, result.ok ? 200 : result.running ? 202 : 500, result);
     return;
   }
 
   if (url.pathname === "/derivatives-refresh") {
+    if (req.method !== "POST") {
+      methodNotAllowed(res);
+      return;
+    }
     const result = await runDerivatives({source: "manual", force: true});
     sendJson(res, result.ok ? 200 : result.running ? 202 : 500, result);
     return;
   }
 
   if (url.pathname === "/quant-refresh") {
+    if (req.method !== "POST") {
+      methodNotAllowed(res);
+      return;
+    }
     const result = await runQuant();
     sendJson(res, result.ok ? 200 : result.running ? 202 : 500, result);
     return;
   }
 
   if (["/stock-open", "/tdx-stock", "/tdx-sector"].includes(url.pathname)) {
+    if (req.method !== "POST") {
+      methodNotAllowed(res);
+      return;
+    }
     const result = await runLocalStock(url.searchParams);
     sendJson(res, result.ok ? 200 : 500, result);
     return;

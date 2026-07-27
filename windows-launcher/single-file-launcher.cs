@@ -23,23 +23,23 @@ using System.Windows.Forms;
 #endif
 [assembly: AssemblyCompany("Free & Awesome A-Share Market Ops")]
 [assembly: AssemblyCopyright("Copyright 2026")]
-[assembly: AssemblyVersion("2.6.5.0")]
-[assembly: AssemblyFileVersion("2.6.5.0")]
+[assembly: AssemblyVersion("2.7.0.0")]
+[assembly: AssemblyFileVersion("2.7.0.0")]
 
 internal static class Program
 {
 #if NO_QUANT_SELF_EDITION
     private const string EditionName = "无量化自用版";
-    private const string RuntimeTag = "版本_20260726-2.6.5-无量化自用版";
-    private const string MutexName = "Local\\AshareReviewLauncher_NoQuantSelf_2650";
+    private const string RuntimeTag = "版本_20260727-2.7.0-无量化自用版";
+    private const string MutexName = "Local\\AshareReviewLauncher_NoQuantSelf_2700";
 #elif SELF_EDITION
     private const string EditionName = "自用版";
-    private const string RuntimeTag = "版本_20260726-2.6.5-自用版";
-    private const string MutexName = "Local\\AshareReviewLauncher_Self_2650";
+    private const string RuntimeTag = "版本_20260727-2.7.0-自用版";
+    private const string MutexName = "Local\\AshareReviewLauncher_Self_2700";
 #else
     private const string EditionName = "会员版";
-    private const string RuntimeTag = "版本_20260726-2.6.5-会员版";
-    private const string MutexName = "Local\\AshareReviewLauncher_Member_2650";
+    private const string RuntimeTag = "版本_20260727-2.7.0-会员版";
+    private const string MutexName = "Local\\AshareReviewLauncher_Member_2700";
 #endif
     private const string PayloadResource = "AshareReviewPayload";
     private const string HashResource = "AshareReviewPayloadHash";
@@ -139,7 +139,7 @@ internal static class Program
         string parent = Path.GetDirectoryName(runtimeRoot);
         if (string.IsNullOrEmpty(parent)) throw new InvalidOperationException("运行目录无效。");
         Directory.CreateDirectory(parent);
-        string temporaryRoot = runtimeRoot + ".extract-" + Guid.NewGuid().ToString("N");
+        string temporaryRoot = Path.Combine(Path.GetTempPath(), "AshareExtract-" + Guid.NewGuid().ToString("N"));
         string temporaryZip = Path.Combine(Path.GetTempPath(), "AshareReviewPayload-" + Guid.NewGuid().ToString("N") + ".zip");
 
         try
@@ -206,7 +206,10 @@ internal static class Program
                 {
                     throw new InvalidDataException("载荷包含越界路径。");
                 }
-                if (entry.FullName.EndsWith("/", StringComparison.Ordinal))
+                bool isDirectory = string.IsNullOrEmpty(entry.Name)
+                    || entry.FullName.EndsWith("/", StringComparison.Ordinal)
+                    || entry.FullName.EndsWith("\\", StringComparison.Ordinal);
+                if (isDirectory)
                 {
                     Directory.CreateDirectory(targetPath);
                     continue;

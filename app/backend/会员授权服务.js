@@ -652,6 +652,10 @@ function createMembershipService(options = {}) {
       "/app/pages/derivatives.html": "机构动向",
       "/app/pages/history.html": "历史回放",
       "/app/pages/stock-search.html": "个股搜索",
+      "/app/data/policy-news.json": "政策新闻",
+      "/app/data/next-week-events.json": "下周大事件",
+      "/app/data/derivatives.json": "机构动向",
+      "/app/data/history-index.json": "历史回放",
     };
     return features[pathname] || "";
   }
@@ -659,7 +663,10 @@ function createMembershipService(options = {}) {
   function protectedFeatureForApi(pathname, method) {
     if (pathname === "/policy-refresh") return "政策新闻更新";
     if (pathname === "/next-week-events-refresh") return "下周大事件更新";
+    if (pathname === "/api/v1/data/policy-news") return "政策新闻";
     if (pathname === "/api/v1/data/next-week-events") return "下周大事件";
+    if (pathname === "/api/v1/data/derivatives") return "机构动向";
+    if (pathname === "/api/v1/history/dates" || pathname.startsWith("/api/v1/history/")) return "历史回放";
     if (pathname === "/derivatives-refresh") return "机构动向更新";
     if (pathname === "/api/v1/stocks/search" || pathname === "/api/v1/stocks/analyze") return "个股搜索";
     return "";

@@ -233,7 +233,7 @@ function parseTencentQuotes(buffer) {
 async function fetchTencentQuoteBatch(items) {
   const symbols = items.map((item) => tencentSymbol(item.code)).join(",");
   if (!symbols) return [];
-  const buffer = await fetchBytes(`http://qt.gtimg.cn/q=${symbols}`, {
+  const buffer = await fetchBytes(`https://qt.gtimg.cn/q=${symbols}`, {
     timeoutMs: 15000,
     attempts: 2,
     headers: {Referer: "https://gu.qq.com/"},

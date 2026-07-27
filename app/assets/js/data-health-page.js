@@ -9,7 +9,15 @@ function node(tag, className = "", text = "") {
 }
 
 function statusText(status) {
-  return status === "ok" ? "正常" : status === "error" ? "异常" : status === "single" ? "单源" : "注意";
+  return status === "ok"
+    ? "正常"
+    : status === "error"
+      ? "异常"
+      : status === "single"
+        ? "单源"
+        : status === "pending"
+          ? "待发布"
+          : "注意";
 }
 
 function statusPill(status) {
@@ -53,7 +61,7 @@ function render(view, data) {
 
   const moduleSection = node("section", "upgrade-section");
   const moduleHeader = node("header", "upgrade-heading");
-  moduleHeader.append(node("h2", "", "模块健康"), node("p", "", `${overall.errorCount || 0} 项异常，${overall.warningCount || 0} 项注意`));
+  moduleHeader.append(node("h2", "", "模块健康"), node("p", "", `${overall.errorCount || 0} 项异常，${overall.warningCount || 0} 项注意，${overall.pendingCount || 0} 项待发布`));
   const modules = node("div", "health-modules");
   (data.modules || []).forEach((item) => {
     const row = node("article", "health-module");

@@ -7,6 +7,7 @@ const { execFile, execFileSync } = require("child_process");
 const { TextDecoder } = require("util");
 const { exportOptimizedAppData } = require("./导出复盘应用数据");
 const { enhanceAppData } = require("./升级数据层");
+const { buildSnapshotOnlyIndex } = require("./market-data-contract");
 
 const PORTABLE_ROOT = path.resolve(
   process.env.A_SHARE_REVIEW_PORTABLE_ROOT || path.join(__dirname, "..", "..", "..")
@@ -1858,7 +1859,7 @@ async function enrichStocksWithTencentQuotes(stocks) {
     const symbols = chunk.map((stock) => tencentSymbolForCode(stock.code)).join(",");
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       try {
-        const text = await fetchTextAsync(`http://qt.gtimg.cn/q=${symbols}`, attempt === 1 ? 12000 : 18000, 0, "gb18030");
+        const text = await fetchTextAsync(`https://qt.gtimg.cn/q=${symbols}`, attempt === 1 ? 12000 : 18000, 0, "gb18030");
         text.split(/;\s*/).map(parseTencentQuote).filter(Boolean).forEach((quote) => quoteMap.set(quote.code, quote));
         return;
       } catch (error) {
@@ -1973,7 +1974,7 @@ async function fetchTencentQuoteMapComplete(stocks) {
     let lastError = null;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       try {
-        const text = await fetchTextAsync(`http://qt.gtimg.cn/q=${symbols}`, 8000, 0, "gb18030");
+        const text = await fetchTextAsync(`https://qt.gtimg.cn/q=${symbols}`, 8000, 0, "gb18030");
         const quotes = text.split(/;\s*/).map(parseTencentQuote).filter(Boolean);
         if (!quotes.length) throw new Error("返回内容中没有有效行情");
         quotes.forEach((quote) => quoteMap.set(quote.code, quote));
@@ -4293,17 +4294,6 @@ function updateMarketHistory(marketData, options = {}) {
   return options.returnCache ? { marketData, cache } : marketData;
 }
 
-function buildFallbackIndexPoint(tradeDate, price, preClose, minute, amount, volume) {
-  return {
-    dateTime: `${tradeDate} ${minuteToTime(minute)}`,
-    time: minuteToTime(minute),
-    price,
-    volume: Number(volume) || 0,
-    amount: Number(amount) || 0,
-    minute,
-  };
-}
-
 function fetchIndexSnapshot(tradeDate, reason, def = MAJOR_INDEXES[0]) {
   if (!def.secid) throw new Error(`${def.name}没有东方财富快照代码`);
   const url =
@@ -4322,19 +4312,17 @@ function fetchIndexSnapshot(tradeDate, reason, def = MAJOR_INDEXES[0]) {
   const fallbackMinute = tradeDate === todayLocal()
     ? Math.max(0, Math.min(240, timeTextToMinute(`${pad2(now.getHours())}:${pad2(now.getMinutes())}`)))
     : 239;
-  log(`${def.name}分时接口暂不可用，使用备用快照生成兜底走势：${reason}`);
-  return {
-    key: def.key,
-    name: data.f58 || def.name,
-    code: data.f57 || def.code,
-    preClose,
+  log(`${def.name}分时接口暂不可用，只展示当前真实快照，不补画历史轨迹：${reason}`);
+  return buildSnapshotOnlyIndex({
+    def,
+    data,
     tradeDate,
-    points: [
-      buildFallbackIndexPoint(tradeDate, preClose, preClose, 0, 0, 0),
-      buildFallbackIndexPoint(tradeDate, price, preClose, fallbackMinute, data.f48, data.f47),
-    ],
-    source: "东方财富指数快照兜底",
-  };
+    price,
+    preClose,
+    minute: fallbackMinute,
+    time: minuteToTime(fallbackMinute),
+    reason,
+  });
 }
 
 function fetchTencentIndex(def = MAJOR_INDEXES[0]) {
@@ -5064,7 +5052,7 @@ function buildMarketData(index, industry, concept, market, syncedAt = nowText(),
     syncedAt,
     sourceNote:
       `数据来源：东方财富公开行情接口和板块资金备用接口；同步时间 ${syncedAt}。` +
-      "主要指数、二级行业、概念板块为同一轮刷新结果；主要指数为真实分时或同日备用分时；板块资金展示净流入前 10 与净流出前 10，流入前三和流出前三使用东方财富官方板块分钟资金序列，并以实时排名末值复核，其他板块按后台每轮真实同步样本更新；指数线标签只在真实分时形成经反向波动确认的关键高低拐点时生成，标记落在实际拐点、确认后才显示，并从同期二级行业中选择累计净额方向与反转一致且资金行为最强的板块；每张图最多 9 个标签、同一板块最多 2 个，红色只表示该板块确认时累计净流入，绿色只表示累计净流出，标签金额为确认时累计值；标签按出现时间持续保留，只作资金行为归因，不等同于成分股精确权重贡献；相邻真实样本只做线性显示，不反向填充未知数据；开盘后实时更新，午休停在 11:30，收盘停在 15:00。前台保留通达信880板块代码，并同时携带原始板块名称供当前设备的其他股票软件检索；市场强度统计包含涨停/跌停专题、沪深成交额、昨日涨停延续性和昨日炸板修复力度。",
+      "主要指数、二级行业、概念板块为同一轮刷新结果；主要指数优先使用真实分钟分时，分钟接口不可用时只展示同日当前真实快照点，不使用昨收到快照的合成走势；板块资金展示净流入前 10 与净流出前 10，流入前三和流出前三使用东方财富官方板块分钟资金序列，并以实时排名末值复核，其他板块按后台每轮真实同步样本更新；指数线标签只在真实分时形成经反向波动确认的关键高低拐点时生成，标记落在实际拐点、确认后才显示，并从同期二级行业中选择累计净额方向与反转一致且资金行为最强的板块；每张图最多 9 个标签、同一板块最多 2 个，红色只表示该板块确认时累计净流入，绿色只表示累计净流出，标签金额为确认时累计值；标签按出现时间持续保留，只作资金行为归因，不等同于成分股精确权重贡献；相邻真实样本只做线性显示，不反向填充未知数据；开盘后实时更新，午休停在 11:30，收盘停在 15:00。前台保留通达信880板块代码，并同时携带原始板块名称供当前设备的其他股票软件检索；市场强度统计包含涨停/跌停专题、沪深成交额、昨日涨停延续性和昨日炸板修复力度。",
   };
 }
 
@@ -6005,7 +5993,7 @@ function buildLimitDetailHtml(marketData, kind) {
     "    event.preventDefault();",
     "    var text=link.textContent;",
     "    link.textContent='打开中';",
-    "    fetch(link.href,{cache:'no-store'}).then(function(res){return res.json().then(function(data){if(!res.ok||!data.ok)throw new Error(data.message||'本机股票软件接口未完成');return data;});}).then(function(data){link.textContent='已打开';link.title=data.message||'已自动检索当前设备的股票软件并打开日K';setTimeout(function(){link.textContent=text;},1400);}).catch(function(error){link.textContent='未打开';link.title=(error&&error.message)||'未检测到可自动操作的本机股票软件，已尝试网页行情兜底';setTimeout(function(){link.textContent=text;},2600);});",
+    "    fetch(link.href,{method:'POST',cache:'no-store'}).then(function(res){return res.json().then(function(data){if(!res.ok||!data.ok)throw new Error(data.message||'本机股票软件接口未完成');return data;});}).then(function(data){link.textContent='已打开';link.title=data.message||'已自动检索当前设备的股票软件并打开日K';setTimeout(function(){link.textContent=text;},1400);}).catch(function(error){link.textContent='未打开';link.title=(error&&error.message)||'未检测到可自动操作的本机股票软件，已尝试网页行情兜底';setTimeout(function(){link.textContent=text;},2600);});",
     "  });",
     "</script>",
     "</main></body>",
@@ -6208,7 +6196,7 @@ function buildQuantHtml(data) {
     "    event.preventDefault();",
     "    var text=link.textContent;",
     "    link.textContent='打开中';",
-    "    fetch(link.href,{cache:'no-store'}).then(function(res){return res.json().then(function(data){if(!res.ok||!data.ok)throw new Error(data.message||'本机股票软件接口未完成');return data;});}).then(function(data){link.textContent='已打开';link.title=data.message||'已自动检索当前设备的股票软件并打开日K';setTimeout(function(){link.textContent=text;},1400);}).catch(function(error){link.textContent='未打开';link.title=(error&&error.message)||'未检测到可自动操作的本机股票软件，已尝试网页行情兜底';setTimeout(function(){link.textContent=text;},2600);});",
+    "    fetch(link.href,{method:'POST',cache:'no-store'}).then(function(res){return res.json().then(function(data){if(!res.ok||!data.ok)throw new Error(data.message||'本机股票软件接口未完成');return data;});}).then(function(data){link.textContent='已打开';link.title=data.message||'已自动检索当前设备的股票软件并打开日K';setTimeout(function(){link.textContent=text;},1400);}).catch(function(error){link.textContent='未打开';link.title=(error&&error.message)||'未检测到可自动操作的本机股票软件，已尝试网页行情兜底';setTimeout(function(){link.textContent=text;},2600);});",
     "  });",
     "</script>",
     "</main></body>",
@@ -6448,7 +6436,7 @@ function sectorKUrl(row){const tdx=String(row.tdxCode||"").toUpperCase();const b
     function axisMax(groups){const raw=Math.max(1,...groups.flatMap(group=>group.rows.map(row=>rowMaxAmount(row)))); const padded=raw*1.35; const step=padded>=1000?500:padded>=500?200:padded>=100?100:padded>=50?20:10; return Math.ceil(padded/step)*step}
     function renderAxis(el, max){el.innerHTML="";[-1,-.5,0,.5,1].forEach(step=>{const tick=document.createElement("div");tick.className="tick";tick.style.left=((step+1)*50)+"%";tick.textContent=String(Math.round(max*step));el.appendChild(tick)})}
 function initBarRows(container, rows){container.innerHTML='<div class="zero"></div>';rows.forEach((row,index)=>{const rowEl=document.createElement("div");rowEl.className="bar-row";rowEl.dataset.index=index;const label=rowLabel(row);const safeName=escapeHtml(label);const original=row.name&&row.name!==label?" / 原："+escapeHtml(row.name):"";const url=sectorKUrl(row);const kHtml=url?'<a class="kbtn local-stock-link" href="'+url+'" title="自动检索当前设备的股票软件并打开 '+safeName+' 日K图'+original+'">日K</a>':'<span class="kbtn disabled" title="该板块缺少可搜索名称">无名称</span>';rowEl.innerHTML='<div class="name-cell"><div class="name" title="'+safeName+original+'">'+safeName+'</div>'+kHtml+'</div><div class="track"><div class="bar"></div><div class="amount"></div></div>';container.appendChild(rowEl)})}
-document.addEventListener("click",event=>{const link=event.target.closest&&event.target.closest("a.local-stock-link");if(!link)return;event.preventDefault();const text=link.textContent;link.textContent="打开中";fetch(link.href,{cache:"no-store"}).then(response=>response.json().then(data=>{if(!response.ok||!data.ok)throw new Error(data.message||"本机股票软件接口未完成");return data})).then(data=>{link.textContent="已打开";link.title=data.message||"已自动检索当前设备的股票软件并打开日K";setTimeout(()=>{link.textContent=text},1400)}).catch(error=>{link.textContent="未打开";link.title=error&&error.message||"未检测到可自动操作的本机股票软件，已尝试网页行情兜底";setTimeout(()=>{link.textContent=text},2600)})})
+document.addEventListener("click",event=>{const link=event.target.closest&&event.target.closest("a.local-stock-link");if(!link)return;event.preventDefault();const text=link.textContent;link.textContent="打开中";fetch(link.href,{method:"POST",cache:"no-store"}).then(response=>response.json().then(data=>{if(!response.ok||!data.ok)throw new Error(data.message||"本机股票软件接口未完成");return data})).then(data=>{link.textContent="已打开";link.title=data.message||"已自动检索当前设备的股票软件并打开日K";setTimeout(()=>{link.textContent=text},1400)}).catch(error=>{link.textContent="未打开";link.title=error&&error.message||"未检测到可自动操作的本机股票软件，已尝试网页行情兜底";setTimeout(()=>{link.textContent=text},2600)})})
     function updateBars(container, rows, max, minute){[...container.querySelectorAll(".bar-row")].forEach((rowEl,index)=>{const row=rows[index];let value=currentAmount(row,minute,index+1);const bar=rowEl.querySelector(".bar");const amount=rowEl.querySelector(".amount");if(value===null||!Number.isFinite(Number(value))){value=Number(row&&row.amount);if(!Number.isFinite(value))value=0;if(isLiveMinute(minute)&&inTradingWindow())requestFlowSample(minute)}const w=Math.min(42,Math.abs(value)/max*50);const tone=value>=0?"pos":"neg";bar.className="bar "+tone;bar.style.width=w+"%";amount.className="amount "+tone;amount.style.setProperty("--w",w+"%");amount.title="最近一次真实同步累计净流入";amount.textContent=fmtAmount(value)})}
     function interpolateSeries(points, minute, key){if(!points.length)return 0; let prev=points[0], next=points[points.length-1]; for(let i=0;i<points.length;i++){if(points[i].minute<=minute) prev=points[i]; if(points[i].minute>=minute){next=points[i]; break}} const span=Math.max(1,next.minute-prev.minute); const t=Math.max(0,Math.min(1,(minute-prev.minute)/span)); return prev[key]+(next[key]-prev[key])*t}
     function renderLine(svg, points, minute, key, baseline){const value=interpolateSeries(points,minute,key); const visible=points.filter(p=>p.minute<=minute); const base=Number(baseline)||Number(points[0]?.[key])||value; const all=points.map(p=>p[key]).concat([base]); const min=Math.min(...all), max=Math.max(...all); const pad=(max-min)*.16||1; const y=v=>148-((v-(min-pad))/(max-min+pad*2))*132; const x=m=>14+(m/DAY_MINUTES)*972; const changePct=base?((value-base)/base*100):0; let path=""; visible.forEach((p,i)=>{path+=(i?"L":"M")+x(p.minute).toFixed(2)+" "+y(p[key]).toFixed(2)}); if(visible.length){path+="L"+x(minute).toFixed(2)+" "+y(value).toFixed(2)} else {path="M14 "+y(value).toFixed(2)} const color=changePct>=0?"#d9413a":"#16825c"; const baseY=y(base); const grid='<line x1="14" x2="986" y1="'+baseY+'" y2="'+baseY+'" stroke="#a8b2bd" stroke-width="1" stroke-dasharray="4 5"/><line x1="500" x2="500" y1="10" y2="148" stroke="#dde3ea" stroke-width="1" stroke-dasharray="4 6"/>'; svg.innerHTML=grid+'<path d="'+path+'" fill="none" stroke="'+color+'" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="'+x(minute).toFixed(2)+'" cy="'+y(value).toFixed(2)+'" r="5" fill="'+color+'"/>'; return {value,changePct,pointChange:value-base}}

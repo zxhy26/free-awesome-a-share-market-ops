@@ -592,6 +592,7 @@ function buildHealth(data, archiveCount = 0) {
 
   const indexItems = data.indices?.items || [];
   const ashareItems = indexItems.filter((item) => item.session !== "us");
+  const snapshotOnlyItems = ashareItems.filter((item) => item.snapshotOnly === true);
   const indexCoverage = ashareItems.length ? ashareItems.reduce((sum, item) => {
     const uniqueMinutes = new Set((item.points || []).map((point) => finite(point.minute)).filter((value) => value !== null && value <= currentMinute));
     return sum + clamp((uniqueMinutes.size / Math.max(1, currentMinute)) * 100);
@@ -603,7 +604,10 @@ function buildHealth(data, archiveCount = 0) {
     sources: indexItems.flatMap((item) => [item.source, ...(item.crossCheck?.sources || [])]),
     sample: {indexCount: indexItems.length, latestMinute: currentMinute, latestTime: minuteText(currentMinute), crossChecked},
     checks: ashareItems.map((item) => ({name: item.name, status: item.crossCheck?.status || "pending", detail: compactDetail(item.crossCheck?.detail || "等待下一轮双源核对")})),
-    warnings: indexItems.length < 8 ? [`主要指数仅${indexItems.length}/8个`] : [],
+    warnings: [
+      ...(indexItems.length < 8 ? [`主要指数仅${indexItems.length}/8个`] : []),
+      ...(snapshotOnlyItems.length ? [`${snapshotOnlyItems.map((item) => item.name).join("、")}当前只有真实快照点，未补画分钟轨迹`] : []),
+    ],
   }));
 
   for (const [key, label] of [["industry", "二级行业"], ["concept", "概念板块"]]) {
@@ -629,21 +633,33 @@ function buildHealth(data, archiveCount = 0) {
   }));
 
   const newsStats = data.policyNews?.stats || {};
+  const policyItemCount = data.policyNews?.items?.length || 0;
+  const policyEventCount = data.policyNews?.eventChains?.length || 0;
   const newsCompleteness = finite(newsStats.querySuccess) === null ? 70 : (newsStats.querySuccess / Math.max(1, newsStats.querySuccess + (newsStats.queryErrors || 0))) * 100;
-  modules.push(moduleResult("policyNews", "政策与国际新闻", newsCompleteness, {
+  const policyCompleteness = policyItemCount
+    ? Math.min(newsCompleteness, policyEventCount ? 100 : 82)
+    : 0;
+  modules.push(moduleResult("policyNews", "政策与国际新闻", policyCompleteness, {
     tradeDate: data.analysis?.tradeDate,
     syncedAt: data.policyNews?.generatedAt,
     sources: (data.policyNews?.items || []).map((item) => item.source),
-    sample: {itemCount: data.policyNews?.items?.length || 0, eventCount: data.policyNews?.eventChains?.length || 0, dateCount: newsStats.dateCount || 0},
-    warnings: data.policyNews?.error ? [data.policyNews.error] : [],
+    sample: {itemCount: policyItemCount, eventCount: policyEventCount, dateCount: newsStats.dateCount || 0},
+    warnings: [
+      ...(data.policyNews?.error ? [data.policyNews.error] : []),
+      ...(policyItemCount && !policyEventCount ? ["已有新闻条目，但关键事件传导链尚未生成"] : []),
+    ],
+    errors: policyItemCount ? [] : ["政策与国际新闻条目为空"],
   }));
 
-  modules.push(moduleResult("history", "历史仓库", archiveCount ? 100 : 35, {
+  const historyTarget = 30;
+  modules.push(moduleResult("history", "历史仓库", clamp(archiveCount / historyTarget * 100), {
     tradeDate: data.analysis?.tradeDate,
     syncedAt: data.analysis?.syncedAt,
     sources: ["每日完整复盘归档", "结构化快照"],
-    sample: {archiveCount},
-    warnings: archiveCount ? [] : ["尚未发现可回放交易日"],
+    sample: {archiveCount, targetCount: historyTarget},
+    warnings: archiveCount >= historyTarget
+      ? []
+      : [archiveCount ? `历史归档为${archiveCount}/${historyTarget}个交易日，30日比较样本仍在自动积累` : "尚未发现可回放交易日"],
   }));
 
   const crossChecks = [];
@@ -668,7 +684,8 @@ function buildHealth(data, archiveCount = 0) {
 
   const errorCount = modules.filter((item) => item.status === "error").length + crossChecks.filter((item) => item.status === "error").length;
   const warningCount = modules.filter((item) => item.status === "warning").length + crossChecks.filter((item) => item.status === "warning").length;
-  const overallScore = round(modules.reduce((sum, item) => sum + item.completeness, 0) / Math.max(1, modules.length), 1);
+  const baseScore = modules.reduce((sum, item) => sum + item.completeness, 0) / Math.max(1, modules.length);
+  const overallScore = round(clamp(baseScore - warningCount * 2 - errorCount * 8), 1);
   return {
     version: 1,
     generatedAt: new Date().toISOString(),

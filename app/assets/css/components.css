@@ -76,6 +76,8 @@
 .index-chart .baseline { stroke: var(--border-strong); stroke-width: 1; }
 .index-chart .line { fill: none; stroke: var(--gain); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .index-chart .line.loss-line { stroke: var(--loss); }
+.index-card.snapshot-only .index-chart .line { stroke-dasharray: 2 2; }
+.index-card.snapshot-only .index-card-footer span:last-child { color: var(--warning); font-weight: 800; }
 .index-chart .cursor { fill: var(--surface-raised); stroke: currentColor; stroke-width: 1.5; }
 .index-attribution-stem { stroke: currentColor; stroke-width: .8; stroke-dasharray: 1.5 1.2; opacity: .82; vector-effect: non-scaling-stroke; }
 .index-attribution-dot { fill: currentColor; stroke: var(--surface); stroke-width: .8; vector-effect: non-scaling-stroke; }
@@ -97,6 +99,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .sector-flow-chart-header { min-height: 21px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 10px; }
 .sector-flow-chart-header strong { color: var(--text-soft); font-size: 11px; }
 .sector-flow-chart-header span { color: var(--muted); white-space: nowrap; }
+.sector-flow-scale { flex: 0 0 auto; display: inline-flex; padding: 1px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); }
+.sector-flow-scale button { min-width: 30px; height: 18px; padding: 0 5px; border: 0; border-radius: 3px; background: transparent; color: var(--muted); font: inherit; font-size: 9px; font-weight: 800; cursor: pointer; }
+.sector-flow-scale button[aria-pressed="true"] { background: var(--text); color: var(--surface); }
+.sector-flow-scale button:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
 .sector-flow-chart-stage { position: relative; height: 112px; overflow: hidden; }
 .sector-flow-chart svg { width: 100%; height: 100%; display: block; overflow: hidden; touch-action: pan-y; }
 .sector-flow-grid { stroke: var(--border); stroke-width: .7; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; }

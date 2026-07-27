@@ -45,4 +45,15 @@ The checks verify that:
 
 `windows-launcher/single-file-launcher.cs` is the source for the current self-extracting launcher. A complete runtime payload ZIP and its SHA256 must be embedded at build time.
 
+Build and validate a launcher from an existing payload:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-single-file-launcher.ps1 `
+  -PayloadRoot "D:\path\to\payload" `
+  -OutputPath "D:\path\to\release.exe" `
+  -Edition Member
+```
+
+Use `NoQuantSelf` or `Self` only with the matching private payload. The script compiles to a temporary directory, verifies payload extraction and SHA256, copies the validated executable to the requested output path, and removes its temporary files. Pass `-CertificateThumbprint` only when a trusted code-signing certificate is installed.
+
 The public repository does not contain production private keys, access tokens, or production data-service credentials. Self-built editions should use their own runtime payloads and legally authorized data.

@@ -56,7 +56,8 @@ h3 { font-size: 13px; line-height: 1.3; font-weight: 800; }
 }
 
 .brand-block { min-width: 260px; display: flex; align-items: center; gap: 16px; }
-.freshness-line { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; color: var(--muted); font-size: 11px; }
+.brand-block h1 { flex: 0 0 auto; white-space: nowrap; }
+.freshness-line { min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 7px; color: var(--muted); font-size: 11px; }
 .freshness-line strong { color: var(--text); font-size: 12px; }
 
 .toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 7px; min-width: 0; }

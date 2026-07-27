@@ -275,7 +275,7 @@ export function requestMarketSync(onProgress) {
       try {
         response = await fetchJson(`${SERVICE_ORIGIN}/api/v1/sync`, {label: "同步请求", timeoutMs: 30000, method: "POST"});
       } catch (_) {
-        response = await fetchJson(`${SERVICE_ORIGIN}/refresh?async=1`, {label: "同步请求", timeoutMs: 30000});
+        response = await fetchJson(`${SERVICE_ORIGIN}/refresh?async=1`, {label: "同步请求", timeoutMs: 30000, method: "POST"});
       }
     } catch (error) {
       throw friendlyFetchError(error, "本地同步服务");
@@ -292,7 +292,7 @@ export function requestMarketSync(onProgress) {
 }
 
 export async function requestPolicyNewsRefresh() {
-  let result = await fetchJson(`${SERVICE_ORIGIN}/policy-refresh`, {label: "政策新闻同步", timeoutMs: 120000});
+  let result = await fetchJson(`${SERVICE_ORIGIN}/policy-refresh`, {label: "政策新闻同步", timeoutMs: 120000, method: "POST"});
   if (result.running) {
     const deadline = Date.now() + 100000;
     while (Date.now() < deadline) {
@@ -309,7 +309,7 @@ export async function requestPolicyNewsRefresh() {
 }
 
 export async function requestNextWeekEventsRefresh() {
-  let result = await fetchJson(`${SERVICE_ORIGIN}/next-week-events-refresh`, {label: "下周大事件更新", timeoutMs: 120000});
+  let result = await fetchJson(`${SERVICE_ORIGIN}/next-week-events-refresh`, {label: "下周大事件更新", timeoutMs: 120000, method: "POST"});
   if (result.running) {
     const deadline = Date.now() + 100000;
     while (Date.now() < deadline) {
@@ -331,7 +331,7 @@ export async function requestNextWeekEventsRefresh() {
 }
 
 export function requestDerivativesRefresh() {
-  return fetchJson(`${SERVICE_ORIGIN}/derivatives-refresh`, {label: "机构衍生品刷新", timeoutMs: 150000})
+  return fetchJson(`${SERVICE_ORIGIN}/derivatives-refresh`, {label: "机构衍生品刷新", timeoutMs: 150000, method: "POST"})
     .then((result) => {
       if (!result.ok) throw new AppError(result.message || "机构衍生品刷新失败。", {code: result.errorCode || "DERIVATIVES_REFRESH_FAILED", technical: result.stderr || result.stdout || ""});
       return result;
@@ -381,7 +381,7 @@ export async function openLocalStock(stock) {
     market: String(stock.market ?? ""),
     name: String(stock.name || ""),
   });
-  const result = await fetchJson(`${SERVICE_ORIGIN}/stock-open?${params}`, {label: "本机股票软件日K", timeoutMs: 95000});
+  const result = await fetchJson(`${SERVICE_ORIGIN}/stock-open?${params}`, {label: "本机股票软件日K", timeoutMs: 95000, method: "POST"});
   if (!result.ok) throw new AppError(result.message || "本机股票软件没有打开日K。", {code: "STOCK_APP_FAILED"});
   return result;
 }

@@ -40,6 +40,7 @@
 .health-status.ok { color: var(--loss); background: var(--loss-soft); }
 .health-status.error { color: var(--gain); background: var(--gain-soft); }
 .health-status.warning { color: var(--warning); background: var(--warning-soft); }
+.health-status.pending { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface-raised)); }
 .health-status.single { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface-raised)); }
 .health-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 .health-policy { padding: 10px 12px; }

@@ -92,7 +92,19 @@ function createBase(container) {
   header.className = "sector-flow-chart-header";
   const status = document.createElement("strong");
   const source = document.createElement("span");
-  header.append(status, source);
+  const scale = document.createElement("div");
+  scale.className = "sector-flow-scale";
+  scale.setAttribute("role", "group");
+  scale.setAttribute("aria-label", "资金曲线刻度");
+  [["absolute", "金额"], ["relative", "相对"]].forEach(([value, label]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.flowScale = value;
+    button.textContent = label;
+    button.title = value === "absolute" ? "按统一资金金额刻度比较" : "按各板块自身区间归一化比较走势";
+    scale.append(button);
+  });
+  header.append(status, source, scale);
 
   const stage = document.createElement("div");
   stage.className = "sector-flow-chart-stage";
@@ -115,18 +127,20 @@ function createBase(container) {
   empty.hidden = true;
 
   container.replaceChildren(header, stage, legend, empty);
-  return {header, status, source, stage, svg, title, tooltip, legend, empty};
+  return {header, status, source, scale, stage, svg, title, tooltip, legend, empty};
 }
 
-function addAxis(svg, maximum, view, minute) {
+function addAxis(svg, maximum, view, minute, scaleMode) {
   const width = VIEWBOX_WIDTH - PLOT.left - PLOT.right;
   const height = VIEWBOX_HEIGHT - PLOT.top - PLOT.bottom;
   [0, 0.5, 1].forEach((ratio) => {
     const y = PLOT.top + height * ratio;
     svg.append(svgElement("line", {class: "sector-flow-grid", x1: PLOT.left, x2: VIEWBOX_WIDTH - PLOT.right, y1: y, y2: y}));
     const label = svgElement("text", {class: "sector-flow-axis-label", x: PLOT.left - 5, y: y + 3, "text-anchor": "end"});
-    const magnitude = maximum * (1 - ratio);
-    label.textContent = `${view === "outflow" && magnitude ? "-" : ""}${magnitude.toFixed(maximum < 10 ? 1 : 0)}`;
+    const magnitude = (scaleMode === "relative" ? 100 : maximum) * (1 - ratio);
+    label.textContent = scaleMode === "relative"
+      ? `${magnitude.toFixed(0)}%`
+      : `${view === "outflow" && magnitude ? "-" : ""}${magnitude.toFixed(maximum < 10 ? 1 : 0)}`;
     svg.append(label);
   });
   [[0, "09:30"], [120, "11:30/13:00"], [240, "15:00"]].forEach(([tickMinute, labelText]) => {
@@ -140,15 +154,18 @@ function addAxis(svg, maximum, view, minute) {
   svg.append(svgElement("line", {class: "sector-flow-time-cursor", x1: cursorX, x2: cursorX, y1: PLOT.top, y2: PLOT.top + height}));
 }
 
-function drawSeries(svg, selectedRows, maximum, minute, view) {
+function drawSeries(svg, selectedRows, maximum, minute, view, scaleMode) {
   const width = VIEWBOX_WIDTH - PLOT.left - PLOT.right;
   const height = VIEWBOX_HEIGHT - PLOT.top - PLOT.bottom;
   selectedRows.forEach(({row}, index) => {
     const points = visibleSeriesPoints(row, minute);
     if (!points.length) return;
+    const seriesMaximum = scaleMode === "relative"
+      ? Math.max(0.0001, ...points.map((point) => Math.abs(point.amount)))
+      : maximum;
     const coordinates = points.map((point) => {
       const x = PLOT.left + width * point.minute / 240;
-      const y = PLOT.top + height * (1 - Math.min(1, Math.abs(point.amount) / maximum));
+      const y = PLOT.top + height * (1 - Math.min(1, Math.abs(point.amount) / seriesMaximum));
       return {x, y, point};
     });
     if (coordinates.length >= 2) {
@@ -224,6 +241,12 @@ export function createSectorFlowChart(container) {
   let snapshot = null;
   let lockedSeriesKey = "";
   let hoveredSeriesKey = "";
+  let scaleMode = "absolute";
+  try {
+    scaleMode = localStorage.getItem("a-share-review:sector-flow-scale") === "relative" ? "relative" : "absolute";
+  } catch (_) {
+    scaleMode = "absolute";
+  }
 
   function applySeriesHighlight() {
     const activeKey = hoveredSeriesKey || lockedSeriesKey;
@@ -274,6 +297,15 @@ export function createSectorFlowChart(container) {
     hoveredSeriesKey = "";
     applySeriesHighlight();
   });
+  dom.scale.addEventListener("click", (event) => {
+    const button = event.target instanceof Element ? event.target.closest("button[data-flow-scale]") : null;
+    if (!button) return;
+    const nextMode = button.dataset.flowScale === "relative" ? "relative" : "absolute";
+    if (nextMode === scaleMode) return;
+    scaleMode = nextMode;
+    try { localStorage.setItem("a-share-review:sector-flow-scale", scaleMode); } catch (_) {}
+    if (snapshot) render(snapshot.group, snapshot);
+  });
 
   function render(group, options = {}) {
     const minute = Math.max(0, Math.min(240, finite(options.minute) ?? 0));
@@ -296,9 +328,12 @@ export function createSectorFlowChart(container) {
         ? `真实采样轨迹 ${drawableCount}/${selectedRows.length}`
         : `真实采样点 ${selectedRows.length}条，正在补齐轨迹`;
     dom.title.textContent = `${group?.title || "板块"}${view === "inflow" ? "净流入" : "净流出"}前十分时图，时间 ${marketMinuteToTime(minute)}`;
+    dom.scale.querySelectorAll("button").forEach((button) => {
+      button.setAttribute("aria-pressed", String(button.dataset.flowScale === scaleMode));
+    });
     dom.svg.replaceChildren(dom.title);
-    addAxis(dom.svg, maximum, view, minute);
-    drawSeries(dom.svg, selectedRows, maximum, minute, view);
+    addAxis(dom.svg, maximum, view, minute, scaleMode);
+    drawSeries(dom.svg, selectedRows, maximum, minute, view, scaleMode);
     renderLegend(dom.legend, selectedRows, view);
     if (lockedSeriesKey && !selectedRows.some(({row}) => seriesKey(row) === lockedSeriesKey)) lockedSeriesKey = "";
     applySeriesHighlight();

@@ -32,7 +32,7 @@ export function visiblePoints(points, minute) {
       break;
     }
   }
-  if (!previous) return source.slice(0, 1);
+  if (!previous) return [];
   if (!next) return visible;
   const previousMinute = pointMinute(previous, Math.max(0, visible.length - 1));
   const nextMinute = pointMinute(next, visible.length);
@@ -382,7 +382,8 @@ function measureAttributionLabel(layer, labelText) {
 }
 
 function renderSectorAttributions(chart, minute, geometry) {
-  const selected = selectSectorAttributions(chart.attributionEvents, minute);
+  const selected = selectSectorAttributions(chart.attributionEvents, minute)
+    .sort((left, right) => Number(right.strength || 0) - Number(left.strength || 0));
   const nodes = [];
   const labels = [];
   for (const item of selected) {
@@ -503,6 +504,7 @@ export function updateIndexCharts(charts, minute) {
     chart.points.className = `points ${className}`;
     chart.pct.className = `pct ${className}`;
     chart.path.classList.toggle("loss-line", (change || 0) < 0);
+    chart.article.classList.toggle("snapshot-only", chart.data.snapshotOnly === true);
     const geometry = pathFor(points, preClose, chart.data.points || points);
     chart.path.setAttribute("d", geometry.path);
     chart.baseline.setAttribute("y1", geometry.baselineY.toFixed(2));
@@ -513,7 +515,9 @@ export function updateIndexCharts(charts, minute) {
     renderSectorAttributions(chart, minute, geometry);
     const amount = finiteNumber(last.amount);
     chart.amount.textContent = amount === null ? "成交额 --" : `成交额 ${(amount / 100000000).toFixed(1)}亿`;
-    chart.sample.textContent = marketMinuteToTime(finiteNumber(last.minute) ?? minute, true);
+    chart.sample.textContent = chart.data.snapshotOnly
+      ? `${marketMinuteToTime(finiteNumber(last.minute) ?? minute, true)} 仅快照`
+      : marketMinuteToTime(finiteNumber(last.minute) ?? minute, true);
   }
 }
 

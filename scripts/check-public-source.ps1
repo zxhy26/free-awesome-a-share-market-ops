@@ -30,13 +30,29 @@ $RequiredProtectedPaths = @(
   "/app/pages/next-week-events.html",
   "/app/pages/derivatives.html",
   "/app/pages/history.html",
-  "/app/pages/stock-search.html"
+  "/app/pages/stock-search.html",
+  "/app/data/policy-news.json",
+  "/app/data/derivatives.json",
+  "/app/data/history-index.json"
 )
 
 $MembershipSource = Get-Content -LiteralPath $MembershipService -Raw -Encoding UTF8
 foreach ($ProtectedPath in $RequiredProtectedPaths) {
   if (-not $MembershipSource.Contains($ProtectedPath)) {
     throw "Required protected route mapping is missing: $ProtectedPath"
+  }
+}
+
+$ServiceSource = Get-Content -LiteralPath (Join-Path $AppRoot "backend\复盘同步服务.js") -Raw -Encoding UTF8
+if ($ServiceSource.Contains('Access-Control-Allow-Origin", "*"')) {
+  throw "The local service must not expose wildcard CORS."
+}
+if (-not $ServiceSource.Contains('url.pathname.startsWith("/app/data/")')) {
+  throw "Protected member data must return an authorization response instead of redirecting to HTML."
+}
+foreach ($MutationPath in @("/refresh", "/policy-refresh", "/next-week-events-refresh", "/derivatives-refresh", "/quant-refresh", "/stock-open")) {
+  if (-not $ServiceSource.Contains($MutationPath)) {
+    throw "A required local mutation route is missing: $MutationPath"
   }
 }
 

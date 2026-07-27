@@ -1,0 +1,38 @@
+name: Release Source
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Verify source
+        shell: powershell
+        run: npm test
+
+      - name: Package audited source
+        shell: powershell
+        run: |
+          $name = "Free-Awesome-A-Share-Market-Ops-$env:GITHUB_REF_NAME-Source.zip"
+          Compress-Archive -Path app,docs,scripts,tests,windows-launcher,README.md,LICENSE,NOTICE.md,SECURITY.md,CONTRIBUTING.md,package.json -DestinationPath $name -CompressionLevel Optimal
+          "RELEASE_ASSET=$name" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Create GitHub release
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$env:GITHUB_REF_NAME" "$env:RELEASE_ASSET" --generate-notes --title "$env:GITHUB_REF_NAME"
