@@ -3,7 +3,7 @@ import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNum
 import {createIndexCharts, createPlaybackController, marketMinuteToTime, selectSectorAttributions, updateIndexCharts, visiblePoints} from "./charts.js?v=20260727-1";
 import {createSummaryDialog} from "./dialog.js";
 import {initializePwa} from "./pwa.js?v=20260719-2";
-import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260719-2";
+import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260727-1";
 import {initializeTheme} from "./theme.js";
 import {inTradingWindow} from "./market-session.js?v=20260727-4";
 
@@ -58,8 +58,6 @@ const state = {
   charts: [],
   playback: null,
   flowCharts: {industry: null, concept: null},
-  flowView: {industry: "inflow", concept: "inflow"},
-  flowRenderedView: {industry: "", concept: ""},
   flowRenderVersion: {industry: 0, concept: 0},
   contributionIndexKey: "",
   contributionTabsSignature: "",
@@ -476,16 +474,6 @@ function addDistinctFlowLabels(rows) {
   });
 }
 
-function syncFlowTabs(groupName) {
-  const tabs = document.querySelector(`[data-flow-tabs="${groupName}"]`);
-  if (!tabs) return;
-  const view = state.flowView[groupName] === "outflow" ? "outflow" : "inflow";
-  tabs.dataset.activeFlowView = view;
-  tabs.querySelectorAll("button[data-flow-view]").forEach((button) => {
-    button.setAttribute("aria-pressed", String(button.dataset.flowView === view));
-  });
-}
-
 function buildHeadlineMetric(label, value, note, className = "neutral", href = "", actionLabel = "") {
   const item = el(href ? "a" : "div", `headline-metric${href ? " headline-metric-button" : ""}`);
   const noteNode = el("small", "", note);
@@ -533,41 +521,33 @@ function renderHeaderAndOverview() {
   if (messages.length) dom.dataAlert.textContent = `部分数据异常：${messages.slice(0, 2).join("；")}${messages.length > 2 ? `（另有${messages.length - 2}项）` : ""}`;
 }
 
-function renderFlow(groupName, minute) {
-  const target = groupName === "industry" ? dom.industryFlow : dom.conceptFlow;
-  const group = flowGroupAtMinute(groupName, minute);
-  if (!group) return;
-  const rows = (group.rows || []).map((row) => ({...row, currentAmount: currentFlowAmount(row, minute)}));
-  const view = state.flowView[groupName];
-  const filtered = addDistinctFlowLabels(rows
-    .filter((row) => view === "inflow" ? row.currentAmount > 0 : row.currentAmount < 0)
-    .sort(compareFlowRank)
-    .slice(0, 10));
-  const maximum = stableFlowMaximum(group, view);
-  const viewChanged = state.flowRenderedView[groupName] !== view;
-  const renderVersion = ++state.flowRenderVersion[groupName];
-  state.flowRenderedView[groupName] = view;
-  syncFlowTabs(groupName);
-  state.flowCharts[groupName]?.render(group, {minute, view, maximum});
-  let head = target.querySelector(".flow-head");
-  if (!head) {
-    head = el("div", "flow-head");
-    ["排名", "板块", "资金金额", "资金长度", "日K"].forEach((text, index) => {
-      const column = el("span", "", text);
-      if (index === 2) column.dataset.flowAmountHead = "";
-      head.append(column);
-    });
-    target.prepend(head);
-  }
-  head.querySelector("[data-flow-amount-head]").textContent = view === "inflow" ? "净流入↓" : "净流出↓";
-  if (viewChanged) {
-    target.querySelectorAll(".flow-row, .empty-state").forEach((node) => node.remove());
-    target.scrollTop = 0;
-  }
-  target.querySelector(".empty-state")?.remove();
-  const existing = new Map([...target.querySelectorAll(".flow-row")].map((line) => [line.dataset.flowKey, line]));
+function ensureFlowSection(target, view) {
+  let section = target.querySelector(`[data-flow-section="${view}"]`);
+  if (section) return section;
+  section = el("section", `flow-rank-section ${view}`);
+  section.dataset.flowSection = view;
+  const title = el("div", "flow-section-title");
+  title.append(
+    el("span", "", view === "inflow" ? "净流入前十" : "净流出前十"),
+    el("span", "flow-section-count", "0/10"),
+  );
+  const head = el("div", "flow-head");
+  ["排名", "板块", view === "inflow" ? "净流入↓" : "净流出↓", "资金长度", "日K"].forEach((text) => {
+    head.append(el("span", "", text));
+  });
+  section.append(title, head, el("div", "flow-rows"));
+  target.append(section);
+  return section;
+}
+
+function renderFlowSection(groupName, target, view, rows, maximum, renderVersion) {
+  const section = ensureFlowSection(target, view);
+  const rowsTarget = section.querySelector(".flow-rows");
+  section.querySelector(".flow-section-count").textContent = `${rows.length}/10`;
+  rowsTarget.querySelector(".empty-state")?.remove();
+  const existing = new Map([...rowsTarget.querySelectorAll(".flow-row")].map((line) => [line.dataset.flowKey, line]));
   const activeKeys = new Set();
-  filtered.forEach((row, index) => {
+  rows.forEach((row, index) => {
     const key = flowRowKey(row) || `${groupName}-${view}-${index}`;
     let line = existing.get(key);
     const isNew = !line;
@@ -582,9 +562,9 @@ function renderFlow(groupName, minute) {
       line.append(el("span", "flow-rank"), el("span", "flow-name"), el("span", "flow-value"), track, localKButton);
     }
     activeKeys.add(key);
-    line.dataset.flowView = view;
+    line.dataset.flowDirection = view;
     const rankAmount = Math.abs(row.currentAmount);
-    line.classList.toggle("outflow", row.currentAmount < 0);
+    line.classList.toggle("outflow", view === "outflow");
     line.dataset.flowRankAmount = rankAmount.toFixed(4);
     line.querySelector(".flow-rank").textContent = String(index + 1);
     const name = line.querySelector(".flow-name");
@@ -592,7 +572,7 @@ function renderFlow(groupName, minute) {
     name.title = row.tdxName && row.tdxName !== row.name ? `${row.tdxName} / 原：${row.name}` : row.name || "";
     const value = line.querySelector(".flow-value");
     value.className = `flow-value ${valueClass(row.currentAmount)}`;
-    value.textContent = `${rankAmount.toFixed(2)}亿`;
+    value.textContent = `${view === "inflow" ? "+" : "-"}${rankAmount.toFixed(2)}亿`;
     value.title = `${view === "inflow" ? "净流入" : "净流出"}${rankAmount.toFixed(2)}亿元，按金额从高到低排列`;
     const track = line.querySelector(".flow-bar-track");
     const bar = track.querySelector(".flow-bar");
@@ -606,7 +586,7 @@ function renderFlow(groupName, minute) {
     if (isNew) {
       bar.style.width = "0%";
       requestAnimationFrame(() => {
-        if (state.flowRenderVersion[groupName] === renderVersion && bar.isConnected && line.dataset.flowView === view) {
+        if (state.flowRenderVersion[groupName] === renderVersion && bar.isConnected && line.dataset.flowDirection === view) {
           bar.style.width = targetWidth;
         }
       });
@@ -629,10 +609,35 @@ function renderFlow(groupName, minute) {
     link.title = hasTarget
       ? `自动检索当前设备的股票软件并打开${localName || localCode}日K`
       : "该板块缺少可搜索名称";
-    target.append(line);
+    rowsTarget.append(line);
   });
   existing.forEach((line, key) => { if (!activeKeys.has(key)) line.remove(); });
-  if (!filtered.length) target.append(el("div", "empty-state", "当前方向尚未形成可展示的板块。"));
+  if (!rows.length) rowsTarget.append(el("div", "empty-state", "当前方向尚未形成可展示的板块。"));
+}
+
+function renderFlow(groupName, minute) {
+  const target = groupName === "industry" ? dom.industryFlow : dom.conceptFlow;
+  const group = flowGroupAtMinute(groupName, minute);
+  if (!group) return;
+  const rows = (group.rows || []).map((row) => ({...row, currentAmount: currentFlowAmount(row, minute)}));
+  const inflowRows = addDistinctFlowLabels(rows
+    .filter((row) => row.currentAmount > 0)
+    .sort(compareFlowRank)
+    .slice(0, 10));
+  const outflowRows = addDistinctFlowLabels(rows
+    .filter((row) => row.currentAmount < 0)
+    .sort(compareFlowRank)
+    .slice(0, 10));
+  const inflowMaximum = stableFlowMaximum(group, "inflow");
+  const outflowMaximum = stableFlowMaximum(group, "outflow");
+  const renderVersion = ++state.flowRenderVersion[groupName];
+  state.flowCharts[groupName]?.render(group, {
+    minute,
+    view: "both",
+    maximum: Math.max(inflowMaximum, outflowMaximum),
+  });
+  renderFlowSection(groupName, target, "inflow", inflowRows, inflowMaximum, renderVersion);
+  renderFlowSection(groupName, target, "outflow", outflowRows, outflowMaximum, renderVersion);
 }
 
 function scoreDetails(row) {
@@ -862,17 +867,6 @@ function setupInteractions() {
           button.textContent = oldText;
         }, 1800);
       }
-    });
-  });
-  document.querySelectorAll("[data-flow-tabs]").forEach((tabs) => {
-    tabs.addEventListener("click", (event) => {
-      const button = event.target.closest("button[data-flow-view]");
-      if (!button) return;
-      const group = tabs.dataset.flowTabs;
-      const nextView = button.dataset.flowView === "outflow" ? "outflow" : "inflow";
-      if (!state.flowView[group] || state.flowView[group] !== nextView) state.flowView[group] = nextView;
-      syncFlowTabs(group);
-      renderFlow(group, Number(dom.timeline.value));
     });
   });
   dom.marketStructure.addEventListener("click", (event) => {

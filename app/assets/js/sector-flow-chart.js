@@ -6,8 +6,8 @@ const VIEWBOX_HEIGHT = 116;
 const PLOT = Object.freeze({left: 42, right: 8, top: 8, bottom: 20});
 const SERIES_LIMIT = 10;
 const SERIES_COLORS = Object.freeze({
-  inflow: Object.freeze(["#d62728", "#ff7f0e", "#9467bd", "#1f77b4", "#2ca02c", "#8c564b", "#e13b9b", "#5f6368", "#7a8400", "#0099b5"]),
-  outflow: Object.freeze(["#178f5f", "#1f77b4", "#ff7f0e", "#9467bd", "#d62728", "#0099b5", "#8c564b", "#c23b8a", "#6f7f00", "#5f6368"]),
+  inflow: Object.freeze(["#d32f2f", "#ff6f00", "#ad1457", "#e53935", "#f4511e", "#c2185b", "#ff8f00", "#b71c1c", "#ec407a", "#bf360c"]),
+  outflow: Object.freeze(["#00875a", "#00796b", "#00838f", "#1565c0", "#2e7d32", "#00acc1", "#00695c", "#3949ab", "#43a047", "#0277bd"]),
 });
 const SERIES_DASHES = Object.freeze(["none", "8 2", "2 1.4", "8 2 2 2", "5 1.5", "1.2 1.5", "10 2", "5 1 1 1", "3 2", "12 3"]);
 
@@ -78,13 +78,21 @@ function seriesKey(row) {
   return String(row?.code || row?.tdxCode || row?.name || "").trim();
 }
 
-function chooseRows(group, view, minute) {
-  return withDistinctNames((group?.rows || [])
+function chooseDirectionRows(group, direction, minute) {
+  return (group?.rows || [])
     .map((row) => ({row, currentAmount: valueAt(row, minute)}))
-    .filter((item) => item.currentAmount !== null && (view === "inflow" ? item.currentAmount > 0 : item.currentAmount < 0))
+    .filter((item) => item.currentAmount !== null && (direction === "inflow" ? item.currentAmount > 0 : item.currentAmount < 0))
     .sort((a, b) => Math.abs(b.currentAmount) - Math.abs(a.currentAmount)
       || String(a.row?.name || "").localeCompare(String(b.row?.name || ""), "zh-CN"))
-    .slice(0, SERIES_LIMIT));
+    .slice(0, SERIES_LIMIT)
+    .map((item, directionIndex) => ({...item, direction, directionIndex}));
+}
+
+function chooseRows(group, view, minute) {
+  const rows = view === "both"
+    ? [...chooseDirectionRows(group, "inflow", minute), ...chooseDirectionRows(group, "outflow", minute)]
+    : chooseDirectionRows(group, view, minute);
+  return withDistinctNames(rows);
 }
 
 function createBase(container) {
@@ -96,12 +104,12 @@ function createBase(container) {
   scale.className = "sector-flow-scale";
   scale.setAttribute("role", "group");
   scale.setAttribute("aria-label", "资金曲线刻度");
-  [["absolute", "金额"], ["relative", "相对"]].forEach(([value, label]) => {
+  [["absolute", "金额"], ["relative", "百分比"]].forEach(([value, label]) => {
     const button = document.createElement("button");
     button.type = "button";
     button.dataset.flowScale = value;
     button.textContent = label;
-    button.title = value === "absolute" ? "按统一资金金额刻度比较" : "按各板块自身区间归一化比较走势";
+    button.title = value === "absolute" ? "按统一资金金额刻度比较" : "按各板块自身区间百分比比较走势";
     scale.append(button);
   });
   header.append(status, source, scale);
@@ -137,10 +145,14 @@ function addAxis(svg, maximum, view, minute, scaleMode) {
     const y = PLOT.top + height * ratio;
     svg.append(svgElement("line", {class: "sector-flow-grid", x1: PLOT.left, x2: VIEWBOX_WIDTH - PLOT.right, y1: y, y2: y}));
     const label = svgElement("text", {class: "sector-flow-axis-label", x: PLOT.left - 5, y: y + 3, "text-anchor": "end"});
-    const magnitude = (scaleMode === "relative" ? 100 : maximum) * (1 - ratio);
-    label.textContent = scaleMode === "relative"
-      ? `${magnitude.toFixed(0)}%`
-      : `${view === "outflow" && magnitude ? "-" : ""}${magnitude.toFixed(maximum < 10 ? 1 : 0)}`;
+    const range = scaleMode === "relative" ? 100 : maximum;
+    const magnitude = view === "both" ? range * (1 - ratio * 2) : range * (1 - ratio);
+    if (scaleMode === "relative") {
+      label.textContent = `${magnitude > 0 ? "+" : ""}${magnitude.toFixed(0)}%`;
+    } else {
+      const signedMagnitude = view === "outflow" ? -magnitude : magnitude;
+      label.textContent = `${signedMagnitude > 0 && view === "both" ? "+" : ""}${signedMagnitude.toFixed(maximum < 10 ? 1 : 0)}`;
+    }
     svg.append(label);
   });
   [[0, "09:30"], [120, "11:30/13:00"], [240, "15:00"]].forEach(([tickMinute, labelText]) => {
@@ -157,7 +169,7 @@ function addAxis(svg, maximum, view, minute, scaleMode) {
 function drawSeries(svg, selectedRows, maximum, minute, view, scaleMode) {
   const width = VIEWBOX_WIDTH - PLOT.left - PLOT.right;
   const height = VIEWBOX_HEIGHT - PLOT.top - PLOT.bottom;
-  selectedRows.forEach(({row}, index) => {
+  selectedRows.forEach(({row, direction, directionIndex}, index) => {
     const points = visibleSeriesPoints(row, minute);
     if (!points.length) return;
     const seriesMaximum = scaleMode === "relative"
@@ -165,51 +177,72 @@ function drawSeries(svg, selectedRows, maximum, minute, view, scaleMode) {
       : maximum;
     const coordinates = points.map((point) => {
       const x = PLOT.left + width * point.minute / 240;
-      const y = PLOT.top + height * (1 - Math.min(1, Math.abs(point.amount) / seriesMaximum));
+      const normalized = Math.max(-1, Math.min(1, point.amount / seriesMaximum));
+      const y = view === "both"
+        ? PLOT.top + height * (0.5 - normalized / 2)
+        : PLOT.top + height * (1 - Math.min(1, Math.abs(normalized)));
       return {x, y, point};
     });
+    const styleIndex = directionIndex ?? index;
     if (coordinates.length >= 2) {
       const path = svgElement("path", {
-        class: `sector-flow-line ${view} series-${index + 1}`,
+        class: `sector-flow-line ${direction} series-${styleIndex + 1}`,
         d: coordinates.map((item, pointIndex) => `${pointIndex ? "L" : "M"}${item.x.toFixed(2)},${item.y.toFixed(2)}`).join(" "),
       });
       path.dataset.seriesKey = seriesKey(row);
-      styleSeries(path, view, index);
+      styleSeries(path, direction, styleIndex);
       svg.append(path);
     }
     const last = coordinates.at(-1);
     const dot = svgElement("circle", {
-      class: `sector-flow-dot ${view} series-${index + 1}`,
+      class: `sector-flow-dot ${direction} series-${styleIndex + 1}`,
       cx: last.x,
       cy: last.y,
-      r: index < 3 ? 2.5 : 2,
+      r: styleIndex < 3 ? 2.5 : 2,
     });
     dot.dataset.seriesKey = seriesKey(row);
-    styleSeries(dot, view, index);
+    styleSeries(dot, direction, styleIndex);
     svg.append(dot);
   });
 }
 
-function renderLegend(target, selectedRows, view) {
+function renderLegend(target, selectedRows) {
   const fragment = document.createDocumentFragment();
-  selectedRows.forEach(({row, currentAmount, displayName}, index) => {
-    const item = document.createElement("button");
-    item.type = "button";
-    item.className = "sector-flow-legend-item";
-    item.dataset.seriesKey = seriesKey(row);
-    item.setAttribute("aria-pressed", "false");
-    item.title = `突出显示${displayName}曲线`;
-    styleSeries(item, view, index);
-    const swatch = document.createElement("span");
-    swatch.className = `sector-flow-swatch ${view} series-${index + 1}`;
-    styleSeries(swatch, view, index);
-    const name = document.createElement("strong");
-    name.textContent = `${index + 1}. ${displayName}`;
-    name.title = row.tdxName && row.tdxName !== row.name ? `${row.tdxName} / 原：${row.name}` : row.name || "";
-    const amount = document.createElement("span");
-    amount.textContent = formatAmount(currentAmount);
-    item.append(swatch, name, amount);
-    fragment.append(item);
+  ["inflow", "outflow"].forEach((direction) => {
+    const directionRows = selectedRows.filter((item) => item.direction === direction);
+    if (!directionRows.length) return;
+    const group = document.createElement("section");
+    group.className = `sector-flow-legend-group ${direction}`;
+    const heading = document.createElement("div");
+    heading.className = `sector-flow-legend-heading ${direction}`;
+    const headingLabel = document.createElement("span");
+    headingLabel.textContent = direction === "inflow" ? "净流入前十" : "净流出前十";
+    const headingCount = document.createElement("span");
+    headingCount.textContent = `${directionRows.length}/10`;
+    heading.append(headingLabel, headingCount);
+    const list = document.createElement("div");
+    list.className = "sector-flow-legend-list";
+    directionRows.forEach(({row, currentAmount, displayName, directionIndex}) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "sector-flow-legend-item";
+      item.dataset.seriesKey = seriesKey(row);
+      item.setAttribute("aria-pressed", "false");
+      item.title = `突出显示${displayName}曲线`;
+      styleSeries(item, direction, directionIndex);
+      const swatch = document.createElement("span");
+      swatch.className = `sector-flow-swatch ${direction} series-${directionIndex + 1}`;
+      styleSeries(swatch, direction, directionIndex);
+      const name = document.createElement("strong");
+      name.textContent = `${directionIndex + 1}. ${displayName}`;
+      name.title = row.tdxName && row.tdxName !== row.name ? `${row.tdxName} / 原：${row.name}` : row.name || "";
+      const amount = document.createElement("span");
+      amount.textContent = formatAmount(currentAmount);
+      item.append(swatch, name, amount);
+      list.append(item);
+    });
+    group.append(heading, list);
+    fragment.append(group);
   });
   target.replaceChildren(fragment);
 }
@@ -220,12 +253,11 @@ function renderTooltip(target, selectedRows, minute) {
   time.textContent = marketMinuteToTime(minute, true);
   const grid = document.createElement("div");
   grid.className = "sector-flow-tooltip-grid";
-  selectedRows.forEach(({row, displayName}, index) => {
+  selectedRows.forEach(({row, displayName, direction, directionIndex}) => {
     const item = document.createElement("span");
     item.className = "sector-flow-tooltip-item";
     const swatch = document.createElement("i");
-    styleSeries(swatch, "inflow", index);
-    swatch.style.setProperty("--series-color", SERIES_COLORS[valueAt(row, minute) < 0 ? "outflow" : "inflow"][index % SERIES_COLORS.inflow.length]);
+    styleSeries(swatch, direction, directionIndex);
     const name = document.createElement("span");
     name.textContent = displayName;
     const amount = document.createElement("b");
@@ -309,7 +341,7 @@ export function createSectorFlowChart(container) {
 
   function render(group, options = {}) {
     const minute = Math.max(0, Math.min(240, finite(options.minute) ?? 0));
-    const view = options.view === "outflow" ? "outflow" : "inflow";
+    const view = options.view === "both" ? "both" : options.view === "outflow" ? "outflow" : "inflow";
     const maximum = Math.max(1, finite(options.maximum) ?? 1);
     const selectedRows = chooseRows(group, view, minute);
     if (snapshot?.view && snapshot.view !== view) {
@@ -319,10 +351,12 @@ export function createSectorFlowChart(container) {
     snapshot = {group, minute, view, maximum, selectedRows};
     container.dataset.flowView = view;
     container.classList.toggle("outflow", view === "outflow");
+    container.classList.toggle("both", view === "both");
     const drawableCount = selectedRows.filter(({row}) => validPoints(row).length >= 2).length;
     const live = group?.liveSnapshot;
     const displayTime = live?.sourceTime || marketMinuteToTime(minute, Boolean(live));
-    dom.status.textContent = `${displayTime} ${view === "inflow" ? "净流入" : "净流出"}前十${drawableCount ? "轨迹" : "（轨迹补齐中）"}`;
+    const viewLabel = view === "both" ? "流入/流出前十" : `${view === "inflow" ? "净流入" : "净流出"}前十`;
+    dom.status.textContent = `${displayTime} ${viewLabel}${drawableCount ? "轨迹" : "（轨迹补齐中）"}`;
     const verifiedCount = selectedRows.filter(({row}) => row.flowValidated).length;
     dom.source.textContent = live
       ? `逐秒真实快照 · ${live.active ? "跟盘中" : live.marketPhase || "已停止"}`
@@ -331,14 +365,14 @@ export function createSectorFlowChart(container) {
         : drawableCount
           ? `真实采样轨迹 ${drawableCount}/${selectedRows.length}`
           : `真实采样点 ${selectedRows.length}条，正在补齐轨迹`;
-    dom.title.textContent = `${group?.title || "板块"}${view === "inflow" ? "净流入" : "净流出"}前十分时图，时间 ${marketMinuteToTime(minute)}`;
+    dom.title.textContent = `${group?.title || "板块"}${viewLabel}分时图，时间 ${marketMinuteToTime(minute)}`;
     dom.scale.querySelectorAll("button").forEach((button) => {
       button.setAttribute("aria-pressed", String(button.dataset.flowScale === scaleMode));
     });
     dom.svg.replaceChildren(dom.title);
     addAxis(dom.svg, maximum, view, minute, scaleMode);
     drawSeries(dom.svg, selectedRows, maximum, minute, view, scaleMode);
-    renderLegend(dom.legend, selectedRows, view);
+    renderLegend(dom.legend, selectedRows);
     if (lockedSeriesKey && !selectedRows.some(({row}) => seriesKey(row) === lockedSeriesKey)) lockedSeriesKey = "";
     applySeriesHighlight();
     dom.empty.hidden = selectedRows.length > 0;
@@ -347,7 +381,7 @@ export function createSectorFlowChart(container) {
     if (!selectedRows.length) {
       dom.empty.textContent = minute < 1
         ? "09:31 生成首笔官方板块资金数据。"
-        : `截至 ${marketMinuteToTime(minute)}，当前方向尚未形成可展示的板块。`;
+        : `截至 ${marketMinuteToTime(minute)}，当前尚未形成可展示的流入或流出板块。`;
     }
   }
 
