@@ -1,5 +1,10 @@
 const featureSelector = "[data-member-feature]";
 const paymentOrderStorageKey = "a-share-review-payment-order-v1";
+const planDisplay = Object.freeze({
+  month: { amount: "72 元", label: "月付会员 / 30 天" },
+  year: { amount: "699 元", label: "包年会员 / 365 天" },
+  lifetime: { amount: "1599 元", label: "定制永久版 / 永久有效" },
+});
 const state = {
   membership: null,
   config: null,
@@ -51,6 +56,9 @@ function createDialog() {
             </button>
             <button class="membership-plan" type="button" data-member-plan="year" aria-pressed="false">
               <strong>包年会员</strong><span>699 元 / 365 天</span>
+            </button>
+            <button class="membership-plan" type="button" data-member-plan="lifetime" aria-pressed="false">
+              <strong>定制永久版</strong><span>1599 元 / 永久有效</span>
             </button>
           </div>
         </section>
@@ -134,11 +142,11 @@ function renderPlans() {
   state.dialog.querySelectorAll("[data-member-plan]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.memberPlan === state.selectedPlan));
   });
-  const isMonthly = state.selectedPlan === "month";
+  const selected = planDisplay[state.selectedPlan] || planDisplay.month;
   const amount = state.dialog.querySelector("#membershipPayAmount");
   const plan = state.dialog.querySelector("#membershipPayPlan");
-  if (amount) amount.textContent = isMonthly ? "72 元" : "699 元";
-  if (plan) plan.textContent = isMonthly ? "月付会员 / 30 天" : "包年会员 / 365 天";
+  if (amount) amount.textContent = selected.amount;
+  if (plan) plan.textContent = selected.label;
 }
 
 function renderQr(containerId, config, altText) {
@@ -198,6 +206,13 @@ function renderCountdown() {
   const expiry = state.dialog?.querySelector("#membershipExpiry");
   const expiresAt = parseExpiry();
 
+  if (membership?.active && membership.permanent) {
+    if (toolbarLabel) toolbarLabel.textContent = membership.planLabel || "定制永久版";
+    if (countdown) countdown.textContent = "永久有效";
+    if (expiry) expiry.textContent = "绑定当前设备";
+    return;
+  }
+
   if (!membership?.active || !expiresAt) {
     if (toolbarLabel) toolbarLabel.textContent = membership?.active ? membership.planLabel : "开通会员";
     if (countdown) countdown.textContent = "";
@@ -236,7 +251,7 @@ function restartCountdown() {
   window.clearInterval(state.countdownTimer);
   state.countdownTimer = 0;
   renderCountdown();
-  if (state.membership?.active && parseExpiry()) {
+  if (state.membership?.active && !state.membership.permanent && parseExpiry()) {
     state.countdownTimer = window.setInterval(renderCountdown, 1000);
   }
 }
@@ -351,7 +366,7 @@ function restorePaymentOrder() {
     }
     state.paymentOrder = {
       orderId: stored.orderId,
-      plan: stored.plan === "year" ? "year" : "month",
+      plan: planDisplay[stored.plan] ? stored.plan : "month",
       expiresAt: stored.expiresAt,
       pollSeconds: state.config.officialAdapter.pollSeconds || 3,
       qrImageUrl: "",

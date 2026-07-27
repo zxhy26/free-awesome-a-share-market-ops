@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.9.0 - 2026-07-27
+
+- Added a device-bound custom permanent membership plan priced at CNY 1,599.
+- Added explicit permanent-license signing and verification semantics instead of simulating permanence with a distant expiry date.
+- Added permanent membership status rendering and preserved compatibility with existing monthly and annual activation codes.
+- Added an end-to-end unit test covering permanent activation generation, signature verification, and member status.
+
 ## 2.8.0 - 2026-07-27
 
 - Added a timeline-linked Index Contribution section to the main dashboard.

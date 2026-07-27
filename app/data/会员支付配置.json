@@ -2,6 +2,7 @@
   "mode": "manual-qrcode",
   "monthlyPrice": 72,
   "annualPrice": 699,
+  "lifetimePrice": 1599,
   "wechatQr": "assets/payment/微信支付二维码.png",
   "alipayQr": "assets/payment/支付宝支付二维码.png",
   "creatorWechatQr": "assets/payment/创作者微信二维码.png",

@@ -13,6 +13,7 @@ const PAYMENT_ORDER_STATUSES = new Set(["pending", "paid", "closed", "expired", 
 const PLAN_DEFINITIONS = {
   month: { label: "月付会员", days: 30, price: 72 },
   year: { label: "包年会员", days: 365, price: 699 },
+  lifetime: { label: "定制永久版", days: null, price: 1599, permanent: true },
 };
 
 function base64UrlEncode(value) {
@@ -213,14 +214,22 @@ function createMembershipService(options = {}) {
     if (!deviceCode || (!options.ignoreDevice && deviceCode !== getDeviceCode())) {
       return { ok: false, code: "DEVICE_MISMATCH", reason: "激活码与当前电脑不匹配。" };
     }
-    if (!PLAN_DEFINITIONS[payload.plan]) {
+    const planDefinition = PLAN_DEFINITIONS[payload.plan];
+    if (!planDefinition) {
       return { ok: false, code: "PLAN_INVALID", reason: "会员套餐无效。" };
     }
     const issuedAt = parseDate(payload.issuedAt);
     const validFrom = parseDate(payload.validFrom);
-    const expiresAt = parseDate(payload.expiresAt);
     const now = Number.isFinite(options.now) ? options.now : Date.now();
-    if (![issuedAt, validFrom, expiresAt].every(Number.isFinite) || expiresAt <= validFrom) {
+    if (![issuedAt, validFrom].every(Number.isFinite)) {
+      return { ok: false, code: "DATE_INVALID", reason: "激活码有效期无效。" };
+    }
+    const permanent = planDefinition.permanent === true;
+    const expiresAt = permanent ? Number.POSITIVE_INFINITY : parseDate(payload.expiresAt);
+    if (permanent && payload.permanent !== true) {
+      return { ok: false, code: "PERMANENT_FLAG_MISSING", reason: "永久授权标记无效。" };
+    }
+    if (!permanent && (!Number.isFinite(expiresAt) || expiresAt <= validFrom)) {
       return { ok: false, code: "DATE_INVALID", reason: "激活码有效期无效。" };
     }
     if (issuedAt > now + 24 * 60 * 60 * 1000) {
@@ -229,10 +238,10 @@ function createMembershipService(options = {}) {
     if (now < validFrom) {
       return { ok: false, code: "NOT_YET_VALID", reason: `会员将在 ${new Date(validFrom).toLocaleString("zh-CN")} 生效。` };
     }
-    if (now >= expiresAt) {
+    if (!permanent && now >= expiresAt) {
       return { ok: false, code: "EXPIRED", reason: "会员已到期，请续费后输入新的激活码。" };
     }
-    return { ok: true, payload, expiresAt };
+    return { ok: true, payload, expiresAt, permanent };
   }
 
   function memberStatus() {
@@ -295,6 +304,7 @@ function createMembershipService(options = {}) {
         plan: stored.envelope?.payload?.plan || "",
         planLabel: "授权不可用",
         expiresAt: stored.envelope?.payload?.expiresAt || "",
+        permanent: stored.envelope?.payload?.permanent === true,
         remainingDays: 0,
         statusCode: verification.code,
         reason: verification.reason,
@@ -313,9 +323,12 @@ function createMembershipService(options = {}) {
       issuedAt: payload.issuedAt,
       validFrom: payload.validFrom,
       expiresAt: payload.expiresAt,
-      remainingDays: Math.max(1, Math.ceil((verification.expiresAt - Date.now()) / (24 * 60 * 60 * 1000))),
+      permanent: verification.permanent,
+      remainingDays: verification.permanent
+        ? null
+        : Math.max(1, Math.ceil((verification.expiresAt - Date.now()) / (24 * 60 * 60 * 1000))),
       customer: payload.customer || "",
-      reason: "会员授权有效。",
+      reason: verification.permanent ? "永久会员授权有效，仅绑定当前设备。" : "会员授权有效。",
       checkedAt: new Date().toISOString(),
     };
   }
@@ -336,8 +349,7 @@ function createMembershipService(options = {}) {
     const current = readJson(licensePath, null);
     if (current?.envelope) {
       const currentVerification = verifyEnvelope(current.envelope);
-      const currentExpiry = parseDate(current.envelope?.payload?.expiresAt);
-      if (currentVerification.ok && Number.isFinite(currentExpiry) && verification.expiresAt < currentExpiry) {
+      if (currentVerification.ok && verification.expiresAt < currentVerification.expiresAt) {
         throw Object.assign(new Error("新激活码的到期时间早于当前有效授权。"), {
           statusCode: 409,
           code: "OLDER_LICENSE",
@@ -362,20 +374,23 @@ function createMembershipService(options = {}) {
     const deviceCode = normalizeDeviceCode(body.deviceCode);
     if (!deviceCode) throw Object.assign(new Error("请输入有效的 16 位设备码。"), { statusCode: 400 });
     const plan = PLAN_DEFINITIONS[body.plan] ? body.plan : "";
-    if (!plan) throw Object.assign(new Error("请选择月付或包年套餐。"), { statusCode: 400 });
+    if (!plan) throw Object.assign(new Error("请选择月付、包年或定制永久套餐。"), { statusCode: 400 });
 
     const now = Date.now();
+    const planDefinition = PLAN_DEFINITIONS[plan];
+    const permanent = planDefinition.permanent === true;
     const requestedBase = parseDate(body.baseExpiry);
-    const validFrom = Number.isFinite(requestedBase) && requestedBase > now ? requestedBase : now;
-    const expiresAt = validFrom + PLAN_DEFINITIONS[plan].days * 24 * 60 * 60 * 1000;
+    const validFrom = !permanent && Number.isFinite(requestedBase) && requestedBase > now ? requestedBase : now;
+    const expiresAt = permanent ? null : validFrom + planDefinition.days * 24 * 60 * 60 * 1000;
     const payload = {
       v: 1,
       licenseId: crypto.randomBytes(9).toString("hex").toUpperCase(),
       deviceCode,
       plan,
+      permanent,
       issuedAt: new Date(now).toISOString(),
       validFrom: new Date(validFrom).toISOString(),
-      expiresAt: new Date(expiresAt).toISOString(),
+      expiresAt: permanent ? "" : new Date(expiresAt).toISOString(),
       customer: cleanText(body.customer, 80),
       orderNote: cleanText(body.orderNote, 120),
     };
@@ -398,6 +413,7 @@ function createMembershipService(options = {}) {
       issuedAt: payload.issuedAt,
       validFrom: payload.validFrom,
       expiresAt: payload.expiresAt,
+      permanent,
       customer: payload.customer,
       orderNote: payload.orderNote,
       activationCode,
@@ -528,7 +544,7 @@ function createMembershipService(options = {}) {
       throw Object.assign(new Error("自用版无需购买会员。"), { statusCode: 400, code: "SELF_EDITION" });
     }
     const plan = PLAN_DEFINITIONS[body.plan] ? body.plan : "";
-    if (!plan) throw Object.assign(new Error("请选择月付或包年套餐。"), { statusCode: 400 });
+    if (!plan) throw Object.assign(new Error("请选择月付、包年或定制永久套餐。"), { statusCode: 400 });
     const current = memberStatus();
     const requestId = crypto.randomBytes(12).toString("hex").toUpperCase();
     const result = await requestPaymentAdapter("orders", {
@@ -539,6 +555,7 @@ function createMembershipService(options = {}) {
         plan,
         amount: PLAN_DEFINITIONS[plan].price,
         days: PLAN_DEFINITIONS[plan].days,
+        permanent: PLAN_DEFINITIONS[plan].permanent === true,
         currentExpiresAt: current.active ? current.expiresAt : "",
         edition: "member",
       }),

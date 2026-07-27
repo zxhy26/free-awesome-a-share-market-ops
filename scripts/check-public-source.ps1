@@ -57,7 +57,7 @@ foreach ($MutationPath in @("/refresh", "/policy-refresh", "/next-week-events-re
 }
 
 $Config = Get-Content -LiteralPath $PaymentConfig -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($Config.monthlyPrice -ne 72 -or $Config.annualPrice -ne 699) {
+if ($Config.monthlyPrice -ne 72 -or $Config.annualPrice -ne 699 -or $Config.lifetimePrice -ne 1599) {
   throw "Runtime configuration does not match the expected release baseline."
 }
 
