@@ -3,7 +3,7 @@ const paymentOrderStorageKey = "a-share-review-payment-order-v1";
 const planDisplay = Object.freeze({
   month: { amount: "72 元", label: "月付会员 / 30 天" },
   year: { amount: "699 元", label: "包年会员 / 365 天" },
-  lifetime: { amount: "1599 元", label: "定制永久版 / 永久有效" },
+  lifetime: { amount: "1599 元", label: "定制永久版" },
 });
 const state = {
   membership: null,
