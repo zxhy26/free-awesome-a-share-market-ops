@@ -121,8 +121,26 @@ function boardTimelineHealth(group, expectedMinute) {
     const tolerance = expectedMinute >= 238 ? Math.max(1, Math.abs(amount) * .015) : Math.max(5, Math.abs(amount) * .08);
     return Math.abs(amount - lastAmount) <= tolerance;
   });
+  const reconciliation = group?.flowReconciliation && typeof group.flowReconciliation === "object"
+    ? group.flowReconciliation
+    : {};
+  const reconciliationChecked = Math.max(0, Number(reconciliation.checked) || 0);
+  const reconciliationCorrected = Math.max(0, Number(reconciliation.corrected) || 0);
+  const reconciliationMatchedAfter = Math.max(0, Number(reconciliation.matchedAfter) || 0);
   const coverage = rows.length ? ((current.length + early.length + rankingMatches.length) / (rows.length * 3)) * 100 : 0;
-  return {rows, withSeries, current, early, validated, rankingMatches, coverage};
+  return {
+    rows,
+    withSeries,
+    current,
+    early,
+    validated,
+    rankingMatches,
+    reconciliation,
+    reconciliationChecked,
+    reconciliationCorrected,
+    reconciliationMatchedAfter,
+    coverage,
+  };
 }
 
 function buildUnifiedRegime(data) {
@@ -616,9 +634,30 @@ function buildHealth(data, archiveCount = 0) {
       tradeDate: data.sectors?.tradeDate,
       syncedAt: data.sectors?.syncedAt,
       sources: timeline.rows.flatMap((row) => [row.flowSource, ...(row.points || []).map((point) => point.source)]),
-      sample: {rowCount: timeline.rows.length, realSeries: timeline.withSeries.length, fromOpen: timeline.early.length, current: timeline.current.length, rankingMatched: timeline.rankingMatches.length, latestTime: minuteText(currentMinute)},
-      checks: [{status: timeline.validated.length >= 6 ? "ok" : "warning", detail: `官方分钟序列验证${timeline.validated.length}个，排名末值核对${timeline.rankingMatches.length}个`}],
-      warnings: timeline.rows.length < 20 ? [`仅展示${timeline.rows.length}/20个资金方向`] : [],
+      sample: {
+        rowCount: timeline.rows.length,
+        realSeries: timeline.withSeries.length,
+        fromOpen: timeline.early.length,
+        current: timeline.current.length,
+        rankingMatched: timeline.rankingMatches.length,
+        reconciliationChecked: timeline.reconciliationChecked,
+        autoCorrected: timeline.reconciliationCorrected,
+        reconciliationMatchedAfter: timeline.reconciliationMatchedAfter,
+        latestTime: minuteText(currentMinute),
+      },
+      checks: [{
+        status: timeline.validated.length >= 6 && timeline.reconciliationMatchedAfter >= timeline.rows.length ? "ok" : "warning",
+        detail: `官方分钟序列验证${timeline.validated.length}个，排名末值核对${timeline.rankingMatches.length}个，自动修正${timeline.reconciliationCorrected}个当前点`,
+      }],
+      warnings: [
+        ...(timeline.rows.length < 20 ? [`仅展示${timeline.rows.length}/20个资金方向`] : []),
+        ...(timeline.reconciliationChecked < timeline.rows.length
+          ? [`${timeline.rows.length - timeline.reconciliationChecked}个方向尚未完成自动纠偏核对`]
+          : []),
+        ...(timeline.reconciliationMatchedAfter < timeline.reconciliationChecked
+          ? [`${timeline.reconciliationChecked - timeline.reconciliationMatchedAfter}个方向自动纠偏后仍不一致`]
+          : []),
+      ],
     }));
   }
 
@@ -679,7 +718,20 @@ function buildHealth(data, archiveCount = 0) {
   for (const key of ["industry", "concept"]) {
     const timeline = boardTimelineHealth(data.sectors?.[key], currentMinute);
     const status = timeline.rankingMatches.length >= Math.min(10, timeline.rows.length) ? "ok" : "warning";
-    crossChecks.push(crossCheckResult(`flow-${key}`, key === "industry" ? "行业分钟末值与排名" : "概念分钟末值与排名", status, `${timeline.rankingMatches.length}/${timeline.rows.length}个方向通过末值容差核对`, {matched: timeline.rankingMatches.length, total: timeline.rows.length}));
+    crossChecks.push(crossCheckResult(
+      `flow-${key}`,
+      key === "industry" ? "行业分钟末值与排名" : "概念分钟末值与排名",
+      status,
+      `${timeline.rankingMatches.length}/${timeline.rows.length}个方向通过末值核对，已自动修正${timeline.reconciliationCorrected}个当前点`,
+      {
+        matched: timeline.rankingMatches.length,
+        total: timeline.rows.length,
+        reconciliationChecked: timeline.reconciliationChecked,
+        autoCorrected: timeline.reconciliationCorrected,
+        matchedAfter: timeline.reconciliationMatchedAfter,
+        policy: timeline.reconciliation?.policy || "",
+      },
+    ));
   }
 
   const errorCount = modules.filter((item) => item.status === "error").length + crossChecks.filter((item) => item.status === "error").length;

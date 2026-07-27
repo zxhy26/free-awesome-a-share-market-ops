@@ -8,6 +8,7 @@ const { TextDecoder } = require("util");
 const { exportOptimizedAppData } = require("./导出复盘应用数据");
 const { enhanceAppData } = require("./升级数据层");
 const { buildSnapshotOnlyIndex } = require("./market-data-contract");
+const { reconcileBoardFlowGroups } = require("./板块资金自动纠偏");
 
 const PORTABLE_ROOT = path.resolve(
   process.env.A_SHARE_REVIEW_PORTABLE_ROOT || path.join(__dirname, "..", "..", "..")
@@ -4595,11 +4596,12 @@ function latestTradeMinuteFromIndex(index) {
 }
 
 function emptyFlowSeriesCache() {
-  return { version: 2, tradeDate: "", groups: { industry: {}, concept: {} } };
+  return { version: 3, tradeDate: "", groups: { industry: {}, concept: {} } };
 }
 
 function normalizeFlowSeriesCache(cache) {
   const normalized = cache && typeof cache === "object" ? cache : emptyFlowSeriesCache();
+  normalized.version = Math.max(3, Number(normalized.version) || 0);
   normalized.groups = normalized.groups || {};
   normalized.groups.industry = normalized.groups.industry || {};
   normalized.groups.concept = normalized.groups.concept || {};
@@ -4792,13 +4794,16 @@ function fillFlowPointsForDisplay(points, currentAmount, currentChangePct, sampl
     if (next.minute <= targetMinute) map.set(next.minute, next);
   }
   if (Number.isFinite(Number(currentAmount))) {
-    map.set(targetMinute, normalizeFlowPoint({
-      minute: targetMinute,
-      amount: currentAmount,
-      changePct: currentChangePct,
-      syncedAt,
-      source: "eastmoney-board-ranking",
-    }));
+    const existing = map.get(targetMinute);
+    if (!existing || Math.abs(Number(existing.amount) - Number(currentAmount)) > 0.005) {
+      map.set(targetMinute, normalizeFlowPoint({
+        minute: targetMinute,
+        amount: currentAmount,
+        changePct: currentChangePct,
+        syncedAt,
+        source: "eastmoney-board-ranking",
+      }));
+    }
   }
   return [...map.values()].sort((a, b) => a.minute - b.minute);
 }
@@ -4857,16 +4862,25 @@ function validateBoardFlowTimeline(data, row, tradeDate, sampleMinute, syncedAt)
     throw new Error(`${code} 分钟资金只到 ${latest.time}，指数已到 ${minuteToTime(targetMinute)}`);
   }
   const currentAmount = Number(row?.amount);
+  const endpointCheck = {
+    checked: false,
+    matched: false,
+    rankingAmount: Number.isFinite(currentAmount) ? round2(currentAmount) : null,
+    minuteAmount: round2(latest.amount),
+    difference: null,
+    tolerance: null,
+  };
   if (Number.isFinite(currentAmount) && latest.minute >= targetMinute - 3) {
     const difference = Math.abs(latest.amount - currentAmount);
     const tolerance = targetMinute >= 238
       ? Math.max(1, Math.abs(currentAmount) * 0.015)
       : Math.max(5, Math.abs(currentAmount) * 0.08);
-    if (difference > tolerance) {
-      throw new Error(`${code} 分钟末值 ${latest.amount} 亿与排名值 ${currentAmount} 亿不一致`);
-    }
+    endpointCheck.checked = true;
+    endpointCheck.matched = difference <= tolerance;
+    endpointCheck.difference = round2(difference);
+    endpointCheck.tolerance = round2(tolerance);
   }
-  return points;
+  return { points, endpointCheck };
 }
 
 async function fetchBoardFlowTimeline(row, tradeDate, sampleMinute, syncedAt) {
@@ -4880,12 +4894,14 @@ async function fetchBoardFlowTimeline(row, tradeDate, sampleMinute, syncedAt) {
   });
   const url = `https://${EASTMONEY_PUSH2_HOST}/api/qt/stock/fflow/kline/get?${params}`;
   const json = await fetchEastmoneyBoardMinuteJson(url);
-  const points = validateBoardFlowTimeline(json.data, row, tradeDate, sampleMinute, syncedAt);
+  const validation = validateBoardFlowTimeline(json.data, row, tradeDate, sampleMinute, syncedAt);
+  const points = validation.points;
   return {
     code: String(row.code),
     name: String(json.data?.name || row.name || row.code),
     points,
     latestMinute: points.at(-1)?.minute ?? 0,
+    endpointCheck: validation.endpointCheck,
   };
 }
 
@@ -4946,6 +4962,7 @@ async function backfillBoardFlowTimelines(cache, tradeDate, sampleMinute, synced
       entry.timelineFetchedAtMs = nowMs;
       entry.timelineFetchedAt = syncedAt;
       entry.officialLatestMinute = result.timeline.latestMinute;
+      entry.timelineEndpointCheck = result.timeline.endpointCheck;
       delete entry.timelineError;
       updated += 1;
     } else {
@@ -4995,6 +5012,7 @@ function attachFlowSeriesToGroup(group, groupKey, cache) {
     flowTimelineCount: timelineCount,
     flowSource: timelineCount ? "东方财富官方板块分钟资金" : "东方财富板块实时排名",
     flowUpdatedAt: cache.timelineStats?.updatedAt || cache.updatedAt || syncedAt,
+    flowReconciliation: cache.reconciliationStats?.[groupKey] || null,
   };
 }
 
@@ -5025,16 +5043,24 @@ async function updateBoardFlowSeries(tradeDate, sampleMinute, syncedAt, groups) 
   const cache = readFlowSeriesCache();
   if (cache.tradeDate !== tradeDate) {
     archiveFlowSeriesCache(cache);
-    cache.version = 2;
+    cache.version = 3;
     cache.tradeDate = tradeDate;
     cache.groups = { industry: {}, concept: {} };
   }
-  cache.version = 2;
+  cache.version = 3;
   cache.updatedAt = syncedAt;
   cache.sampleMinute = sampleMinute;
   updateFlowSeriesGroup(cache, "industry", groups.industry?.rows || [], sampleMinute, syncedAt);
   updateFlowSeriesGroup(cache, "concept", groups.concept?.rows || [], sampleMinute, syncedAt);
   await backfillBoardFlowTimelines(cache, tradeDate, sampleMinute, syncedAt, groups);
+  const reconciliation = reconcileBoardFlowGroups(cache, groups, sampleMinute, syncedAt);
+  const corrected = Number(reconciliation.industry?.corrected || 0) + Number(reconciliation.concept?.corrected || 0);
+  const checked = Number(reconciliation.industry?.checked || 0) + Number(reconciliation.concept?.checked || 0);
+  if (corrected) {
+    log(`板块资金自动纠偏：核对 ${checked} 个方向，修正 ${corrected} 个当前真实采样点；历史分钟点未改写。`);
+  } else if (checked) {
+    log(`板块资金自动纠偏：核对 ${checked} 个方向，当前末值均与实时排名一致。`);
+  }
   writeFlowSeriesCache(cache);
   if (sampleMinute >= 238 || sampleMinute % 5 === 0) archiveFlowSeriesCache(cache);
   return cache;
@@ -5052,7 +5078,7 @@ function buildMarketData(index, industry, concept, market, syncedAt = nowText(),
     syncedAt,
     sourceNote:
       `数据来源：东方财富公开行情接口和板块资金备用接口；同步时间 ${syncedAt}。` +
-      "主要指数、二级行业、概念板块为同一轮刷新结果；主要指数优先使用真实分钟分时，分钟接口不可用时只展示同日当前真实快照点，不使用昨收到快照的合成走势；板块资金展示净流入前 10 与净流出前 10，流入前三和流出前三使用东方财富官方板块分钟资金序列，并以实时排名末值复核，其他板块按后台每轮真实同步样本更新；指数线标签只在真实分时形成经反向波动确认的关键高低拐点时生成，标记落在实际拐点、确认后才显示，并从同期二级行业中选择累计净额方向与反转一致且资金行为最强的板块；每张图最多 9 个标签、同一板块最多 2 个，红色只表示该板块确认时累计净流入，绿色只表示累计净流出，标签金额为确认时累计值；标签按出现时间持续保留，只作资金行为归因，不等同于成分股精确权重贡献；相邻真实样本只做线性显示，不反向填充未知数据；开盘后实时更新，午休停在 11:30，收盘停在 15:00。前台保留通达信880板块代码，并同时携带原始板块名称供当前设备的其他股票软件检索；市场强度统计包含涨停/跌停专题、沪深成交额、昨日涨停延续性和昨日炸板修复力度。",
+      "主要指数、二级行业、概念板块为同一轮刷新结果；主要指数优先使用真实分钟分时，分钟接口不可用时只展示同日当前真实快照点，不使用昨收到快照的合成走势；板块资金展示净流入前 10 与净流出前 10，行业和概念板块优先使用东方财富官方分钟资金序列，并以同轮实时排名末值逐项复核；分钟接口暂不可用时保留此前已验证轨迹并追加当前排名真实点，发现差异会自动修正当前真实采样点并重新排序，不改写此前分钟历史；指数线标签只在真实分时形成经反向波动确认的关键高低拐点时生成，标记落在实际拐点、确认后才显示，并从同期二级行业中选择累计净额方向与反转一致且资金行为最强的板块；每张图最多 9 个标签、同一板块最多 2 个，红色只表示该板块确认时累计净流入，绿色只表示累计净流出，标签金额为确认时累计值；标签按出现时间持续保留，只作资金行为归因，不等同于成分股精确权重贡献；相邻真实样本只做线性显示，不反向填充未知数据；开盘后实时更新，午休停在 11:30，收盘停在 15:00。前台保留通达信880板块代码，并同时携带原始板块名称供当前设备的其他股票软件检索；市场强度统计包含涨停/跌停专题、沪深成交额、昨日涨停延续性和昨日炸板修复力度。",
   };
 }
 
@@ -6864,7 +6890,7 @@ function runQuantSelfTest() {
     throw new Error("板块分钟资金自检失败：跨版本真实序列未合并，或覆盖了当前末值");
   }
   const attributionSourceNote = buildMarketData({}, {}, {}, {}, "自检").sourceNote;
-  if (!attributionSourceNote.includes("官方板块分钟资金序列") || !attributionSourceNote.includes("关键高低拐点") || !attributionSourceNote.includes("确认后才显示") || !attributionSourceNote.includes("红色只表示该板块确认时累计净流入") || !attributionSourceNote.includes("绿色只表示累计净流出")) {
+  if (!attributionSourceNote.includes("官方分钟资金序列") || !attributionSourceNote.includes("自动修正当前真实采样点") || !attributionSourceNote.includes("不改写此前分钟历史") || !attributionSourceNote.includes("关键高低拐点") || !attributionSourceNote.includes("确认后才显示") || !attributionSourceNote.includes("红色只表示该板块确认时累计净流入") || !attributionSourceNote.includes("绿色只表示累计净流出")) {
     throw new Error("指数归因自检失败：拐点确认或板块标签颜色口径不完整");
   }
   const baseMetrics = {

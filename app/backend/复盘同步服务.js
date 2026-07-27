@@ -9,7 +9,7 @@ const { derivativesPublicationState, mergeHealthModule } = require("./health-sem
 
 const PORT = Number(process.env.A_SHARE_REVIEW_PORT) || 18765;
 const HOST = process.env.A_SHARE_REVIEW_HOST || "127.0.0.1";
-const SERVICE_VERSION = "3.7.1";
+const SERVICE_VERSION = "3.8.0";
 const ALLOW_REMOTE = process.env.A_SHARE_REVIEW_ALLOW_REMOTE === "1";
 const TEST_MODE = process.env.A_SHARE_REVIEW_TEST_MODE === "1";
 const DISABLE_SCHEDULES = process.env.A_SHARE_REVIEW_DISABLE_SCHEDULES === "1";
@@ -125,10 +125,26 @@ function flowDataStatus() {
       const validatedRows = rows.filter((row) => row?.flowValidated && Array.isArray(row?.points) && row.points.length >= 2).length;
       const inflowMultiPointRows = rows.filter((row) => Number(row?.amount) > 0 && Array.isArray(row?.points) && row.points.length >= 2).length;
       const outflowMultiPointRows = rows.filter((row) => Number(row?.amount) < 0 && Array.isArray(row?.points) && row.points.length >= 2).length;
-      status.groups[groupKey] = {rows: rows.length, multiPointRows, validatedRows, inflowMultiPointRows, outflowMultiPointRows};
+      const reconciliation = data?.[groupKey]?.flowReconciliation || {};
+      const reconciliationChecked = Math.max(0, Number(reconciliation.checked) || 0);
+      const autoCorrected = Math.max(0, Number(reconciliation.corrected) || 0);
+      const matchedAfter = Math.max(0, Number(reconciliation.matchedAfter) || 0);
+      status.groups[groupKey] = {
+        rows: rows.length,
+        multiPointRows,
+        validatedRows,
+        inflowMultiPointRows,
+        outflowMultiPointRows,
+        reconciliationChecked,
+        autoCorrected,
+        matchedAfter,
+      };
     }
     status.complete = ["industry", "concept"].every((groupKey) =>
-      status.groups[groupKey]?.inflowMultiPointRows >= 10 && status.groups[groupKey]?.outflowMultiPointRows >= 10
+      status.groups[groupKey]?.inflowMultiPointRows >= 10
+      && status.groups[groupKey]?.outflowMultiPointRows >= 10
+      && status.groups[groupKey]?.reconciliationChecked >= status.groups[groupKey]?.rows
+      && status.groups[groupKey]?.matchedAfter >= status.groups[groupKey]?.rows
     );
   } catch (error) {
     status.parseError = error.message;

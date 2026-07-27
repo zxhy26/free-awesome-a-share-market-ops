@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.10.0 - 2026-07-27
+
+- Added automatic reconciliation for secondary-industry and concept-sector capital flows after every refresh.
+- Corrected only the latest real ranking sample when the official minute-series endpoint differs, without rewriting earlier intraday history.
+- Added correction counts and before/after audit details to the local flow cache and data-health report.
+- Added startup integrity repair when a sector dataset has not completed reconciliation.
+
 ## 2.9.0 - 2026-07-27
 
 - Added a device-bound custom permanent membership plan priced at CNY 1,599.
