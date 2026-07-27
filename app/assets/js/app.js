@@ -5,7 +5,7 @@ import {createSummaryDialog} from "./dialog.js";
 import {initializePwa} from "./pwa.js?v=20260719-2";
 import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260719-2";
 import {initializeTheme} from "./theme.js";
-import {inTradingWindow} from "./market-session.js?v=20260727-3";
+import {inTradingWindow} from "./market-session.js?v=20260727-4";
 
 const dom = {
   tradeDate: document.querySelector("#tradeDate"),

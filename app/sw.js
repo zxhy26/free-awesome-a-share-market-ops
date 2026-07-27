@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v64-live-sector-second";
+const CACHE_VERSION = "a-share-review-v65-shanghai-live-clock";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [

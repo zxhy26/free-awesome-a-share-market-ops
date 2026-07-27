@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.12.1 - 2026-07-27
+
+- Fixed trading-session detection to always use Asia/Shanghai time regardless of the device or CI runner time zone.
+- Preserved exact lunch and close boundaries for users running the application outside China.
+
 ## 2.12.0 - 2026-07-27
 
 - Added atomic one-second official-source snapshots for secondary-industry and concept-sector capital flows.

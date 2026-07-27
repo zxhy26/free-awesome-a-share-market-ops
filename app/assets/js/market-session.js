@@ -1,5 +1,27 @@
 export const SESSION_MINUTES = 240;
 
+const SHANGHAI_CLOCK = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Shanghai",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
+
+function shanghaiClockParts(now = new Date()) {
+  const values = {};
+  for (const part of SHANGHAI_CLOCK.formatToParts(now)) {
+    if (part.type !== "literal") values[part.type] = Number(part.value);
+  }
+  return {
+    ...values,
+    weekDay: new Date(Date.UTC(values.year, values.month - 1, values.day)).getUTCDay(),
+  };
+}
+
 export function clampMarketMinute(value) {
   const number = Number(value);
   return Math.max(0, Math.min(SESSION_MINUTES, Number.isFinite(number) ? number : 0));
@@ -17,17 +39,19 @@ export function marketMinuteToTime(minute, includeSeconds = false) {
 }
 
 export function inTradingWindow(now = new Date()) {
-  const day = now.getDay();
-  if (day === 0 || day === 6) return false;
-  const second = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+  const parts = shanghaiClockParts(now);
+  if (parts.weekDay === 0 || parts.weekDay === 6) return false;
+  const second = parts.hour * 3600 + parts.minute * 60 + parts.second;
   return (second >= 570 * 60 && second <= 690 * 60)
     || (second >= 780 * 60 && second <= 900 * 60);
 }
 
 export function marketPhase(tradeDate, minute, now = new Date()) {
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const parts = shanghaiClockParts(now);
+  const today = `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
   if (tradeDate && tradeDate !== today) return "已收盘";
-  const daySecond = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+  if (parts.weekDay === 0 || parts.weekDay === 6) return "已收盘";
+  const daySecond = parts.hour * 3600 + parts.minute * 60 + parts.second;
   if (daySecond < 570 * 60) return "盘前";
   if (daySecond <= 690 * 60) return "交易中";
   if (daySecond < 780 * 60) return "午间休市";
