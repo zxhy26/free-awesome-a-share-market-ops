@@ -1,17 +1,18 @@
-import {getHealth, loadCoreData, logTechnicalError, openTdxStock, requestMarketSync} from "./api.js?v=20260719-2";
+import {getHealth, loadCoreData, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260727-3";
 import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNumber, formatPercent, formatYi, signed, summarizeMoneyEffect, valueClass} from "./analysis.js?v=20260726-1";
 import {createIndexCharts, createPlaybackController, marketMinuteToTime, selectSectorAttributions, updateIndexCharts, visiblePoints} from "./charts.js?v=20260727-1";
 import {createSummaryDialog} from "./dialog.js";
 import {initializePwa} from "./pwa.js?v=20260719-2";
 import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260719-2";
 import {initializeTheme} from "./theme.js";
-import {inTradingWindow} from "./market-session.js";
+import {inTradingWindow} from "./market-session.js?v=20260727-3";
 
 const dom = {
   tradeDate: document.querySelector("#tradeDate"),
   marketState: document.querySelector("#marketState"),
   lastSync: document.querySelector("#lastSync"),
   syncAge: document.querySelector("#syncAge"),
+  liveFlowStatus: document.querySelector("#liveFlowStatus"),
   syncButton: document.querySelector("#syncButton"),
   reloadButton: document.querySelector("#reloadButton"),
   noticeBar: document.querySelector("#noticeBar"),
@@ -64,6 +65,10 @@ const state = {
   contributionTabsSignature: "",
   autoReloadTimer: 0,
   liveRefreshRunning: false,
+  liveFlowTimer: 0,
+  liveFlowRequestRunning: false,
+  liveFlowSnapshot: null,
+  liveFlowGroups: {industry: null, concept: null},
   summaryText: "",
 };
 
@@ -240,9 +245,186 @@ function currentFlowAmount(row, minute) {
   return selectedAmount + (nextAmount - selectedAmount) * ratio;
 }
 
+function liveRowKey(row) {
+  const code = String(row?.code || row?.tdxCode || "").trim().toUpperCase();
+  return code || String(row?.name || row?.tdxName || "").trim();
+}
+
+function liveTradeDateMatches(snapshot) {
+  const coreTradeDate = state.data?.sectors?.tradeDate || state.data?.market?.tradeDate || state.data?.market?.market?.tradeDate || "";
+  return Boolean(snapshot?.tradeDate && coreTradeDate && snapshot.tradeDate === coreTradeDate);
+}
+
+function livePointForRow(row, snapshot, previousPoint = null) {
+  return {
+    minute: finiteNumber(snapshot?.marketMinute) ?? finiteNumber(previousPoint?.minute) ?? 0,
+    time: snapshot?.sourceTime || marketMinuteToTime(snapshot?.marketMinute || 0, true),
+    amount: finiteNumber(row?.amount),
+    changePct: finiteNumber(row?.changePct),
+    source: "eastmoney-live-board-ranking",
+    sampledAt: snapshot?.fetchedAt || "",
+    sourceTimestamp: snapshot?.sourceTimestamp || null,
+  };
+}
+
+function mergeLiveFlowGroup(groupName, snapshot) {
+  const baseGroup = state.data?.sectors?.[groupName];
+  const liveGroup = snapshot?.groups?.[groupName];
+  if (!baseGroup || !Array.isArray(liveGroup?.rows)) return null;
+  const baseRows = Array.isArray(baseGroup.rows) ? baseGroup.rows : [];
+  const liveByKey = new Map(liveGroup.rows.map((row) => [liveRowKey(row), row]).filter(([key]) => key));
+  const mergedRows = [];
+  const usedKeys = new Set();
+
+  for (const baseRow of baseRows) {
+    const key = liveRowKey(baseRow);
+    const liveRow = liveByKey.get(key);
+    if (!liveRow) {
+      mergedRows.push(baseRow);
+      continue;
+    }
+    usedKeys.add(key);
+    const points = Array.isArray(baseRow.points) ? baseRow.points : [];
+    const livePoint = livePointForRow(liveRow, snapshot, points.at(-1));
+    mergedRows.push({
+      ...baseRow,
+      amount: liveRow.amount,
+      changePct: liveRow.changePct,
+      liveValidated: true,
+      liveSampledAt: snapshot.fetchedAt,
+      liveSourceTime: snapshot.sourceTime,
+      points: [...points, livePoint],
+    });
+  }
+
+  for (const liveRow of liveGroup.rows) {
+    const key = liveRowKey(liveRow);
+    if (!key || usedKeys.has(key)) continue;
+    mergedRows.push({
+      ...liveRow,
+      tdxName: liveRow.name,
+      liveValidated: true,
+      liveSampledAt: snapshot.fetchedAt,
+      liveSourceTime: snapshot.sourceTime,
+      points: [livePointForRow(liveRow, snapshot)],
+    });
+  }
+
+  return {
+    ...baseGroup,
+    rows: mergedRows,
+    flowSampleMinute: snapshot.marketMinute,
+    scaleOwner: baseGroup,
+    liveSnapshot: {
+      sequence: snapshot.sequence,
+      source: snapshot.source,
+      sourceTime: snapshot.sourceTime,
+      sourceLatencyMs: snapshot.sourceLatencyMs,
+      fetchedAt: snapshot.fetchedAt,
+      active: snapshot.active,
+      marketPhase: snapshot.marketPhase,
+    },
+  };
+}
+
+function applyLiveIndexQuotes(snapshot) {
+  const indices = state.data?.indices?.items || [];
+  const quotes = Array.isArray(snapshot?.indices) ? snapshot.indices : [];
+  const quoteByKey = new Map();
+  quotes.forEach((quote) => {
+    quoteByKey.set(String(quote.key || ""), quote);
+    quoteByKey.set(String(quote.code || ""), quote);
+  });
+  for (const index of indices) {
+    const quote = quoteByKey.get(String(index.key || "")) || quoteByKey.get(String(index.code || ""));
+    if (!quote || finiteNumber(quote.price) === null) continue;
+    const points = (Array.isArray(index.points) ? index.points : []).filter((point) => point?.source !== "tencent-live-index-quote");
+    const previous = [...points].reverse().find((point) => (finiteNumber(point.minute) ?? -1) <= quote.minute) || points.at(-1) || {};
+    index.points = [...points, {
+      ...previous,
+      minute: quote.minute,
+      time: marketMinuteToTime(quote.minute, true),
+      dateTime: `${snapshot.tradeDate} ${marketMinuteToTime(quote.minute, true)}`,
+      price: quote.price,
+      amount: finiteNumber(quote.amount) ?? finiteNumber(previous.amount),
+      source: "tencent-live-index-quote",
+      sampledAt: snapshot.fetchedAt,
+    }].sort((left, right) => (finiteNumber(left.minute) ?? 0) - (finiteNumber(right.minute) ?? 0));
+  }
+}
+
+function updateLiveFlowStatus(snapshot, error = null) {
+  if (!dom.liveFlowStatus) return;
+  if (error) {
+    dom.liveFlowStatus.dataset.state = state.liveFlowSnapshot ? "stale" : "error";
+    dom.liveFlowStatus.textContent = state.liveFlowSnapshot
+      ? `逐秒资金暂缓 · 保留 ${state.liveFlowSnapshot.sourceTime || "--"}`
+      : "逐秒资金连接失败";
+    dom.liveFlowStatus.title = error.message || String(error);
+    return;
+  }
+  if (!snapshot) {
+    dom.liveFlowStatus.dataset.state = "connecting";
+    dom.liveFlowStatus.textContent = "逐秒资金连接中";
+    return;
+  }
+  const latencySeconds = Math.max(0, Number(snapshot.sourceLatencyMs) || 0) / 1000;
+  if (snapshot.active) {
+    const stale = snapshot.consecutiveErrors > 0 || latencySeconds > 8;
+    dom.liveFlowStatus.dataset.state = stale ? "stale" : "live";
+    dom.liveFlowStatus.textContent = stale
+      ? `逐秒资金延迟 · ${snapshot.sourceTime || "--"}`
+      : `逐秒资金 ${snapshot.sourceTime || "--"} · ${latencySeconds.toFixed(1)}秒`;
+  } else {
+    dom.liveFlowStatus.dataset.state = "stopped";
+    dom.liveFlowStatus.textContent = `${snapshot.marketPhase || "休市"} · ${snapshot.sourceTime || "--"}已冻结`;
+  }
+  dom.liveFlowStatus.title = `${snapshot.source || "实时资金源"}；${snapshot.methodology || "只显示真实快照"}；行业/概念同轮采集完成时差 ${Number(snapshot.groupTimestampSkewMs || 0)} 毫秒`;
+}
+
+function applyLiveFlowSnapshot(snapshot, options = {}) {
+  if (!snapshot?.ok || !state.data) return false;
+  state.liveFlowSnapshot = snapshot;
+  updateLiveFlowStatus(snapshot);
+  if (!liveTradeDateMatches(snapshot)) {
+    state.liveFlowGroups = {industry: null, concept: null};
+    dom.liveFlowStatus.dataset.state = "stale";
+    dom.liveFlowStatus.textContent = `逐秒资金 ${snapshot.tradeDate || "--"} · 等待同日基础数据`;
+    return false;
+  }
+  state.liveFlowGroups.industry = mergeLiveFlowGroup("industry", snapshot);
+  state.liveFlowGroups.concept = mergeLiveFlowGroup("concept", snapshot);
+  applyLiveIndexQuotes(snapshot);
+
+  const previousMaximum = Number(dom.timeline.max) || 0;
+  const previousValue = Number(dom.timeline.value) || 0;
+  const wasFollowingLive = previousValue >= previousMaximum - 0.05;
+  const liveMinute = Math.max(0, Math.min(240, finiteNumber(snapshot.marketMinute) ?? previousMaximum));
+  const nextMaximum = Math.max(previousMaximum, liveMinute);
+  dom.timeline.max = String(nextMaximum);
+  dom.timelineEnd.textContent = marketMinuteToTime(nextMaximum);
+  if (options.forceFollow || wasFollowingLive) dom.timeline.value = liveMinute.toFixed(3);
+  const displayMinute = Number(dom.timeline.value) || liveMinute;
+  if (state.charts.length) {
+    updateIndexCharts(state.charts, displayMinute);
+    renderIndexContribution(displayMinute);
+  }
+  renderFlow("industry", displayMinute);
+  renderFlow("concept", displayMinute);
+  dom.timelineTime.textContent = marketMinuteToTime(displayMinute, true);
+  return true;
+}
+
+function flowGroupAtMinute(groupName, minute) {
+  const liveGroup = state.liveFlowGroups[groupName];
+  const liveMinute = finiteNumber(state.liveFlowSnapshot?.marketMinute);
+  if (liveGroup && liveMinute !== null && minute >= liveMinute - 0.01) return liveGroup;
+  return state.data?.sectors?.[groupName];
+}
+
 function stableFlowMaximum(group, view) {
-  const cached = flowScaleCache.get(group) || {};
-  if (cached[view]) return cached[view];
+  const cacheOwner = group?.scaleOwner || group;
+  const cached = flowScaleCache.get(cacheOwner) || {};
   let rawMaximum = 0;
   for (const row of group.rows || []) {
     const values = [row.amount, ...(row.points || []).map((point) => point.amount)];
@@ -253,16 +435,16 @@ function stableFlowMaximum(group, view) {
     }
   }
   if (!rawMaximum) {
-    cached[view] = 1;
-    flowScaleCache.set(group, cached);
-    return 1;
+    cached[view] = cached[view] || 1;
+    flowScaleCache.set(cacheOwner, cached);
+    return cached[view];
   }
   const magnitude = 10 ** Math.floor(Math.log10(rawMaximum));
   const step = Math.max(0.01, magnitude / 10);
   const maximum = Math.ceil((rawMaximum * 1.08) / step) * step;
-  cached[view] = maximum;
-  flowScaleCache.set(group, cached);
-  return maximum;
+  cached[view] = Math.max(cached[view] || 0, maximum);
+  flowScaleCache.set(cacheOwner, cached);
+  return cached[view];
 }
 
 function compareFlowRank(a, b) {
@@ -353,7 +535,7 @@ function renderHeaderAndOverview() {
 
 function renderFlow(groupName, minute) {
   const target = groupName === "industry" ? dom.industryFlow : dom.conceptFlow;
-  const group = state.data?.sectors?.[groupName];
+  const group = flowGroupAtMinute(groupName, minute);
   if (!group) return;
   const rows = (group.rows || []).map((row) => ({...row, currentAmount: currentFlowAmount(row, minute)}));
   const view = state.flowView[groupName];
@@ -410,7 +592,7 @@ function renderFlow(groupName, minute) {
     name.title = row.tdxName && row.tdxName !== row.name ? `${row.tdxName} / 原：${row.name}` : row.name || "";
     const value = line.querySelector(".flow-value");
     value.className = `flow-value ${valueClass(row.currentAmount)}`;
-    value.textContent = `${rankAmount.toFixed(1)}亿`;
+    value.textContent = `${rankAmount.toFixed(2)}亿`;
     value.title = `${view === "inflow" ? "净流入" : "净流出"}${rankAmount.toFixed(2)}亿元，按金额从高到低排列`;
     const track = line.querySelector(".flow-bar-track");
     const bar = track.querySelector(".flow-bar");
@@ -621,9 +803,15 @@ async function syncMarket() {
   dom.syncButton.disabled = true;
   dom.syncButton.querySelector("span:last-child").textContent = "正在同步";
   try {
+    try {
+      const liveSnapshot = await requestLiveSectorFlowRefresh();
+      applyLiveFlowSnapshot(liveSnapshot, {forceFollow: true});
+    } catch (error) {
+      logTechnicalError(error, "手动逐秒资金刷新");
+    }
     await requestMarketSync((progress) => showNotice(`${progress.message || "正在同步"}${progress.percent ? ` ${progress.percent}%` : ""}`, "", true));
     await refreshLiveData({force: true, forceFollow: true});
-    showNotice("同步成功，指数与板块资金已更新到同一时间点。", "success");
+    showNotice("同步成功，逐秒资金与完整复盘数据均已更新。", "success");
     dom.syncButton.disabled = false;
     dom.syncButton.querySelector("span:last-child").textContent = "同步市场";
   } catch (error) {
@@ -741,6 +929,9 @@ function applyCoreData(nextData, options = {}) {
     explanation: sharedRegime.text || localAnalysis.explanation,
   } : localAnalysis;
   renderAll();
+  if (state.liveFlowSnapshot) {
+    applyLiveFlowSnapshot(state.liveFlowSnapshot, {forceFollow: options.forceFollow});
+  }
   if (state.playback) state.playback.paint(performance.now(), Number(dom.timeline.value), true);
 }
 
@@ -770,6 +961,46 @@ function scheduleAutoReload() {
   }, 15000);
 }
 
+function clearLiveFlowPolling() {
+  clearTimeout(state.liveFlowTimer);
+  state.liveFlowTimer = 0;
+}
+
+async function refreshLiveFlow(options = {}) {
+  if (state.liveFlowRequestRunning || document.hidden) return false;
+  if (!options.force && !options.allowClosed && !inTradingWindow()) return false;
+  state.liveFlowRequestRunning = true;
+  try {
+    const snapshot = options.force
+      ? await requestLiveSectorFlowRefresh()
+      : await loadLiveSectorFlows();
+    return applyLiveFlowSnapshot(snapshot, {forceFollow: options.forceFollow});
+  } catch (error) {
+    updateLiveFlowStatus(null, error);
+    logTechnicalError(error, "逐秒板块资金");
+    return false;
+  } finally {
+    state.liveFlowRequestRunning = false;
+  }
+}
+
+function scheduleLiveFlowPolling(delayMs = null) {
+  clearLiveFlowPolling();
+  if (document.hidden) return;
+  const delay = delayMs === null ? (inTradingWindow() ? 0 : 5000) : Math.max(0, delayMs);
+  state.liveFlowTimer = window.setTimeout(async () => {
+    state.liveFlowTimer = 0;
+    if (!inTradingWindow()) {
+      scheduleLiveFlowPolling(5000);
+      return;
+    }
+    const startedAt = performance.now();
+    await refreshLiveFlow();
+    const elapsed = performance.now() - startedAt;
+    scheduleLiveFlowPolling(Math.max(50, 1000 - elapsed));
+  }, delay);
+}
+
 async function initialize() {
   setupInteractions();
   try {
@@ -782,12 +1013,27 @@ async function initialize() {
     logTechnicalError(error, "首页加载");
   }
   await checkService();
+  await refreshLiveFlow({allowClosed: true, forceFollow: true});
   scheduleAutoReload();
+  scheduleLiveFlowPolling();
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) scheduleAutoReload();
-  else refreshLiveData({force: true}).finally(scheduleAutoReload);
+  if (document.hidden) {
+    scheduleAutoReload();
+    clearLiveFlowPolling();
+  } else {
+    Promise.all([
+      refreshLiveData({force: true}),
+      refreshLiveFlow({allowClosed: true, forceFollow: true}),
+    ]).finally(() => {
+      scheduleAutoReload();
+      scheduleLiveFlowPolling();
+    });
+  }
 });
-window.addEventListener("pagehide", () => clearTimeout(state.autoReloadTimer), {once: true});
+window.addEventListener("pagehide", () => {
+  clearTimeout(state.autoReloadTimer);
+  clearLiveFlowPolling();
+}, {once: true});
 initialize();

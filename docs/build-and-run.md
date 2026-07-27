@@ -21,6 +21,15 @@ The default URL is:
 http://127.0.0.1:18765/app/
 ```
 
+During A-share trading sessions the dashboard reads the live sector-flow endpoint once per second:
+
+```text
+GET /api/v1/live/sector-flows
+POST /api/v1/live/sector-flows/refresh
+```
+
+The GET route publishes secondary-industry and concept-sector rankings atomically only after both official-source responses pass row-count and source-time validation. The POST route powers the manual synchronization control. Lunch and close freeze the last real snapshot; the service does not extrapolate fund amounts.
+
 Override the port with an environment variable:
 
 ```powershell
@@ -34,12 +43,19 @@ npm start
 npm test
 ```
 
+Run the opt-in real-network live-service integration check when the official sources are reachable:
+
+```powershell
+npm run test:live
+```
+
 The checks verify that:
 
 - Every JavaScript file passes `node --check`
 - No private key is present in the repository
 - Common secret and token patterns are absent
 - Required pages, route mappings, and runtime assets are intact
+- The one-second live-sector-flow route, official amount field, and atomic source-time contract are intact
 
 ## Windows Single-File Launcher
 

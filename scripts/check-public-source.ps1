@@ -13,7 +13,7 @@ $SensitivePattern = 'BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|api[_-]?key\s*[:=]\s*
 $TextFiles = Get-ChildItem -LiteralPath $RepositoryRoot -Recurse -Force -File |
   Where-Object {
     $_.FullName -ne $PSCommandPath -and
-    $_.Extension -in ".js", ".json", ".html", ".css", ".md", ".ps1", ".cs", ".yml", ".yaml", ".txt"
+    $_.Extension -in ".js", ".cjs", ".mjs", ".json", ".html", ".css", ".md", ".ps1", ".cs", ".yml", ".yaml", ".txt"
   }
 
 foreach ($File in $TextFiles) {
@@ -54,6 +54,25 @@ foreach ($MutationPath in @("/refresh", "/policy-refresh", "/next-week-events-re
   if (-not $ServiceSource.Contains($MutationPath)) {
     throw "A required local mutation route is missing: $MutationPath"
   }
+}
+foreach ($LivePath in @("/api/v1/live/sector-flows", "/api/v1/live/sector-flows/refresh")) {
+  if (-not $ServiceSource.Contains($LivePath)) {
+    throw "A required live-sector-flow route is missing: $LivePath"
+  }
+}
+
+$LiveFlowPath = Join-Path $AppRoot "backend\live-sector-flow.js"
+if (-not (Test-Path -LiteralPath $LiveFlowPath -PathType Leaf)) {
+  throw "The one-second live-sector-flow service is missing."
+}
+$LiveFlowSource = Get-Content -LiteralPath $LiveFlowPath -Raw -Encoding UTF8
+foreach ($RequiredFragment in @("LIVE_INTERVAL_MS = 1000", "f62", "MAX_GROUP_TIMESTAMP_SKEW_MS")) {
+  if (-not $LiveFlowSource.Contains($RequiredFragment)) {
+    throw "The live-sector-flow service is missing a required contract: $RequiredFragment"
+  }
+}
+if ($LiveFlowSource.Contains("Math.random")) {
+  throw "The live-sector-flow service must not synthesize values with Math.random."
 }
 
 $Config = Get-Content -LiteralPath $PaymentConfig -Raw -Encoding UTF8 | ConvertFrom-Json

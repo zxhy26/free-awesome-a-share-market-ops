@@ -6,10 +6,11 @@ const { createMembershipService } = require("./会员授权服务");
 const { createStockAnalysisService } = require("./个股分析服务");
 const { applyLocalResponseHeaders, validateLocalRequest } = require("./local-request-security");
 const { derivativesPublicationState, mergeHealthModule } = require("./health-semantics");
+const { createLiveSectorFlowService } = require("./live-sector-flow");
 
 const PORT = Number(process.env.A_SHARE_REVIEW_PORT) || 18765;
 const HOST = process.env.A_SHARE_REVIEW_HOST || "127.0.0.1";
-const SERVICE_VERSION = "3.9.0";
+const SERVICE_VERSION = "3.10.0";
 const ALLOW_REMOTE = process.env.A_SHARE_REVIEW_ALLOW_REMOTE === "1";
 const TEST_MODE = process.env.A_SHARE_REVIEW_TEST_MODE === "1";
 const DISABLE_SCHEDULES = process.env.A_SHARE_REVIEW_DISABLE_SCHEDULES === "1";
@@ -24,7 +25,7 @@ const STRUCTURED_HISTORY_DIR = process.env.A_SHARE_REVIEW_HISTORY_DIR
 const LEGACY_HISTORY_DIR = process.env.A_SHARE_REVIEW_LEGACY_HISTORY_DIR
   || (PORTABLE_ROOT ? path.join(PORTABLE_ROOT, "数据历史", "每日完整数据") : "D:\\ai素材\\A股自动更新\\每日完整数据");
 const PAGE_PATH = PORTABLE_ROOT ? path.join(APP_DIR, "index.html") : "D:\\ai素材\\A股三项同步复盘_最新.html";
-const LOG_PATH = path.join(WORK_DIR, "自动更新日志.txt");
+const LOG_PATH = process.env.A_SHARE_REVIEW_LOG_PATH || path.join(WORK_DIR, "自动更新日志.txt");
 const REFRESH_SCRIPT = path.join(WORK_DIR, "盘中实时更新.ps1");
 const QUANT_SCRIPT = path.join(WORK_DIR, "运行量化选股.ps1");
 const POLICY_SCRIPT = path.join(WORK_DIR, "更新政策新闻.ps1");
@@ -43,6 +44,7 @@ const stockAnalysis = createStockAnalysisService({
   portableRoot: PORTABLE_ROOT || path.resolve(APP_DIR, "..", ".."),
   log,
 });
+const liveSectorFlow = createLiveSectorFlowService({log});
 
 let running = false;
 let lastRunAt = "";
@@ -315,7 +317,10 @@ function log(message) {
 }
 
 function sendJson(res, status, body) {
-  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+  res.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+  });
   res.end(JSON.stringify(body));
 }
 
@@ -1011,8 +1016,40 @@ const server = http.createServer(async (req, res) => {
       appData: appDataStatus(),
       flowData: flowDataStatus(),
       historyCount: listHistoryDates().length,
-      endpoints: ["/api/v1/market/snapshot", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "POST /api/v1/sync", "POST /derivatives-refresh", "POST /next-week-events-refresh"],
+      endpoints: ["/api/v1/market/snapshot", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "POST /api/v1/sync", "POST /derivatives-refresh", "POST /next-week-events-refresh"],
     });
+    return;
+  }
+
+  if (url.pathname === "/api/v1/live/sector-flows" && req.method === "GET") {
+    try {
+      sendJson(res, 200, await liveSectorFlow.getSnapshot({nonBlocking: true}));
+    } catch (error) {
+      sendJson(res, 502, {
+        ok: false,
+        errorCode: "LIVE_SECTOR_FLOW_UNAVAILABLE",
+        message: error.message || "逐秒板块资金暂不可用",
+        service: liveSectorFlow.getState(),
+      });
+    }
+    return;
+  }
+
+  if (url.pathname === "/api/v1/live/sector-flows/refresh") {
+    if (req.method !== "POST") {
+      methodNotAllowed(res);
+      return;
+    }
+    try {
+      sendJson(res, 200, await liveSectorFlow.forceRefresh());
+    } catch (error) {
+      sendJson(res, 502, {
+        ok: false,
+        errorCode: "LIVE_SECTOR_FLOW_REFRESH_FAILED",
+        message: error.message || "逐秒板块资金手动刷新失败",
+        service: liveSectorFlow.getState(),
+      });
+    }
     return;
   }
 
@@ -1070,7 +1107,7 @@ const server = http.createServer(async (req, res) => {
     const health = readJsonFile(path.join(DATA_DIR, "health.json"), {});
     const derivatives = derivativesStatus();
     const mergedHealth = mergeHealthModule(health, derivativesHealthModule(derivatives, new Date(), health.tradeDate));
-    sendJson(res, 200, {...mergedHealth, derivatives, service: apiServiceState()});
+    sendJson(res, 200, {...mergedHealth, derivatives, liveSectorFlow: liveSectorFlow.getState(), service: apiServiceState()});
     return;
   }
 
@@ -1092,7 +1129,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/v1/status" && req.method === "GET") {
-    sendJson(res, 200, {ok: true, ...apiServiceState(), appData: appDataStatus(), policyNews: policyNewsStatus(), nextWeekEvents: nextWeekEventsStatus(), derivatives: derivativesStatus()});
+    sendJson(res, 200, {ok: true, ...apiServiceState(), appData: appDataStatus(), liveSectorFlow: liveSectorFlow.getState(), policyNews: policyNewsStatus(), nextWeekEvents: nextWeekEventsStatus(), derivatives: derivativesStatus()});
     return;
   }
 
@@ -1115,6 +1152,7 @@ const server = http.createServer(async (req, res) => {
       appUrl: `http://${HOST}:${PORT}/app/`,
       appData: appDataStatus(),
       flowData: flowDataStatus(),
+      liveSectorFlow: liveSectorFlow.getState(),
       policyNewsRunning,
       policyNews: policyNewsStatus(),
       nextWeekEventsRunning,
@@ -1146,6 +1184,7 @@ const server = http.createServer(async (req, res) => {
       page: pageStatus(PAGE_PATH),
       appData: appDataStatus(),
       flowData: flowDataStatus(),
+      liveSectorFlow: liveSectorFlow.getState(),
       derivatives: {
         running: derivativesRunning,
         intervalMs: DERIVATIVES_INTERVAL_MS,
@@ -1244,9 +1283,12 @@ server.on("error", (error) => {
   process.exitCode = 1;
 });
 
+server.on("close", () => liveSectorFlow.stopPolling());
+
 server.listen(PORT, HOST, () => {
   log(`复盘同步服务已启动：http://${HOST}:${PORT}；A股复盘应用：http://${HOST}:${PORT}/app/`);
   if (!TEST_MODE) {
+    liveSectorFlow.startPolling();
     const timer = setTimeout(() => stockAnalysis.warmStockIndex().catch(() => {}), 18000);
     if (typeof timer.unref === "function") timer.unref();
   }

@@ -9,7 +9,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="assets/css/variables.css">
   <link rel="stylesheet" href="assets/css/layout.css?v=20260727-1">
-  <link rel="stylesheet" href="assets/css/components.css?v=20260727-1">
+  <link rel="stylesheet" href="assets/css/components.css?v=20260727-3">
   <link rel="stylesheet" href="assets/css/responsive.css?v=20260727-1">
   <link rel="stylesheet" href="assets/css/membership.css?v=20260727-2">
 </head>
@@ -22,6 +22,7 @@
         <span id="marketState" class="status-label">读取中</span>
         <span id="lastSync">最后同步 --</span>
         <span id="syncAge">--</span>
+        <span id="liveFlowStatus" class="live-flow-status" data-state="connecting">逐秒资金连接中</span>
       </div>
     </div>
     <nav class="toolbar" aria-label="主要操作">
@@ -101,7 +102,7 @@
       <div class="sector-stack">
         <section class="work-panel sector-panel industry-panel" aria-labelledby="industryTitle">
           <div class="panel-heading">
-            <div><h2 id="industryTitle">二级行业资金流</h2><p>分时前十轨迹与前十长度排名</p></div>
+            <div><h2 id="industryTitle">二级行业资金流</h2><p>每秒真实快照、分时前十轨迹与长度排名</p></div>
             <div class="flow-tabs" data-flow-tabs="industry">
               <button type="button" data-flow-view="inflow" aria-pressed="true">流入前十</button>
               <button type="button" data-flow-view="outflow" aria-pressed="false">流出前十</button>
@@ -113,7 +114,7 @@
 
         <section class="work-panel sector-panel concept-panel" aria-labelledby="conceptTitle">
           <div class="panel-heading">
-            <div><h2 id="conceptTitle">概念板块资金流</h2><p>分时前十轨迹与前十长度排名</p></div>
+            <div><h2 id="conceptTitle">概念板块资金流</h2><p>每秒真实快照、分时前十轨迹与长度排名</p></div>
             <div class="flow-tabs" data-flow-tabs="concept">
               <button type="button" data-flow-view="inflow" aria-pressed="true">流入前十</button>
               <button type="button" data-flow-view="outflow" aria-pressed="false">流出前十</button>
@@ -183,6 +184,6 @@
   </div>
 
   <script type="module" src="assets/js/membership.js?v=20260727-2"></script>
-  <script type="module" src="assets/js/app.js?v=20260727-1"></script>
+  <script type="module" src="assets/js/app.js?v=20260727-3"></script>
 </body>
 </html>

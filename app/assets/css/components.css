@@ -25,6 +25,13 @@
 .status-label.realtime { color: var(--gain); border-color: color-mix(in srgb, var(--gain) 45%, var(--border)); }
 .status-label.closed { color: var(--accent); }
 .status-label.stale, .status-label.partial { color: var(--warning); background: var(--warning-soft); }
+.live-flow-status { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+.live-flow-status::before { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: currentColor; content: ""; }
+.live-flow-status[data-state="live"] { color: #078349; }
+.live-flow-status[data-state="connecting"] { color: var(--accent); }
+.live-flow-status[data-state="stale"] { color: var(--warning); }
+.live-flow-status[data-state="error"] { color: var(--loss); }
+.live-flow-status[data-state="stopped"] { color: var(--muted); }
 
 .notice-bar, .data-alert {
   position: relative;

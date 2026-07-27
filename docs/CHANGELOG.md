@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.12.0 - 2026-07-27
+
+- Added atomic one-second official-source snapshots for secondary-industry and concept-sector capital flows.
+- Preserved manual synchronization while separating the lightweight live channel from the complete review-data refresh.
+- Added source time, fetch latency, source latency, and connection-state indicators to the main dashboard.
+- Stopped live requests immediately after the morning and afternoon closing seconds and prohibited synthetic fund-flow extrapolation.
+- Added one-second refresh, lunch freeze, close freeze, and atomic failure-retention tests.
+
 ## 2.11.0 - 2026-07-27
 
 - Added verified Basic-edition packaging for a complete quantitative stock-selection payload.

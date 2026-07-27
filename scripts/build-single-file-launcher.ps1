@@ -8,7 +8,7 @@
   [ValidateSet("Member", "Basic", "Self")]
   [string]$Edition = "Member",
 
-  [string]$LauncherSource = (Join-Path $PSScriptRoot "..\windows-launcher\single-file-launcher.cs"),
+  [string]$LauncherSource = "",
 
   [string]$CertificateThumbprint = ""
 )
@@ -16,6 +16,9 @@
 $ErrorActionPreference = "Stop"
 $PayloadRoot = [IO.Path]::GetFullPath($PayloadRoot)
 $OutputPath = [IO.Path]::GetFullPath($OutputPath)
+if (-not $LauncherSource) {
+  $LauncherSource = Join-Path $PSScriptRoot "..\windows-launcher\single-file-launcher.cs"
+}
 $LauncherSource = [IO.Path]::GetFullPath($LauncherSource)
 
 foreach ($RequiredPath in @(

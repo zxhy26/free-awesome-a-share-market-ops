@@ -1,6 +1,6 @@
 {
   "name": "free-awesome-a-share-market-ops",
-  "version": "2.11.0",
+  "version": "2.12.0",
   "description": "Free and awesome open-source desktop app for A-share market monitoring and review",
   "license": "AGPL-3.0-only",
   "private": false,
@@ -8,7 +8,8 @@
     "start": "node app/backend/复盘同步服务.js",
     "check:js": "node scripts/check-javascript-syntax.js",
     "check:source": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-public-source.ps1",
-    "test:unit": "node --test tests/backend-security.test.cjs tests/board-flow-reconciliation.test.cjs tests/health-semantics.test.cjs tests/membership-lifetime.test.cjs tests/real-data-contract.test.cjs tests/frontend-market-session.test.mjs",
+    "test:live": "node tests/live-service-integration.cjs",
+    "test:unit": "node --test tests/backend-security.test.cjs tests/board-flow-reconciliation.test.cjs tests/health-semantics.test.cjs tests/live-sector-flow.test.cjs tests/membership-lifetime.test.cjs tests/real-data-contract.test.cjs tests/frontend-market-session.test.mjs",
     "test": "npm run check:js && npm run check:source && npm run test:unit"
   },
   "engines": {

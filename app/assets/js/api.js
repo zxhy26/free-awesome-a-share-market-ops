@@ -104,13 +104,13 @@ export async function fetchJson(url, options = {}) {
     }
     try {
       const data = await response.json();
-      writeDataSnapshot(url, data);
+      if (options.allowSnapshot !== false) writeDataSnapshot(url, data);
       return data;
     } catch (error) {
       throw new AppError(`${options.label || "数据"}格式异常，请重新同步。`, {code: "INVALID_JSON", technical: error.message});
     }
   } catch (error) {
-    const snapshot = readDataSnapshot(url);
+    const snapshot = options.allowSnapshot === false ? null : readDataSnapshot(url);
     if (snapshot !== null) {
       console.info(`[离线快照] ${options.label || "数据"}使用最近一次成功数据。`);
       return snapshot;
@@ -234,6 +234,23 @@ export function loadHistoryDate(date) {
 
 export async function getHealth() {
   return fetchJson(`${SERVICE_ORIGIN}/health`, {label: "本地同步服务", timeoutMs: 5000});
+}
+
+export async function loadLiveSectorFlows() {
+  return fetchJson(`${SERVICE_ORIGIN}/api/v1/live/sector-flows`, {
+    label: "逐秒板块资金",
+    timeoutMs: 12000,
+    allowSnapshot: false,
+  });
+}
+
+export async function requestLiveSectorFlowRefresh() {
+  return fetchJson(`${SERVICE_ORIGIN}/api/v1/live/sector-flows/refresh`, {
+    label: "逐秒板块资金手动刷新",
+    timeoutMs: 15000,
+    method: "POST",
+    allowSnapshot: false,
+  });
 }
 
 export async function getSyncStatus() {

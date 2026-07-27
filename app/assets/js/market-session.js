@@ -19,18 +19,19 @@ export function marketMinuteToTime(minute, includeSeconds = false) {
 export function inTradingWindow(now = new Date()) {
   const day = now.getDay();
   if (day === 0 || day === 6) return false;
-  const minute = now.getHours() * 60 + now.getMinutes();
-  return (minute >= 570 && minute <= 690) || (minute >= 780 && minute <= 900);
+  const second = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+  return (second >= 570 * 60 && second <= 690 * 60)
+    || (second >= 780 * 60 && second <= 900 * 60);
 }
 
 export function marketPhase(tradeDate, minute, now = new Date()) {
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   if (tradeDate && tradeDate !== today) return "已收盘";
-  const dayMinute = now.getHours() * 60 + now.getMinutes();
-  if (dayMinute < 570) return "盘前";
-  if (dayMinute <= 690) return "交易中";
-  if (dayMinute < 780) return "午间休市";
-  if (dayMinute <= 900) return "交易中";
+  const daySecond = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+  if (daySecond < 570 * 60) return "盘前";
+  if (daySecond <= 690 * 60) return "交易中";
+  if (daySecond < 780 * 60) return "午间休市";
+  if (daySecond <= 900 * 60) return "交易中";
   return clampMarketMinute(minute) >= SESSION_MINUTES ? "已收盘" : "收盘补采";
 }
 

@@ -48,7 +48,7 @@ function visibleSeriesPoints(row, minute) {
 function formatAmount(amount) {
   const value = finite(amount);
   if (value === null) return "--";
-  return `${value > 0 ? "+" : ""}${value.toFixed(1)}亿`;
+  return `${value > 0 ? "+" : ""}${value.toFixed(2)}亿`;
 }
 
 function baseName(row) {
@@ -217,7 +217,7 @@ function renderLegend(target, selectedRows, view) {
 function renderTooltip(target, selectedRows, minute) {
   const time = document.createElement("strong");
   time.className = "sector-flow-tooltip-time";
-  time.textContent = marketMinuteToTime(minute);
+  time.textContent = marketMinuteToTime(minute, true);
   const grid = document.createElement("div");
   grid.className = "sector-flow-tooltip-grid";
   selectedRows.forEach(({row, displayName}, index) => {
@@ -320,13 +320,17 @@ export function createSectorFlowChart(container) {
     container.dataset.flowView = view;
     container.classList.toggle("outflow", view === "outflow");
     const drawableCount = selectedRows.filter(({row}) => validPoints(row).length >= 2).length;
-    dom.status.textContent = `${marketMinuteToTime(minute)} ${view === "inflow" ? "净流入" : "净流出"}前十${drawableCount ? "轨迹" : "（轨迹补齐中）"}`;
+    const live = group?.liveSnapshot;
+    const displayTime = live?.sourceTime || marketMinuteToTime(minute, Boolean(live));
+    dom.status.textContent = `${displayTime} ${view === "inflow" ? "净流入" : "净流出"}前十${drawableCount ? "轨迹" : "（轨迹补齐中）"}`;
     const verifiedCount = selectedRows.filter(({row}) => row.flowValidated).length;
-    dom.source.textContent = verifiedCount
-      ? `官方分钟序列 ${verifiedCount}/${selectedRows.length}`
-      : drawableCount
-        ? `真实采样轨迹 ${drawableCount}/${selectedRows.length}`
-        : `真实采样点 ${selectedRows.length}条，正在补齐轨迹`;
+    dom.source.textContent = live
+      ? `逐秒真实快照 · ${live.active ? "跟盘中" : live.marketPhase || "已停止"}`
+      : verifiedCount
+        ? `官方分钟序列 ${verifiedCount}/${selectedRows.length}`
+        : drawableCount
+          ? `真实采样轨迹 ${drawableCount}/${selectedRows.length}`
+          : `真实采样点 ${selectedRows.length}条，正在补齐轨迹`;
     dom.title.textContent = `${group?.title || "板块"}${view === "inflow" ? "净流入" : "净流出"}前十分时图，时间 ${marketMinuteToTime(minute)}`;
     dom.scale.querySelectorAll("button").forEach((button) => {
       button.setAttribute("aria-pressed", String(button.dataset.flowScale === scaleMode));

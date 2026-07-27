@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  inTradingWindow,
   interpolateRealSamples,
   marketMinuteToTime,
 } from "../app/assets/js/market-session.js";
@@ -24,4 +25,11 @@ test("index rendering does not backfill a future snapshot into earlier time", ()
   const points = [{minute: 72, price: 3612.34}];
   assert.deepEqual(visiblePoints(points, 60), []);
   assert.deepEqual(visiblePoints(points, 72), points);
+});
+
+test("live polling stops immediately after lunch and market close", () => {
+  assert.equal(inTradingWindow(new Date("2026-07-27T11:30:00+08:00")), true);
+  assert.equal(inTradingWindow(new Date("2026-07-27T11:30:01+08:00")), false);
+  assert.equal(inTradingWindow(new Date("2026-07-27T15:00:00+08:00")), true);
+  assert.equal(inTradingWindow(new Date("2026-07-27T15:00:01+08:00")), false);
 });
