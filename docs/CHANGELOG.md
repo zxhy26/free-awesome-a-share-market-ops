@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.11.0 - 2026-07-27
+
+- Added verified Basic-edition packaging for a complete quantitative stock-selection payload.
+- Restricted activation-code generation, issuer history, administration assets, and the signing private key to the Self edition.
+- Added explicit Member, Basic, and Self runtime identities plus packaging-time edition-boundary checks.
+- Made launcher extraction reliable when the Windows temporary directory and application runtime directory are on different drives.
+
 ## 2.10.0 - 2026-07-27
 
 - Added automatic reconciliation for secondary-industry and concept-sector capital flows after every refresh.

@@ -54,6 +54,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-single-file-la
   -Edition Member
 ```
 
-Use `NoQuantSelf` or `Self` only with the matching private payload. The script compiles to a temporary directory, verifies payload extraction and SHA256, copies the validated executable to the requested output path, and removes its temporary files. Pass `-CertificateThumbprint` only when a trusted code-signing certificate is installed.
+Use `Basic` or `Self` only with a matching payload. `Basic` requires the quantitative runtime and rejects activation-code administration files or a signing private key. `Self` requires both the quantitative runtime and the private issuer assets. The script compiles to a temporary directory, verifies payload extraction and SHA256, copies the validated executable to the requested output path, and removes its temporary files. Pass `-CertificateThumbprint` only when a trusted code-signing certificate is installed.
 
 The public repository does not contain production private keys, access tokens, or production data-service credentials. Self-built editions should use their own runtime payloads and legally authorized data.

@@ -117,3 +117,46 @@ test("permanent activation is signed, device-bound, and has no expiry countdown"
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("basic edition has quantitative access but cannot issue activation codes", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ashare-membership-basic-"));
+  const previousStateDir = process.env.A_SHARE_REVIEW_MEMBER_DATA_DIR;
+  try {
+    const appDir = path.join(root, "app");
+    const dataDir = path.join(appDir, "data");
+    const keyDir = path.join(appDir, "backend");
+    fs.mkdirSync(dataDir, { recursive: true });
+    fs.mkdirSync(keyDir, { recursive: true });
+    process.env.A_SHARE_REVIEW_MEMBER_DATA_DIR = path.join(root, "state");
+
+    const basic = createMembershipService({ edition: "basic", appDir, dataDir, keyDir });
+    const status = basic.memberStatus();
+    assert.equal(status.edition, "basic");
+    assert.equal(status.active, true);
+    assert.equal(status.plan, "basic");
+    assert.equal(status.planLabel, "基础版");
+    assert.equal(status.canIssueActivation, false);
+    assert.equal(basic.hasAccess(), true);
+
+    const generated = await requestJson(basic, "POST", "/api/v1/membership/admin/generate", {
+      deviceCode: status.deviceCode,
+      plan: "month",
+    });
+    assert.equal(generated.statusCode, 403);
+    assert.match(generated.body.message, /没有激活码签发权限/);
+
+    const history = await requestJson(basic, "GET", "/api/v1/membership/admin/history");
+    assert.equal(history.statusCode, 403);
+    assert.match(history.body.message, /没有管理权限/);
+
+    const payment = await requestJson(basic, "POST", "/api/v1/membership/payment/order", {
+      plan: "month",
+    });
+    assert.equal(payment.statusCode, 400);
+    assert.equal(payment.body.errorCode, "BASIC_EDITION");
+  } finally {
+    if (previousStateDir === undefined) delete process.env.A_SHARE_REVIEW_MEMBER_DATA_DIR;
+    else process.env.A_SHARE_REVIEW_MEMBER_DATA_DIR = previousStateDir;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

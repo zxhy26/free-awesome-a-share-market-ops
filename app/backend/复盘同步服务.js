@@ -9,7 +9,7 @@ const { derivativesPublicationState, mergeHealthModule } = require("./health-sem
 
 const PORT = Number(process.env.A_SHARE_REVIEW_PORT) || 18765;
 const HOST = process.env.A_SHARE_REVIEW_HOST || "127.0.0.1";
-const SERVICE_VERSION = "3.8.0";
+const SERVICE_VERSION = "3.9.0";
 const ALLOW_REMOTE = process.env.A_SHARE_REVIEW_ALLOW_REMOTE === "1";
 const TEST_MODE = process.env.A_SHARE_REVIEW_TEST_MODE === "1";
 const DISABLE_SCHEDULES = process.env.A_SHARE_REVIEW_DISABLE_SCHEDULES === "1";
@@ -31,7 +31,7 @@ const POLICY_SCRIPT = path.join(WORK_DIR, "更新政策新闻.ps1");
 const NEXT_WEEK_EVENTS_SCRIPT = path.join(WORK_DIR, "next-week-events-updater.js");
 const DERIVATIVES_SCRIPT = path.join(WORK_DIR, "更新机构衍生品.ps1");
 const STOCK_APP_SCRIPT = path.join(WORK_DIR, "打开通达信日K.ps1");
-const APP_EDITION = fs.existsSync(path.join(WORK_DIR, "会员私钥.pem")) ? "self" : "member";
+const APP_EDITION = resolveAppEdition();
 const membership = createMembershipService({
   edition: APP_EDITION,
   appDir: APP_DIR,
@@ -87,6 +87,15 @@ function resolveAppDir() {
     "D:\\ai素材\\A股复盘_Windows版",
   ].filter(Boolean);
   return candidates.find((candidate) => fs.existsSync(path.join(candidate, "index.html"))) || candidates.at(-1);
+}
+
+function resolveAppEdition() {
+  const configured = String(process.env.A_SHARE_REVIEW_EDITION || "").trim().toLowerCase();
+  if (["member", "basic", "self"].includes(configured)) return configured;
+  if (fs.existsSync(path.join(WORK_DIR, "会员私钥.pem"))) return "self";
+  const hasQuantRuntime = fs.existsSync(QUANT_SCRIPT)
+    && fs.existsSync(path.join(APP_DIR, "pages", "quant.html"));
+  return hasQuantRuntime ? "basic" : "member";
 }
 
 function appDataStatus() {
@@ -394,6 +403,7 @@ function loadHistory(date) {
 function apiServiceState() {
   return {
     version: SERVICE_VERSION,
+    edition: APP_EDITION,
     running,
     lastRunAt,
     progress: syncProgress,
@@ -997,6 +1007,7 @@ const server = http.createServer(async (req, res) => {
       ok: true,
       apiVersion: "v1",
       serviceVersion: SERVICE_VERSION,
+      edition: APP_EDITION,
       appData: appDataStatus(),
       flowData: flowDataStatus(),
       historyCount: listHistoryDates().length,
@@ -1096,6 +1107,7 @@ const server = http.createServer(async (req, res) => {
     sendJson(res, 200, {
       ok: true,
       version: SERVICE_VERSION,
+      edition: APP_EDITION,
       running,
       lastSyncAt: page.syncedAt || lastRunAt || "",
       progress: syncProgress,
@@ -1117,6 +1129,7 @@ const server = http.createServer(async (req, res) => {
     sendJson(res, 200, {
       ok: true,
       version: SERVICE_VERSION,
+      edition: APP_EDITION,
       running,
       lastRunAt,
       lastResult,

@@ -8,10 +8,10 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
-#if NO_QUANT_SELF_EDITION
-[assembly: AssemblyTitle("Free & Awesome A-Share Market Ops - Personal")]
+#if BASIC_EDITION
+[assembly: AssemblyTitle("Free & Awesome A-Share Market Ops - Basic")]
 [assembly: AssemblyProduct("Free & Awesome A-Share Market Ops")]
-[assembly: AssemblyDescription("Personal A-share market review edition without quantitative stock selection")]
+[assembly: AssemblyDescription("A-share market review edition with quantitative stock selection and no activation-code issuer")]
 #elif SELF_EDITION
 [assembly: AssemblyTitle("Free & Awesome A-Share Market Ops - Personal Pro")]
 [assembly: AssemblyProduct("Free & Awesome A-Share Market Ops")]
@@ -23,23 +23,26 @@ using System.Windows.Forms;
 #endif
 [assembly: AssemblyCompany("Free & Awesome A-Share Market Ops")]
 [assembly: AssemblyCopyright("Copyright 2026")]
-[assembly: AssemblyVersion("2.10.0.0")]
-[assembly: AssemblyFileVersion("2.10.0.0")]
+[assembly: AssemblyVersion("2.11.0.0")]
+[assembly: AssemblyFileVersion("2.11.0.0")]
 
 internal static class Program
 {
-#if NO_QUANT_SELF_EDITION
-    private const string EditionName = "无量化自用版";
-    private const string RuntimeTag = "版本_20260727-2.10.0-无量化自用版";
-    private const string MutexName = "Local\\AshareReviewLauncher_NoQuantSelf_21000";
+#if BASIC_EDITION
+    private const string EditionName = "基础版";
+    private const string EditionCode = "basic";
+    private const string RuntimeTag = "版本_20260727-2.11.0-基础版";
+    private const string MutexName = "Local\\AshareReviewLauncher_Basic_21100";
 #elif SELF_EDITION
     private const string EditionName = "自用版";
-    private const string RuntimeTag = "版本_20260727-2.10.0-自用版";
-    private const string MutexName = "Local\\AshareReviewLauncher_Self_21000";
+    private const string EditionCode = "self";
+    private const string RuntimeTag = "版本_20260727-2.11.0-自用版";
+    private const string MutexName = "Local\\AshareReviewLauncher_Self_21100";
 #else
     private const string EditionName = "会员版";
-    private const string RuntimeTag = "版本_20260727-2.10.0-会员版";
-    private const string MutexName = "Local\\AshareReviewLauncher_Member_21000";
+    private const string EditionCode = "member";
+    private const string RuntimeTag = "版本_20260727-2.11.0-会员版";
+    private const string MutexName = "Local\\AshareReviewLauncher_Member_21100";
 #endif
     private const string PayloadResource = "AshareReviewPayload";
     private const string HashResource = "AshareReviewPayloadHash";
@@ -79,6 +82,7 @@ internal static class Program
                 startInfo.FileName = innerPath;
                 startInfo.WorkingDirectory = runtimeRoot;
                 startInfo.UseShellExecute = true;
+                Environment.SetEnvironmentVariable("A_SHARE_REVIEW_EDITION", EditionCode);
                 Process.Start(startInfo);
             }
             catch (Exception error)
@@ -139,7 +143,7 @@ internal static class Program
         string parent = Path.GetDirectoryName(runtimeRoot);
         if (string.IsNullOrEmpty(parent)) throw new InvalidOperationException("运行目录无效。");
         Directory.CreateDirectory(parent);
-        string temporaryRoot = Path.Combine(Path.GetTempPath(), "AshareExtract-" + Guid.NewGuid().ToString("N"));
+        string temporaryRoot = Path.Combine(parent, ".AshareExtract-" + Guid.NewGuid().ToString("N"));
         string temporaryZip = Path.Combine(Path.GetTempPath(), "AshareReviewPayload-" + Guid.NewGuid().ToString("N") + ".zip");
 
         try

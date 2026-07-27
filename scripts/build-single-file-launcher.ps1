@@ -5,7 +5,7 @@
   [Parameter(Mandatory = $true)]
   [string]$OutputPath,
 
-  [ValidateSet("Member", "NoQuantSelf", "Self")]
+  [ValidateSet("Member", "Basic", "Self")]
   [string]$Edition = "Member",
 
   [string]$LauncherSource = (Join-Path $PSScriptRoot "..\windows-launcher\single-file-launcher.cs"),
@@ -27,6 +27,42 @@ foreach ($RequiredPath in @(
 )) {
   if (-not (Test-Path -LiteralPath $RequiredPath)) {
     throw "构建必需文件不存在：$RequiredPath"
+  }
+}
+
+$PrivateKey = Join-Path $PayloadRoot "程序\应用\backend\会员私钥.pem"
+$AdminPage = Join-Path $PayloadRoot "程序\应用\pages\member-admin.html"
+$AdminScript = Join-Path $PayloadRoot "程序\应用\assets\js\member-admin.js"
+$AdminStyle = Join-Path $PayloadRoot "程序\应用\assets\css\member-admin.css"
+$QuantPage = Join-Path $PayloadRoot "程序\应用\pages\quant.html"
+$QuantScript = Join-Path $PayloadRoot "程序\应用\backend\运行量化选股.ps1"
+
+switch ($Edition) {
+  "Self" {
+    foreach ($RequiredPath in @($PrivateKey, $AdminPage, $AdminScript, $AdminStyle, $QuantPage, $QuantScript)) {
+      if (-not (Test-Path -LiteralPath $RequiredPath)) {
+        throw "自用版载荷缺少必要文件：$RequiredPath"
+      }
+    }
+  }
+  "Basic" {
+    foreach ($RequiredPath in @($QuantPage, $QuantScript)) {
+      if (-not (Test-Path -LiteralPath $RequiredPath)) {
+        throw "基础版载荷缺少量化功能文件：$RequiredPath"
+      }
+    }
+    foreach ($ForbiddenPath in @($PrivateKey, $AdminPage, $AdminScript, $AdminStyle)) {
+      if (Test-Path -LiteralPath $ForbiddenPath) {
+        throw "基础版载荷不得包含激活码签发文件：$ForbiddenPath"
+      }
+    }
+  }
+  default {
+    foreach ($ForbiddenPath in @($PrivateKey, $AdminPage, $AdminScript, $AdminStyle, $QuantPage, $QuantScript)) {
+      if (Test-Path -LiteralPath $ForbiddenPath) {
+        throw "会员版载荷包含不应发布的管理或量化文件：$ForbiddenPath"
+      }
+    }
   }
 }
 
@@ -52,7 +88,7 @@ try {
   [IO.File]::WriteAllText($HashFile, $PayloadHash, [Text.Encoding]::ASCII)
 
   $Define = switch ($Edition) {
-    "NoQuantSelf" { "/define:NO_QUANT_SELF_EDITION" }
+    "Basic" { "/define:BASIC_EDITION" }
     "Self" { "/define:SELF_EDITION" }
     default { $null }
   }

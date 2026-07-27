@@ -119,14 +119,22 @@ function sendJson(res, statusCode, body) {
 }
 
 function createMembershipService(options = {}) {
-  const edition = options.edition === "self" ? "self" : "member";
+  const requestedEdition = String(options.edition || "").trim().toLowerCase();
+  const edition = ["member", "basic", "self"].includes(requestedEdition)
+    ? requestedEdition
+    : "member";
   const appDir = path.resolve(options.appDir || path.join(__dirname, ".."));
   const dataDir = path.resolve(options.dataDir || path.join(appDir, "data"));
   const keyDir = path.resolve(options.keyDir || __dirname);
   const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
+  const editionDirectory = {
+    member: "会员版",
+    basic: "基础版",
+    self: "自用版",
+  }[edition];
   const stateDir = path.resolve(
     process.env.A_SHARE_REVIEW_MEMBER_DATA_DIR
-      || path.join(localAppData, "A股复盘软件运行文件", edition === "self" ? "自用版" : "会员版"),
+      || path.join(localAppData, "A股复盘软件运行文件", editionDirectory),
   );
   const licensePath = path.join(stateDir, "会员授权.json");
   const clockPath = path.join(stateDir, "时间校验.json");
@@ -246,17 +254,21 @@ function createMembershipService(options = {}) {
 
   function memberStatus() {
     const deviceCode = getDeviceCode();
-    if (edition === "self") {
+    if (edition === "self" || edition === "basic") {
+      const isSelf = edition === "self";
       return {
         ok: true,
         edition,
         active: true,
         deviceCode,
-        plan: "self",
-        planLabel: "自用版",
+        plan: isSelf ? "self" : "basic",
+        planLabel: isSelf ? "自用版" : "基础版",
         expiresAt: "",
         remainingDays: null,
-        reason: "自用版全部功能已启用。",
+        canIssueActivation: isSelf,
+        reason: isSelf
+          ? "自用版全部功能及激活码签发权限已启用。"
+          : "基础版全部复盘和量化功能已启用，不含激活码签发权限。",
         checkedAt: new Date().toISOString(),
       };
     }
@@ -338,7 +350,7 @@ function createMembershipService(options = {}) {
   }
 
   function activate(activationCode) {
-    if (edition === "self") return memberStatus();
+    if (edition !== "member") return memberStatus();
     const clock = checkClock();
     if (!clock.ok) throw Object.assign(new Error(clock.reason), { statusCode: 409, code: clock.code });
     const envelope = parseActivationCode(activationCode);
@@ -541,7 +553,10 @@ function createMembershipService(options = {}) {
 
   async function createPaymentOrder(body) {
     if (edition !== "member") {
-      throw Object.assign(new Error("自用版无需购买会员。"), { statusCode: 400, code: "SELF_EDITION" });
+      throw Object.assign(new Error(`${edition === "basic" ? "基础版" : "自用版"}无需购买会员。`), {
+        statusCode: 400,
+        code: edition === "basic" ? "BASIC_EDITION" : "SELF_EDITION",
+      });
     }
     const plan = PLAN_DEFINITIONS[body.plan] ? body.plan : "";
     if (!plan) throw Object.assign(new Error("请选择月付、包年或定制永久套餐。"), { statusCode: 400 });
