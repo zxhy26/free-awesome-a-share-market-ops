@@ -1,10 +1,10 @@
-import {getHealth, loadBoardMinuteFlow, loadCoreData, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260728-3";
+import {getHealth, loadBoardIntradayTrend, loadCoreData, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260728-4";
 import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNumber, formatPercent, formatYi, signed, summarizeMoneyEffect, valueClass} from "./analysis.js?v=20260726-1";
-import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260728-4";
+import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260728-5";
 import {createSummaryDialog} from "./dialog.js";
 import {initializePwa} from "./pwa.js?v=20260719-2";
 import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260727-2";
-import {createCustomSectorWorkspace} from "./custom-sector-workspace.js?v=20260728-4";
+import {createCustomSectorWorkspace} from "./custom-sector-workspace.js?v=20260728-5";
 import {initializeTheme} from "./theme.js";
 import {inTradingWindow} from "./market-session.js?v=20260727-4";
 
@@ -890,7 +890,7 @@ function setupInteractions() {
     addButton: dom.customSectorAdd,
     closeButton: dom.customSectorPickerClose,
     count: dom.customSectorCount,
-    loadTimeline: loadBoardMinuteFlow,
+    loadTimeline: loadBoardIntradayTrend,
     showNotice,
     openDayK: async (selection) => {
       try {

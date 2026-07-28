@@ -189,6 +189,7 @@ async function fetchJson(fetchImpl, url, options = {}) {
 function normalizeBoardRows(diff, definition, options = {}) {
   if (!Array.isArray(diff)) throw new Error(`${definition.title}接口没有返回数组`);
   const fallbackTimestamp = finite(options.sourceTimestamp);
+  const changePctScale = Math.max(1, finite(options.changePctScale) || 1);
   const unique = new Map();
   for (const raw of diff) {
     const code = String(raw?.f12 || "").trim().toUpperCase();
@@ -201,7 +202,7 @@ function normalizeBoardRows(diff, definition, options = {}) {
       name,
       amount: round(amountYuan / 100000000, 4),
       amountYuan: Math.round(amountYuan),
-      changePct: finite(raw?.f3),
+      changePct: finite(raw?.f3) === null ? null : round(finite(raw.f3) / changePctScale, 4),
       sourceTimestamp: timestamp && timestamp > 1000000000
         ? Math.floor(timestamp)
         : fallbackTimestamp && fallbackTimestamp > 1000000000
@@ -226,16 +227,19 @@ async function defaultFetchBoardGroup(definition, options = {}) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const cacheBust = Number(options.nowMs) || Date.now();
   const primaryUrl = "https://data.eastmoney.com/dataapi/bkzj/getbkzj"
-    + `?key=f62&code=${encodeURIComponent(definition.fsCode)}&_=${cacheBust}`;
+    + `?key=${encodeURIComponent("f62,f3")}&code=${encodeURIComponent(definition.fsCode)}&_=${cacheBust}`;
   const fallbackUrl = "https://push2.eastmoney.com/api/qt/clist/get"
     + "?pn=1&pz=500&po=1&np=1&fltt=2&invt=2&fid=f62"
     + `&fs=${encodeURIComponent(definition.fsCode)}`
     + `&fields=f12,f14,f3,f62,f124&_=${cacheBust}`;
   const errors = [];
-  for (const [url, route] of [[primaryUrl, "eastmoney-bkzj"], [fallbackUrl, "eastmoney-push2"]]) {
+  for (const [url, route, changePctScale] of [
+    [primaryUrl, "eastmoney-bkzj", 100],
+    [fallbackUrl, "eastmoney-push2", 1],
+  ]) {
     try {
       const json = await fetchJson(fetchImpl, url, {timeoutMs: options.timeoutMs || DEFAULT_TIMEOUT_MS});
-      const normalized = normalizeBoardRows(json?.data?.diff, definition);
+      const normalized = normalizeBoardRows(json?.data?.diff, definition, {changePctScale});
       const total = finite(json?.data?.total);
       if (total !== null && total > normalized.rows.length) {
         throw new Error(`${definition.title}只返回 ${normalized.rows.length}/${total} 行`);

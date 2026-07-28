@@ -26,23 +26,32 @@ test("custom sector workspace sits between index charts and contribution, with s
   assert.match(indexHtml, /data-custom-sector-filter="concept"/);
 });
 
-test("custom sector workspace persists at most six real industry or concept timelines", () => {
+test("custom sector workspace persists at most six real industry or concept index timelines", () => {
   assert.match(workspaceSource, /MAX_CUSTOM_SECTORS = 6/);
   assert.match(workspaceSource, /a-share-review:custom-sectors:v1/);
-  assert.match(workspaceSource, /eastmoney-live-board-ranking/);
+  assert.match(workspaceSource, /eastmoney-live-board-quote/);
+  assert.match(workspaceSource, /changePct/);
   assert.match(workspaceSource, /最多只能添加六个板块/);
   assert.match(layoutSource, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(appSource, /loadBoardMinuteFlow/);
+  assert.match(appSource, /loadBoardIntradayTrend/);
   assert.match(appSource, /customSectorWorkspace\?\.applyLiveSnapshot/);
-  assert.match(serviceSource, /\/api\/v1\/sector-flow/);
-  assert.match(membershipSource, /\/api\/v1\/sector-flow"\) return "自选板块分时"/);
+  assert.match(serviceSource, /\/api\/v1\/sector-trend/);
+  assert.match(membershipSource, /\/api\/v1\/sector-trend/);
 });
 
 test("index turning-point labels use both industry and concept candidates and persist after confirmation", () => {
   assert.match(appSource, /sectorKind:\s*"industry"/);
   assert.match(appSource, /sectorKind:\s*"concept"/);
   assert.match(chartsSource, /\["industry",\s*"concept"\]/);
-  assert.match(chartsSource, /item\.sectorKind === "concept" \? "题" : "行"/);
+  assert.doesNotMatch(chartsSource, /item\.sectorKind === "concept" \? "题" : "行"/);
+  assert.match(chartsSource, /`\$\{item\.sectorName\} \$\{formatFlowDelta\(item\.flowAmount\)\}`/);
   assert.match(chartsSource, /GENERIC_CONCEPT_PATTERN/);
   assert.match(chartsSource, /确认后持续保留/);
+});
+
+test("desktop index layout is four by two and the right flow column fills the left stack height", () => {
+  assert.match(layoutSource, /\.index-grid[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(layoutSource, /\.index-grid[\s\S]*grid-template-rows:\s*repeat\(2,\s*minmax\(216px,\s*1fr\)\)/);
+  assert.match(layoutSource, /\.sector-stack[\s\S]*height:\s*100%/);
+  assert.match(layoutSource, /\.sector-stack[\s\S]*contain:\s*size/);
 });

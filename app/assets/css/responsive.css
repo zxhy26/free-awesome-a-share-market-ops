@@ -22,10 +22,12 @@
   .contribution-tabs { width: 100%; max-width: none; justify-content: flex-start; }
   .contribution-layout { grid-template-columns: minmax(190px, .55fr) repeat(2, minmax(0, 1fr)); }
   .sector-stack {
+    height: auto;
     max-height: none;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-rows: max-content;
     overflow: visible;
+    contain: none;
   }
   .sector-direction-pair { grid-column: 1 / -1; }
   .index-grid { min-height: 444px; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(216px, 1fr)); }

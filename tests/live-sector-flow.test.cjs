@@ -5,6 +5,7 @@ const {
   GROUP_DEFINITIONS,
   createLiveSectorFlowService,
   marketPhaseAt,
+  normalizeBoardRows,
 } = require("../app/backend/live-sector-flow");
 
 function epochSeconds(text) {
@@ -147,4 +148,16 @@ test("quote timestamps are frozen at lunch and close", () => {
     clampQuoteTimestampToTradingSession(epochSeconds("2026-07-27T16:20:00+08:00")),
     epochSeconds("2026-07-27T15:00:00+08:00"),
   );
+});
+
+test("primary board funding rows publish the same-round percentage in display units", () => {
+  const definition = {...GROUP_DEFINITIONS.industry, minimumRows: 1};
+  const result = normalizeBoardRows([{
+    f12: "BK0475",
+    f14: "银行Ⅱ",
+    f62: 1527127040,
+    f3: 104,
+  }], definition, {changePctScale: 100});
+  assert.equal(result.rows[0].amount, 15.2713);
+  assert.equal(result.rows[0].changePct, 1.04);
 });

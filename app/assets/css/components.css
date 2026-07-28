@@ -69,9 +69,9 @@
 .playback-controls select { height: 30px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--text); padding: 0 6px; font-size: 11px; }
 .playback-controls strong { min-width: 54px; font-size: 11px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
 
-.index-card { position: relative; min-width: 0; grid-column: span 2; padding: 8px 9px 6px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); overflow: hidden; }
-.index-card:nth-child(3n), .index-card:last-child { border-right: 0; }
-.index-card:nth-child(n+7) { grid-column: span 3; border-bottom: 0; }
+.index-card { position: relative; min-width: 0; padding: 8px 9px 6px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); overflow: hidden; }
+.index-card:nth-child(4n) { border-right: 0; }
+.index-card:nth-last-child(-n+4) { border-bottom: 0; }
 .index-card-header { display: flex; align-items: baseline; justify-content: space-between; gap: 5px; }
 .index-card-header strong { font-size: 14px; white-space: nowrap; }
 .index-card-header span { color: var(--muted); font-size: 10px; white-space: nowrap; }

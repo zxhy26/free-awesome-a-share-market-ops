@@ -417,7 +417,7 @@ function renderSectorAttributions(chart, minute, geometry) {
     title.textContent = `${marketMinuteToTime(item.minute)} 指数形成${pivotLabel}，${marketMinuteToTime(item.revealMinute)} ${confirmationLabel}${signed(item.reversalPct, 2, "%")}后确认；${item.sectorKindLabel || "行业"}“${item.sectorName}”截至确认时累计净流入${formatFlowDelta(item.flowAmount)}，拐点确认窗口资金变化${formatFlowDelta(item.flowDelta)}${sectorMove}。归因置信度${item.confidenceLabel || "观察"}（${item.confidence ?? "--"}分）；标记落在实际拐点，确认后持续保留。`;
     const x = geometry.xForMinute(item.minute);
     const y = geometry.yForPrice(item.price);
-    const labelText = `${item.sectorKind === "concept" ? "题" : "行"}·${item.sectorName} ${formatFlowDelta(item.flowAmount)}`;
+    const labelText = `${item.sectorName} ${formatFlowDelta(item.flowAmount)}`;
     const labelMetrics = measureAttributionLabel(chart.attributionLayer, labelText);
     const estimatedWidth = labelMetrics.width;
     const labelHalfHeight = labelMetrics.height / 2;

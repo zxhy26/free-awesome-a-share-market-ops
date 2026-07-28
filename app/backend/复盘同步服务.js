@@ -8,11 +8,12 @@ const { applyLocalResponseHeaders, validateLocalRequest } = require("./local-req
 const { derivativesPublicationState, mergeHealthModule } = require("./health-semantics");
 const { createLiveSectorFlowService } = require("./live-sector-flow");
 const { createBoardMinuteFlowService } = require("./board-minute-flow");
+const { createBoardIntradayService } = require("./board-intraday");
 const { refreshIndexContribution } = require("./index-contribution-online");
 
 const PORT = Number(process.env.A_SHARE_REVIEW_PORT) || 18765;
 const HOST = process.env.A_SHARE_REVIEW_HOST || "127.0.0.1";
-const SERVICE_VERSION = "3.13.0";
+const SERVICE_VERSION = "3.14.0";
 const ALLOW_REMOTE = process.env.A_SHARE_REVIEW_ALLOW_REMOTE === "1";
 const TEST_MODE = process.env.A_SHARE_REVIEW_TEST_MODE === "1";
 const DISABLE_SCHEDULES = process.env.A_SHARE_REVIEW_DISABLE_SCHEDULES === "1";
@@ -55,6 +56,7 @@ const boardMinuteFlow = createBoardMinuteFlowService({
       : "",
   ].filter(Boolean),
 });
+const boardIntraday = createBoardIntradayService();
 
 let running = false;
 let lastRunAt = "";
@@ -1138,7 +1140,7 @@ const server = http.createServer(async (req, res) => {
       appData: appDataStatus(),
       flowData: flowDataStatus(),
       historyCount: listHistoryDates().length,
-      endpoints: ["/api/v1/market/snapshot", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/sector-flow?code=BK0000", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "POST /api/v1/sync", "POST /api/v1/index-contribution/refresh", "POST /derivatives-refresh", "POST /next-week-events-refresh"],
+      endpoints: ["/api/v1/market/snapshot", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/sector-trend?code=BK0000", "/api/v1/sector-flow?code=BK0000", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "POST /api/v1/sync", "POST /api/v1/index-contribution/refresh", "POST /derivatives-refresh", "POST /next-week-events-refresh"],
     });
     return;
   }
@@ -1186,6 +1188,23 @@ const server = http.createServer(async (req, res) => {
         ok: false,
         errorCode: error.code || "BOARD_FLOW_UNAVAILABLE",
         message: error.message || "板块分钟资金暂不可用",
+      });
+    }
+    return;
+  }
+
+  if (url.pathname === "/api/v1/sector-trend" && req.method === "GET") {
+    try {
+      sendJson(res, 200, await boardIntraday.getTimeline(
+        url.searchParams.get("code") || "",
+        url.searchParams.get("name") || "",
+        url.searchParams.get("tradeDate") || "",
+      ));
+    } catch (error) {
+      sendJson(res, error.statusCode || 502, {
+        ok: false,
+        errorCode: error.code || "BOARD_INTRADAY_UNAVAILABLE",
+        message: error.message || "板块指数分时暂不可用",
       });
     }
     return;
