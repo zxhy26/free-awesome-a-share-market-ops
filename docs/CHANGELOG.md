@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.17.3 - 2026-07-28
+
+- Fixed quantitative-only refreshes so completed full-A scans are written to the application data endpoint without requiring a legacy market-page snapshot.
+- Preserved the latest quantitative result during regular market refreshes in Basic and Self editions.
+- Removed stale quantitative data from Member payloads that do not include the quantitative page.
+- Added regression coverage for quantitative export, edition boundaries, and completion reporting.
+
 ## 2.12.1 - 2026-07-27
 
 - Fixed trading-session detection to always use Asia/Shanghai time regardless of the device or CI runner time zone.

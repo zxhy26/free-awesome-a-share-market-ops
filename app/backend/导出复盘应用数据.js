@@ -355,9 +355,35 @@ function compactQuant(data) {
 
 function exportOptimizedAppData(options) {
   const appDir = path.resolve(options.appDir);
-  const marketData = sanitizeLegacyFields(options.marketData || {});
-  if (!marketData.market) throw new Error("导出失败：缺少市场数据");
   const dataDir = path.join(appDir, "data");
+  const quantPath = path.join(dataDir, "quant.json");
+  const quantEnabled = fs.existsSync(path.join(appDir, "pages", "quant.html"));
+  let quantWritten = false;
+  if (quantEnabled && options.quantData) {
+    const quantData = compactQuant(options.quantData);
+    if (quantData) {
+      writeJson(quantPath, quantData);
+      quantWritten = true;
+    }
+  } else if (!quantEnabled && fs.existsSync(quantPath)) {
+    fs.unlinkSync(quantPath);
+  }
+
+  const marketData = sanitizeLegacyFields(options.marketData || {});
+  if (!marketData.market) {
+    if (quantWritten) {
+      return {
+        appDir,
+        tradeDate: options.quantData?.tradeDate || "",
+        validation: null,
+        quantWritten,
+        policyNewsWritten: false,
+        upgrade: null,
+        quantOnly: true,
+      };
+    }
+    throw new Error("导出失败：缺少市场数据");
+  }
   const validation = marketData.validation || validateMarketData(marketData);
   const structure = enrichStructure(options.structure || marketData.marketStructure || marketData.market?.marketStructure);
   const diagnosis = compactDiagnosis(options.diagnosis || diagnosisFromQuant(options.quantData), structure, marketData);
@@ -387,9 +413,6 @@ function exportOptimizedAppData(options) {
     flowAnalysis,
     moneyEffect: moneyEffectSummary(marketData),
   });
-  const quantPath = path.join(dataDir, "quant.json");
-  if (fs.existsSync(quantPath)) fs.unlinkSync(quantPath);
-  const quantWritten = false;
   let policyNewsWritten = false;
   if (options.policyNews && typeof options.policyNews === "object") {
     writeJson(path.join(dataDir, "policy-news.json"), options.policyNews);

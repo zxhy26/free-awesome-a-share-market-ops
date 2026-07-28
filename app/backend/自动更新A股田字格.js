@@ -6638,7 +6638,11 @@ function syncOptimizedDesktopApp(marketData, quantData, policyNews) {
     archiveDir: CONFIG.structuredHistoryDir,
     legacyArchiveDir: CONFIG.dailyArchiveDir,
   });
-  log(`已同步完整优化应用：${appDir}；交易日 ${result.tradeDate}；数据校验 ${result.validation.status}`);
+  if (result.quantOnly) {
+    log(`已同步量化选股数据：${appDir}；交易日 ${result.tradeDate}`);
+  } else {
+    log(`已同步完整优化应用：${appDir}；交易日 ${result.tradeDate}；数据校验 ${result.validation?.status || "未校验"}`);
+  }
   return result;
 }
 
