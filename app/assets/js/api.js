@@ -36,7 +36,7 @@ const API_MODULE_NAMES = {
 };
 
 const DATA_SNAPSHOT_PREFIX = "a-share-review:data:";
-const CORE_DATA_SNAPSHOT_KEY = "a-share-review:core-snapshot:v2";
+const CORE_DATA_SNAPSHOT_KEY = "a-share-review:core-snapshot:v3";
 
 function dataSnapshotKey(url) {
   try {
@@ -140,7 +140,7 @@ async function loadDataModule(key, label, timeoutMs = 5000) {
 export async function loadCoreData() {
   let lastReason = "数据文件尚未形成同一快照";
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    const coreKeys = ["market", "indices", "sectors", "analysis", "config", "indexContribution"];
+    const coreKeys = ["market", "indices", "sectors", "analysis", "config"];
     const entries = await Promise.all(coreKeys.map(async (key) => [key, await loadDataModule(key, `${key} 数据`)]));
     const data = Object.fromEntries(entries);
     const consistency = coreDataConsistency(data);
@@ -216,6 +216,21 @@ export function loadQuantData() {
 
 export function loadDerivativesData() {
   return loadDataModule("derivatives", "机构衍生品", 15000);
+}
+
+export async function loadIndexContributionData() {
+  const options = {
+    label: "指数贡献",
+    timeoutMs: 10000,
+    allowSnapshot: false,
+  };
+  try {
+    return await fetchJson(`${SERVICE_ORIGIN}/api/v1/data/index-contribution`, options);
+  } catch (error) {
+    if (error?.status === 402) throw error;
+    console.info(`[静态数据回退] 指数贡献：${error.message}`);
+  }
+  return fetchJson(DATA_URLS.indexContribution, options);
 }
 
 export function refreshIndexContribution() {

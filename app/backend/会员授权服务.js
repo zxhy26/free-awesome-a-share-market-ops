@@ -688,6 +688,7 @@ function createMembershipService(options = {}) {
       "/app/data/next-week-events.json": "下周大事件",
       "/app/data/derivatives.json": "机构动向",
       "/app/data/history-index.json": "历史回放",
+      "/app/data/index-contribution.json": "指数贡献",
     };
     return features[pathname] || "";
   }
@@ -702,6 +703,7 @@ function createMembershipService(options = {}) {
     if (pathname === "/derivatives-refresh") return "机构动向更新";
     if (pathname === "/api/v1/stocks/search" || pathname === "/api/v1/stocks/analyze") return "个股搜索";
     if (pathname === "/api/v1/sector-flow" || pathname === "/api/v1/sector-trend") return "自选板块分时";
+    if (pathname === "/api/v1/data/index-contribution" || pathname === "/api/v1/index-contribution/refresh") return "指数贡献";
     return "";
   }
 

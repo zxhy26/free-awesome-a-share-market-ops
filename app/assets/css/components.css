@@ -263,6 +263,29 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   cursor: pointer;
 }
 
+.contribution-panel.member-locked .contribution-tabs,
+.contribution-panel.member-locked .contribution-layout {
+  filter: blur(3px);
+  opacity: .22;
+  pointer-events: none;
+  user-select: none;
+}
+.contribution-panel.member-locked::after {
+  position: absolute;
+  z-index: 3;
+  inset: 47px 0 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  color: var(--text-soft);
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+  content: "会员功能 · 开通后查看指数贡献前十";
+  cursor: pointer;
+}
+
 .contribution-heading { align-items: flex-start; }
 .contribution-tabs { max-width: 860px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
 .contribution-tab {

@@ -166,6 +166,7 @@ h3 { font-size: 13px; line-height: 1.3; font-weight: 800; }
 .structure-layout { min-height: 205px; display: grid; grid-template-columns: 1fr 1fr minmax(220px, .9fr); }
 
 .contribution-panel, .structure-panel, .money-panel, .history-panel { margin-top: 10px; }
+.contribution-panel { position: relative; }
 .contribution-layout {
   min-height: 168px;
   display: grid;

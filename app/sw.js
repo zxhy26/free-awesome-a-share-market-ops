@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v74-custom-sector-workspace";
+const CACHE_VERSION = "a-share-review-v75-index-contribution-membership";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [
@@ -66,6 +66,7 @@ const PROTECTED_PATHS = new Set([
   "/app/data/next-week-events.json",
   "/app/data/derivatives.json",
   "/app/data/history-index.json",
+  "/app/data/index-contribution.json",
 ]);
 
 self.addEventListener("install", (event) => {

@@ -1,4 +1,4 @@
-import {getHealth, loadBoardIntradayTrend, loadCoreData, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260728-4";
+import {getHealth, loadBoardIntradayTrend, loadCoreData, loadIndexContributionData, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260728-5";
 import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNumber, formatPercent, formatYi, signed, summarizeMoneyEffect, valueClass} from "./analysis.js?v=20260726-1";
 import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260728-5";
 import {createSummaryDialog} from "./dialog.js";
@@ -84,6 +84,8 @@ const state = {
   liveFlowRequestRunning: false,
   liveFlowSnapshot: null,
   liveFlowGroups: {industry: null, concept: null},
+  membershipActive: false,
+  contributionLoading: false,
   summaryText: "",
 };
 
@@ -219,6 +221,15 @@ function renderIndexContribution(minute) {
     dom.indexContribution.replaceChildren(el("p", "contribution-empty contribution-empty-panel", "暂无可用的A股指数归因数据"));
     return;
   }
+  if (!state.data?.indexContribution) {
+    dom.contributionTabs.replaceChildren();
+    dom.indexContribution.replaceChildren(el(
+      "p",
+      "contribution-empty contribution-empty-panel",
+      state.membershipActive ? "指数贡献数据读取中" : "开通会员后可查看指数贡献前十",
+    ));
+    return;
+  }
   const selectedExists = charts.some((chart, index) => contributionChartKey(chart, index) === state.contributionIndexKey);
   if (!selectedExists) state.contributionIndexKey = contributionChartKey(charts[0], 0);
   renderContributionTabs(charts);
@@ -253,6 +264,29 @@ function renderIndexContribution(minute) {
     contributionColumn("拉动前十", positive, 1, available ? "当前没有正贡献成分股" : "等待公开行情贡献榜"),
     contributionColumn("拖累前十", negative, -1, available ? "当前没有负贡献成分股" : "等待公开行情贡献榜"),
   );
+}
+
+async function refreshIndexContributionData(options = {}) {
+  if (!state.data || state.contributionLoading || (!state.membershipActive && !options.probe)) return false;
+  state.contributionLoading = true;
+  try {
+    const indexContribution = await loadIndexContributionData();
+    state.membershipActive = true;
+    state.data = {...state.data, indexContribution};
+    renderIndexContribution(Number(dom.timeline.value));
+    return true;
+  } catch (error) {
+    if (error?.status === 402) {
+      state.membershipActive = false;
+      state.data = {...state.data, indexContribution: null};
+      renderIndexContribution(Number(dom.timeline.value));
+      return false;
+    }
+    if (!options.silent) logTechnicalError(error, "指数贡献数据");
+    return false;
+  } finally {
+    state.contributionLoading = false;
+  }
 }
 
 function currentFlowAmount(row, minute) {
@@ -998,8 +1032,6 @@ function dataStamp(data) {
     data?.market?.syncedAt || "",
     data?.indices?.syncedAt || "",
     data?.sectors?.syncedAt || "",
-    data?.indexContribution?.fetchedAt || "",
-    data?.indexContribution?.source?.status || "",
   ].join("|");
 }
 
@@ -1007,7 +1039,7 @@ function applyCoreData(nextData, options = {}) {
   const previousMaximum = Number(dom.timeline.max) || 0;
   const previousValue = Number(dom.timeline.value) || 0;
   const wasFollowingLive = !state.data || previousValue >= previousMaximum - 0.05;
-  state.data = nextData;
+  state.data = {...nextData, indexContribution: state.data?.indexContribution || null};
   const latestMinute = latestAshareMinute(nextData?.indices?.items || []);
   dom.timeline.max = String(latestMinute);
   dom.timelineEnd.textContent = marketMinuteToTime(latestMinute);
@@ -1037,6 +1069,7 @@ async function refreshLiveData(options = {}) {
     const nextData = await loadCoreData();
     const changed = options.force || dataStamp(nextData) !== dataStamp(state.data);
     if (changed) applyCoreData(nextData, options);
+    if (state.membershipActive) await refreshIndexContributionData({silent: true});
     return changed;
   } catch (error) {
     if (options.force) showNotice("最新数据读取失败，页面继续保留上一份已验证数据。", "error", true);
@@ -1101,6 +1134,7 @@ async function initialize() {
   try {
     applyCoreData(await loadCoreData(), {forceFollow: true});
     initializePlayback();
+    await refreshIndexContributionData({probe: true, silent: true});
   } catch (error) {
     dom.dataAlert.hidden = false;
     dom.dataAlert.textContent = error.message;
@@ -1112,6 +1146,17 @@ async function initialize() {
   scheduleAutoReload();
   scheduleLiveFlowPolling();
 }
+
+window.addEventListener("a-share-membership-change", (event) => {
+  state.membershipActive = Boolean(event.detail?.active);
+  if (!state.data) return;
+  if (state.membershipActive) {
+    refreshIndexContributionData({silent: true});
+    return;
+  }
+  state.data = {...state.data, indexContribution: null};
+  renderIndexContribution(Number(dom.timeline.value));
+});
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
