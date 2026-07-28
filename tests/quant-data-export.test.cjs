@@ -86,3 +86,66 @@ test("quant-only completion does not read a missing market validation result", (
   assert.match(updaterSource, /if \(result\.quantOnly\)/);
   assert.doesNotMatch(updaterSource, /result\.validation\.status/);
 });
+
+test("incomplete empty scans preserve the previous valid quantitative result", () => {
+  const appDir = createApp({quantEnabled: true});
+  const quantPath = path.join(appDir, "data", "quant.json");
+  fs.writeFileSync(quantPath, JSON.stringify({
+    ...quantFixture(),
+    formalCount: 1,
+  }), "utf8");
+  try {
+    const result = exportOptimizedAppData({
+      appDir,
+      quantData: {
+        ...quantFixture(),
+        scannedCount: 5200,
+        formal: [],
+        dataStats: {
+          evaluatedHistory: 0,
+          missingHistory: 0,
+          insufficientHistory: 5200,
+        },
+      },
+    });
+    const preserved = JSON.parse(fs.readFileSync(quantPath, "utf8"));
+    assert.equal(result.quantOnly, true);
+    assert.equal(result.quantWritten, false);
+    assert.equal(result.quantPreserved, true);
+    assert.equal(preserved.formalCount, 1);
+    assert.equal(preserved.formal[0].code, "000001");
+  } finally {
+    fs.rmSync(appDir, {recursive: true, force: true});
+  }
+});
+
+test("complete scans may publish a legitimate zero-candidate result", () => {
+  const appDir = createApp({quantEnabled: true});
+  const quantPath = path.join(appDir, "data", "quant.json");
+  fs.writeFileSync(quantPath, JSON.stringify({
+    ...quantFixture(),
+    formalCount: 1,
+  }), "utf8");
+  try {
+    const result = exportOptimizedAppData({
+      appDir,
+      quantData: {
+        ...quantFixture(),
+        scannedCount: 5200,
+        formal: [],
+        dataStats: {
+          evaluatedHistory: 5200,
+          missingHistory: 0,
+          insufficientHistory: 0,
+        },
+      },
+    });
+    const published = JSON.parse(fs.readFileSync(quantPath, "utf8"));
+    assert.equal(result.quantWritten, true);
+    assert.equal(result.quantPreserved, false);
+    assert.equal(published.formalCount, 0);
+    assert.deepEqual(published.formal, []);
+  } finally {
+    fs.rmSync(appDir, {recursive: true, force: true});
+  }
+});

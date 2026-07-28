@@ -1,9 +1,11 @@
 # Changelog
 
-## 2.17.3 - 2026-07-28
+## 2.17.4 - 2026-07-28
 
 - Fixed quantitative-only refreshes so completed full-A scans are written to the application data endpoint without requiring a legacy market-page snapshot.
 - Preserved the latest quantitative result during regular market refreshes in Basic and Self editions.
+- Reused automatically discovered local Tongdaxin daily data during scheduled full-market refreshes, not only manual quantitative refreshes.
+- Kept the previous valid candidate set when a replacement scan has materially incomplete daily-history coverage.
 - Removed stale quantitative data from Member payloads that do not include the quantitative page.
 - Added regression coverage for quantitative export, edition boundaries, and completion reporting.
 

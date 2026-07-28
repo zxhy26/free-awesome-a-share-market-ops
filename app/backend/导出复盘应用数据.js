@@ -353,17 +353,43 @@ function compactQuant(data) {
   };
 }
 
+function shouldPreserveQuantData(nextData, quantPath) {
+  if (!nextData || !fs.existsSync(quantPath)) return false;
+  const rows = Array.isArray(nextData.formal) ? nextData.formal : [];
+  const scanned = finite(nextData.scannedCount) || 0;
+  const evaluated = finite(nextData.dataStats?.evaluatedHistory) || 0;
+  const unavailable = (finite(nextData.dataStats?.missingHistory) || 0)
+    + (finite(nextData.dataStats?.insufficientHistory) || 0);
+  const weakScan = rows.length === 0
+    && scanned > 0
+    && (evaluated === 0 || unavailable >= scanned * 0.8);
+  if (!weakScan) return false;
+  try {
+    const previous = JSON.parse(fs.readFileSync(quantPath, "utf8"));
+    return (finite(previous.formalCount) || 0) > 0
+      && Array.isArray(previous.formal)
+      && previous.formal.length > 0;
+  } catch (_) {
+    return false;
+  }
+}
+
 function exportOptimizedAppData(options) {
   const appDir = path.resolve(options.appDir);
   const dataDir = path.join(appDir, "data");
   const quantPath = path.join(dataDir, "quant.json");
   const quantEnabled = fs.existsSync(path.join(appDir, "pages", "quant.html"));
   let quantWritten = false;
+  let quantPreserved = false;
   if (quantEnabled && options.quantData) {
     const quantData = compactQuant(options.quantData);
     if (quantData) {
-      writeJson(quantPath, quantData);
-      quantWritten = true;
+      if (shouldPreserveQuantData(quantData, quantPath)) {
+        quantPreserved = true;
+      } else {
+        writeJson(quantPath, quantData);
+        quantWritten = true;
+      }
     }
   } else if (!quantEnabled && fs.existsSync(quantPath)) {
     fs.unlinkSync(quantPath);
@@ -371,12 +397,13 @@ function exportOptimizedAppData(options) {
 
   const marketData = sanitizeLegacyFields(options.marketData || {});
   if (!marketData.market) {
-    if (quantWritten) {
+    if (quantWritten || quantPreserved) {
       return {
         appDir,
         tradeDate: options.quantData?.tradeDate || "",
         validation: null,
         quantWritten,
+        quantPreserved,
         policyNewsWritten: false,
         upgrade: null,
         quantOnly: true,
@@ -423,7 +450,7 @@ function exportOptimizedAppData(options) {
     archiveDir: options.archiveDir || "",
     legacyArchiveDir: options.legacyArchiveDir || "",
   });
-  return {appDir, tradeDate: marketData.market?.tradeDate || "", validation, quantWritten, policyNewsWritten, upgrade};
+  return {appDir, tradeDate: marketData.market?.tradeDate || "", validation, quantWritten, quantPreserved, policyNewsWritten, upgrade};
 }
 
 if (require.main === module) {
