@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v72-quant-page-fix";
+const CACHE_VERSION = "a-share-review-v74-custom-sector-workspace";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [
@@ -24,6 +24,7 @@ const CORE_ASSETS = [
   "/app/assets/js/analysis.js",
   "/app/assets/js/charts.js",
   "/app/assets/js/sector-flow-chart.js",
+  "/app/assets/js/custom-sector-workspace.js",
   "/app/assets/js/dialog.js",
   "/app/assets/js/pwa.js",
   "/app/assets/js/app.js",

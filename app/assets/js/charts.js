@@ -92,13 +92,14 @@ const TURNING_TARGET_MIN = 10;
 const ATTRIBUTION_FLOW_LOOKBACK_MINUTES = 6;
 const ATTRIBUTION_SAMPLE_MAX_AGE = 3;
 const ATTRIBUTION_MIN_CUMULATIVE_FLOW_YI = 0.5;
-const ATTRIBUTION_CANDIDATES_PER_TURN = 4;
+const ATTRIBUTION_CANDIDATES_PER_KIND = 2;
 const ATTRIBUTION_MAX_PER_SECTOR = 2;
 const ATTRIBUTION_MIN_EVENT_GAP = 10;
 const ATTRIBUTION_RELAXED_EVENT_GAP = 7;
-const ATTRIBUTION_MIN_EVENTS = 6;
-const ATTRIBUTION_MAX_EVENTS = 9;
+const ATTRIBUTION_MIN_EVENTS = 5;
+const ATTRIBUTION_MAX_EVENTS = 6;
 const SVG_NS = "http://www.w3.org/2000/svg";
+const GENERIC_CONCEPT_PATTERN = /融资融券|MSCI|富时罗素|沪股通|深股通|QFII|基金重仓|机构重仓|证金持股|社保重仓|大盘股|中盘股|小盘股|科技风格|价值风格|高贝塔|HS300|(?:中证|上证|深成|创业板|科创)\d+|20\d{2}(?:一季报|中报|三季报|年报)|百日新高|百元股|破净股|昨日涨停|AB股|AH股|转债标的/i;
 
 function isAshareIndex(index) {
   return index?.session !== "us" && index?.code !== "IXIC" && index?.name !== "纳斯达克";
@@ -234,6 +235,7 @@ function sectorPointAtOrBefore(points, minute) {
 }
 
 function sectorContribution(row, startMinute, endMinute, direction) {
+  if (row?.sectorKind === "concept" && GENERIC_CONCEPT_PATTERN.test(String(row?.name || row?.tdxName || ""))) return null;
   const start = sectorPointAtOrBefore(row?.points, startMinute);
   const end = sectorPointAtOrBefore(row?.points, endMinute);
   if (!end) return null;
@@ -259,6 +261,8 @@ function sectorContribution(row, startMinute, endMinute, direction) {
       : .72;
   return {
     sectorName: String(row?.name || row?.tdxName || "行业板块"),
+    sectorKind: row?.sectorKind === "concept" ? "concept" : "industry",
+    sectorKindLabel: row?.sectorKind === "concept" ? "题材" : "行业",
     flowAmount,
     flowDelta,
     flowDirection,
@@ -283,7 +287,9 @@ export function buildSectorAttributionCandidates(index, industryRows) {
       .map((row) => sectorContribution(row, startMinute, endMinute, turn.direction))
       .filter(Boolean)
       .sort((a, b) => b.score - a.score);
-    const leading = contributions.slice(0, ATTRIBUTION_CANDIDATES_PER_TURN);
+    const leading = ["industry", "concept"].flatMap((sectorKind) => (
+      contributions.filter((item) => item.sectorKind === sectorKind).slice(0, ATTRIBUTION_CANDIDATES_PER_KIND)
+    ));
     const comparisonScore = leading.reduce((sum, item) => sum + item.score, 0);
     leading.forEach((contribution, rank) => {
       const dominance = comparisonScore > 0 ? contribution.score / comparisonScore : 1;
@@ -337,12 +343,24 @@ export function buildPersistentSectorAttributions(candidates) {
   if (selectedTurns.length < ATTRIBUTION_MIN_EVENTS) selectedTurns = chooseSpacedTurns(ATTRIBUTION_RELAXED_EVENT_GAP);
   const selected = [];
   const sectorCounts = new Map();
-  for (const turn of selectedTurns.sort((a, b) => b.importance - a.importance)) {
-    const candidate = turn.candidates.find((item) => (sectorCounts.get(item.sectorName) || 0) < ATTRIBUTION_MAX_PER_SECTOR);
+  const categoryCounts = new Map([["industry", 0], ["concept", 0]]);
+  for (const turn of selectedTurns.sort((a, b) => a.minute - b.minute)) {
+    const desiredKinds = categoryCounts.get("industry") <= categoryCounts.get("concept")
+      ? ["industry", "concept"]
+      : ["concept", "industry"];
+    let candidate = null;
+    for (const sectorKind of desiredKinds) {
+      candidate = turn.candidates.find((item) => (
+        item.sectorKind === sectorKind
+        && (sectorCounts.get(item.sectorName) || 0) < ATTRIBUTION_MAX_PER_SECTOR
+      ));
+      if (candidate) break;
+    }
     if (!candidate) continue;
     const sectorCount = sectorCounts.get(candidate.sectorName) || 0;
     selected.push({...candidate, revealMinute: candidate.revealMinute ?? candidate.minute});
     sectorCounts.set(candidate.sectorName, sectorCount + 1);
+    categoryCounts.set(candidate.sectorKind, (categoryCounts.get(candidate.sectorKind) || 0) + 1);
   }
   return selected.sort((a, b) => a.minute - b.minute);
 }
@@ -368,7 +386,7 @@ function measureAttributionLabel(layer, labelText) {
   probe.setAttribute("pointer-events", "none");
   probe.textContent = labelText;
   layer.append(probe);
-  let box = {width: labelText.length * 7.2, height: 10};
+  let box = {width: labelText.length * 8, height: 11};
   try {
     const measured = probe.getBBox();
     if (measured.width > 0 && measured.height > 0) box = measured;
@@ -376,8 +394,8 @@ function measureAttributionLabel(layer, labelText) {
     probe.remove();
   }
   return {
-    width: Math.min(150, Math.max(48, box.width + 3)),
-    height: Math.max(10, box.height + 2),
+    width: Math.min(178, Math.max(52, box.width + 4)),
+    height: Math.max(11, box.height + 2),
   };
 }
 
@@ -396,10 +414,10 @@ function renderSectorAttributions(chart, minute, geometry) {
     const sectorMove = item.sectorChangePct === null ? "" : `，板块同期${signed(item.sectorChangePct, 2, "%")}`;
     const pivotLabel = item.pivotType === "low" ? "低点" : "高点";
     const confirmationLabel = item.direction > 0 ? "回升" : "回落";
-    title.textContent = `${marketMinuteToTime(item.minute)} 指数形成${pivotLabel}，${marketMinuteToTime(item.revealMinute)} ${confirmationLabel}${signed(item.reversalPct, 2, "%")}后确认；${item.sectorName}截至确认时累计净流入${formatFlowDelta(item.flowAmount)}，拐点确认窗口资金变化${formatFlowDelta(item.flowDelta)}${sectorMove}。归因置信度${item.confidenceLabel || "观察"}（${item.confidence ?? "--"}分）；标记落在实际拐点，确认后才显示。`;
+    title.textContent = `${marketMinuteToTime(item.minute)} 指数形成${pivotLabel}，${marketMinuteToTime(item.revealMinute)} ${confirmationLabel}${signed(item.reversalPct, 2, "%")}后确认；${item.sectorKindLabel || "行业"}“${item.sectorName}”截至确认时累计净流入${formatFlowDelta(item.flowAmount)}，拐点确认窗口资金变化${formatFlowDelta(item.flowDelta)}${sectorMove}。归因置信度${item.confidenceLabel || "观察"}（${item.confidence ?? "--"}分）；标记落在实际拐点，确认后持续保留。`;
     const x = geometry.xForMinute(item.minute);
     const y = geometry.yForPrice(item.price);
-    const labelText = `${item.sectorName} ${formatFlowDelta(item.flowAmount)}`;
+    const labelText = `${item.sectorKind === "concept" ? "题" : "行"}·${item.sectorName} ${formatFlowDelta(item.flowAmount)}`;
     const labelMetrics = measureAttributionLabel(chart.attributionLayer, labelText);
     const estimatedWidth = labelMetrics.width;
     const labelHalfHeight = labelMetrics.height / 2;

@@ -270,6 +270,15 @@ export async function requestLiveSectorFlowRefresh() {
   });
 }
 
+export async function loadBoardMinuteFlow(code, name = "") {
+  const parameters = new URLSearchParams({code: String(code || ""), name: String(name || "")});
+  return fetchJson(`${SERVICE_ORIGIN}/api/v1/sector-flow?${parameters}`, {
+    label: "自选板块分钟资金",
+    timeoutMs: 15000,
+    allowSnapshot: false,
+  });
+}
+
 export async function getSyncStatus() {
   return fetchJson(`${SERVICE_ORIGIN}/status`, {label: "同步状态", timeoutMs: 5000});
 }

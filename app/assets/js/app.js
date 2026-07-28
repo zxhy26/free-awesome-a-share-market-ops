@@ -1,9 +1,10 @@
-import {getHealth, loadCoreData, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260727-3";
+import {getHealth, loadBoardMinuteFlow, loadCoreData, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260728-3";
 import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNumber, formatPercent, formatYi, signed, summarizeMoneyEffect, valueClass} from "./analysis.js?v=20260726-1";
-import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260727-1";
+import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260728-4";
 import {createSummaryDialog} from "./dialog.js";
 import {initializePwa} from "./pwa.js?v=20260719-2";
 import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260727-2";
+import {createCustomSectorWorkspace} from "./custom-sector-workspace.js?v=20260728-4";
 import {initializeTheme} from "./theme.js";
 import {inTradingWindow} from "./market-session.js?v=20260727-4";
 
@@ -26,6 +27,14 @@ const dom = {
   indexGrid: document.querySelector("#indexGrid"),
   contributionTabs: document.querySelector("#contributionTabs"),
   indexContribution: document.querySelector("#indexContribution"),
+  customSectorAdd: document.querySelector("#customSectorAdd"),
+  customSectorCount: document.querySelector("#customSectorCount"),
+  customSectorPicker: document.querySelector("#customSectorPicker"),
+  customSectorPickerClose: document.querySelector("#customSectorPickerClose"),
+  customSectorSearch: document.querySelector("#customSectorSearch"),
+  customSectorFilters: document.querySelector("#customSectorFilters"),
+  customSectorOptions: document.querySelector("#customSectorOptions"),
+  customSectorGrid: document.querySelector("#customSectorGrid"),
   timeline: document.querySelector("#timeline"),
   timelineTime: document.querySelector("#timelineTime"),
   timelineEnd: document.querySelector("#timelineEnd"),
@@ -68,6 +77,7 @@ const state = {
   flowRenderVersion: {industry: 0, concept: 0},
   contributionIndexKey: "",
   contributionTabsSignature: "",
+  customSectorWorkspace: null,
   autoReloadTimer: 0,
   liveRefreshRunning: false,
   liveFlowTimer: 0,
@@ -420,6 +430,7 @@ function applyLiveFlowSnapshot(snapshot, options = {}) {
   }
   state.liveFlowGroups.industry = mergeLiveFlowGroup("industry", snapshot);
   state.liveFlowGroups.concept = mergeLiveFlowGroup("concept", snapshot);
+  state.customSectorWorkspace?.applyLiveSnapshot(snapshot);
   applyLiveIndexQuotes(snapshot);
 
   const previousMaximum = Number(dom.timeline.max) || 0;
@@ -437,6 +448,7 @@ function applyLiveFlowSnapshot(snapshot, options = {}) {
   }
   renderFlow("industry", displayMinute);
   renderFlow("concept", displayMinute);
+  state.customSectorWorkspace?.render(displayMinute);
   dom.timelineTime.textContent = marketMinuteToTime(displayMinute, true);
   return true;
 }
@@ -780,11 +792,21 @@ function renderSummary() {
 function renderAll() {
   renderHeaderAndOverview();
   const industryAttributionRows = state.data.sectors?.industry?.attributionRows || state.data.sectors?.industry?.rows || [];
-  state.charts = createIndexCharts(dom.indexGrid, state.data.indices.items || [], industryAttributionRows);
+  const conceptAttributionRows = state.data.sectors?.concept?.attributionRows || state.data.sectors?.concept?.rows || [];
+  const attributionRows = [
+    ...industryAttributionRows.map((row) => ({...row, sectorKind: "industry", sectorKindLabel: "行业"})),
+    ...conceptAttributionRows.map((row) => ({...row, sectorKind: "concept", sectorKindLabel: "题材"})),
+  ];
+  state.charts = createIndexCharts(dom.indexGrid, state.data.indices.items || [], attributionRows);
   updateIndexCharts(state.charts, Number(dom.timeline.value));
   renderIndexContribution(Number(dom.timeline.value));
   renderFlow("industry", Number(dom.timeline.value));
   renderFlow("concept", Number(dom.timeline.value));
+  state.customSectorWorkspace?.setDirectory({
+    industry: state.liveFlowGroups.industry || state.data.sectors?.industry,
+    concept: state.liveFlowGroups.concept || state.data.sectors?.concept,
+  });
+  state.customSectorWorkspace?.render(Number(dom.timeline.value));
   renderStructure();
   renderMoneyMetrics();
   renderHistory();
@@ -812,6 +834,7 @@ function initializePlayback() {
       renderIndexContribution(minute);
       renderFlow("industry", minute);
       renderFlow("concept", minute);
+      state.customSectorWorkspace?.render(minute);
     },
     onTime: (text) => { dom.timelineTime.textContent = text; },
   });
@@ -858,6 +881,32 @@ async function syncMarket() {
 function setupInteractions() {
   initializeTheme();
   initializePwa();
+  state.customSectorWorkspace = createCustomSectorWorkspace({
+    grid: dom.customSectorGrid,
+    picker: dom.customSectorPicker,
+    pickerList: dom.customSectorOptions,
+    searchInput: dom.customSectorSearch,
+    filterControls: dom.customSectorFilters,
+    addButton: dom.customSectorAdd,
+    closeButton: dom.customSectorPickerClose,
+    count: dom.customSectorCount,
+    loadTimeline: loadBoardMinuteFlow,
+    showNotice,
+    openDayK: async (selection) => {
+      try {
+        const result = await openTdxStock({
+          code: selection.code,
+          boardCode: selection.code,
+          market: "sector",
+          name: selection.name,
+        });
+        showNotice(result.message || `已在当前设备的股票软件中打开${selection.name}日K。`);
+      } catch (error) {
+        showNotice(error.message || "板块日K打开失败。", "error", true);
+        logTechnicalError(error, "自选板块日K");
+      }
+    },
+  });
   state.flowCharts.industry.inflow = createSectorFlowChart(dom.industryInflowChart);
   state.flowCharts.industry.outflow = createSectorFlowChart(dom.industryOutflowChart);
   state.flowCharts.concept.inflow = createSectorFlowChart(dom.conceptInflowChart);

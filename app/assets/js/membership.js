@@ -275,6 +275,9 @@ function renderMembership() {
     toolbarButton.classList.toggle("is-active", Boolean(membership?.active));
     toolbarLabel.textContent = membership?.active ? membership.planLabel : "开通会员";
   }
+  window.dispatchEvent(new CustomEvent("a-share-membership-change", {
+    detail: {active: Boolean(membership?.active), edition: membership?.edition || ""},
+  }));
   if (!state.dialog || !membership) return;
 
   const status = state.dialog.querySelector("#membershipStatus");

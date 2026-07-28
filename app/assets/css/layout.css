@@ -120,8 +120,8 @@ h3 { font-size: 13px; line-height: 1.3; font-weight: 800; }
   align-items: start;
 }
 .sector-stack .sector-panel { min-height: 0; display: flex; flex-direction: column; }
-.sector-stack .sector-flow-chart { flex: 0 0 232px; }
-.sector-stack .flow-table { min-height: 348px; max-height: 348px; flex: 0 0 348px; }
+.sector-stack .sector-flow-chart { flex: 0 0 254px; }
+.sector-stack .flow-table { min-height: 390px; max-height: 390px; flex: 0 0 390px; }
 
 .panel-heading {
   min-height: 46px;
@@ -135,10 +135,18 @@ h3 { font-size: 13px; line-height: 1.3; font-weight: 800; }
 .panel-heading p { color: var(--muted); font-size: 11px; margin-top: 2px; }
 
 .index-grid {
-  min-height: 444px;
+  min-height: 648px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(216px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(216px, 1fr));
+}
+
+.custom-sector-panel { position: relative; }
+.custom-sector-grid {
+  min-height: 180px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 180px;
 }
 
 .timeline-wrap {
@@ -155,7 +163,7 @@ h3 { font-size: 13px; line-height: 1.3; font-weight: 800; }
 
 .structure-layout { min-height: 205px; display: grid; grid-template-columns: 1fr 1fr minmax(220px, .9fr); }
 
-.contribution-panel, .money-panel, .history-panel { margin-top: 10px; }
+.contribution-panel, .structure-panel, .money-panel, .history-panel { margin-top: 10px; }
 .contribution-layout {
   min-height: 168px;
   display: grid;
