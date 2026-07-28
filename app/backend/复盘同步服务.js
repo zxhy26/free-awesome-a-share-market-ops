@@ -10,7 +10,7 @@ const { createLiveSectorFlowService } = require("./live-sector-flow");
 
 const PORT = Number(process.env.A_SHARE_REVIEW_PORT) || 18765;
 const HOST = process.env.A_SHARE_REVIEW_HOST || "127.0.0.1";
-const SERVICE_VERSION = "3.10.0";
+const SERVICE_VERSION = "3.11.0";
 const ALLOW_REMOTE = process.env.A_SHARE_REVIEW_ALLOW_REMOTE === "1";
 const TEST_MODE = process.env.A_SHARE_REVIEW_TEST_MODE === "1";
 const DISABLE_SCHEDULES = process.env.A_SHARE_REVIEW_DISABLE_SCHEDULES === "1";
@@ -32,6 +32,7 @@ const POLICY_SCRIPT = path.join(WORK_DIR, "更新政策新闻.ps1");
 const NEXT_WEEK_EVENTS_SCRIPT = path.join(WORK_DIR, "next-week-events-updater.js");
 const DERIVATIVES_SCRIPT = path.join(WORK_DIR, "更新机构衍生品.ps1");
 const STOCK_APP_SCRIPT = path.join(WORK_DIR, "打开通达信日K.ps1");
+const INDEX_CONTRIBUTION_SCRIPT = path.join(WORK_DIR, "读取通达信指数贡献.ps1");
 const APP_EDITION = resolveAppEdition();
 const membership = createMembershipService({
   edition: APP_EDITION,
@@ -56,6 +57,7 @@ const AUTO_IDLE_INTERVAL_MS = 60 * 1000;
 const POLICY_NEWS_INTERVAL_MS = 10 * 60 * 1000;
 const NEXT_WEEK_EVENTS_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const DERIVATIVES_INTERVAL_MS = 30 * 60 * 1000;
+const INDEX_CONTRIBUTION_CHECK_INTERVAL_MS = 10 * 60 * 1000;
 const PREOPEN_WATCH_START_MINUTE = 9 * 60 + 25;
 const MARKET_CLOSE_MINUTE = 15 * 60;
 let autoSyncTimer = null;
@@ -76,6 +78,10 @@ let derivativesRunning = false;
 let derivativesTimer = null;
 let lastDerivativesAt = "";
 let lastDerivativesResult = null;
+let indexContributionRunning = false;
+let indexContributionTimer = null;
+let lastIndexContributionAt = "";
+let lastIndexContributionResult = null;
 
 function resolveAppDir() {
   const bundledAppDir = PORTABLE_ROOT ? path.join(PORTABLE_ROOT, "程序", "应用") : "";
@@ -253,6 +259,34 @@ function derivativesStatus() {
   return status;
 }
 
+function indexContributionStatus() {
+  const filePath = path.join(DATA_DIR, "index-contribution.json");
+  const status = {
+    exists: fs.existsSync(filePath),
+    path: filePath,
+    tradeDate: "",
+    fetchedAt: "",
+    sourceStatus: "",
+    sourceMessage: "",
+    indexCount: 0,
+    mtime: "",
+  };
+  if (!status.exists) return status;
+  try {
+    const stat = fs.statSync(filePath);
+    const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    status.mtime = stat.mtime.toISOString();
+    status.tradeDate = data.tradeDate || "";
+    status.fetchedAt = data.fetchedAt || "";
+    status.sourceStatus = data.source?.status || "";
+    status.sourceMessage = data.source?.message || "";
+    status.indexCount = Object.keys(data.indices || {}).length;
+  } catch (error) {
+    status.parseError = error.message;
+  }
+  return status;
+}
+
 function derivativesHealthModule(status = derivativesStatus(), now = new Date(), expectedTradeDate = "") {
   const publication = derivativesPublicationState(status, now, undefined, expectedTradeDate);
   const completeness = publication.status === "ok" || publication.status === "pending"
@@ -336,6 +370,7 @@ const API_DATASETS = {
   stocks: "stocks.json",
   analysis: "analysis.json",
   derivatives: "derivatives.json",
+  "index-contribution": "index-contribution.json",
   quant: "quant.json",
   "policy-news": "policy-news.json",
   "next-week-events": "next-week-events.json",
@@ -769,6 +804,32 @@ async function runDerivatives(options = {}) {
   }
 }
 
+async function runIndexContribution(options = {}) {
+  if (indexContributionRunning) {
+    return {ok: false, running: true, message: "通达信指数贡献正在读取", indexContribution: indexContributionStatus()};
+  }
+  if (!fs.existsSync(INDEX_CONTRIBUTION_SCRIPT)) {
+    return {ok: false, running: false, message: "找不到通达信指数贡献读取脚本", errorCode: "INDEX_CONTRIBUTION_SCRIPT_MISSING"};
+  }
+  indexContributionRunning = true;
+  const source = options.source || "manual";
+  const outputPath = path.join(DATA_DIR, "index-contribution.json");
+  const args = ["-OutputPath", outputPath, "-DataTimeoutSeconds", "90"];
+  const tradeDate = appDataStatus().tradeDate;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(tradeDate)) args.push("-TradeDate", tradeDate);
+  log(source === "auto" ? "后台通达信指数贡献读取启动" : "页面通达信指数贡献读取请求已接收");
+  try {
+    const result = await runPowerShell(INDEX_CONTRIBUTION_SCRIPT, args, 12 * 60 * 1000);
+    const body = {...result, running: false, source, indexContribution: indexContributionStatus()};
+    lastIndexContributionAt = nowText();
+    lastIndexContributionResult = body;
+    log(`${source === "auto" ? "后台" : "页面"}通达信指数贡献读取结束，退出码：${result.code}`);
+    return body;
+  } finally {
+    indexContributionRunning = false;
+  }
+}
+
 function runLocalStock(searchParams) {
   const stockCode = String(searchParams.get("code") || "").replace(/\D/g, "");
   const market = String(searchParams.get("market") || "").trim().toLowerCase();
@@ -915,6 +976,32 @@ function scheduleDerivatives(delayMs = DERIVATIVES_INTERVAL_MS) {
   derivativesTimer = setTimeout(derivativesTick, delayMs);
 }
 
+function indexContributionNeedsRefresh() {
+  const status = indexContributionStatus();
+  if (!status.exists || status.parseError || status.sourceStatus !== "ok" || status.indexCount < 7) return true;
+  const marketTradeDate = appDataStatus().tradeDate;
+  if (marketTradeDate && status.tradeDate < marketTradeDate) return true;
+  const fetched = new Date(status.mtime || status.fetchedAt);
+  return !Number.isFinite(fetched.getTime()) || Date.now() - fetched.getTime() > 18 * 60 * 60 * 1000;
+}
+
+function scheduleIndexContribution(delayMs = INDEX_CONTRIBUTION_CHECK_INTERVAL_MS) {
+  if (indexContributionTimer) clearTimeout(indexContributionTimer);
+  indexContributionTimer = setTimeout(indexContributionTick, delayMs);
+}
+
+async function indexContributionTick() {
+  try {
+    if (!running && !indexContributionRunning && indexContributionNeedsRefresh()) {
+      await runIndexContribution({source: "auto"});
+    }
+  } catch (error) {
+    log("后台通达信指数贡献读取异常：" + error.message);
+  } finally {
+    scheduleIndexContribution(INDEX_CONTRIBUTION_CHECK_INTERVAL_MS);
+  }
+}
+
 async function derivativesTick() {
   try {
     if (!running) await runDerivatives({source: "auto", force: false});
@@ -939,7 +1026,11 @@ function startAsyncRefresh(source = "manual") {
     }, 350);
     return {ok: true, accepted: true, running: true, message: "正在执行同步锁测试", progress: syncProgress};
   }
-  runRefresh({source}).catch((error) => {
+  runRefresh({source}).then((result) => {
+    if (result.ok && !indexContributionRunning) {
+      runIndexContribution({source}).catch((error) => log("通达信指数贡献异步读取异常：" + error.message));
+    }
+  }).catch((error) => {
     running = false;
     const result = {
       ok: false,
@@ -1016,7 +1107,7 @@ const server = http.createServer(async (req, res) => {
       appData: appDataStatus(),
       flowData: flowDataStatus(),
       historyCount: listHistoryDates().length,
-      endpoints: ["/api/v1/market/snapshot", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "POST /api/v1/sync", "POST /derivatives-refresh", "POST /next-week-events-refresh"],
+      endpoints: ["/api/v1/market/snapshot", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "POST /api/v1/sync", "POST /api/v1/index-contribution/refresh", "POST /derivatives-refresh", "POST /next-week-events-refresh"],
     });
     return;
   }
@@ -1107,7 +1198,7 @@ const server = http.createServer(async (req, res) => {
     const health = readJsonFile(path.join(DATA_DIR, "health.json"), {});
     const derivatives = derivativesStatus();
     const mergedHealth = mergeHealthModule(health, derivativesHealthModule(derivatives, new Date(), health.tradeDate));
-    sendJson(res, 200, {...mergedHealth, derivatives, liveSectorFlow: liveSectorFlow.getState(), service: apiServiceState()});
+    sendJson(res, 200, {...mergedHealth, derivatives, indexContribution: indexContributionStatus(), liveSectorFlow: liveSectorFlow.getState(), service: apiServiceState()});
     return;
   }
 
@@ -1139,6 +1230,20 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (url.pathname === "/api/v1/index-contribution/refresh") {
+    if (req.method !== "POST") {
+      methodNotAllowed(res);
+      return;
+    }
+    if (indexContributionRunning) {
+      sendJson(res, 202, {ok: true, accepted: false, running: true, message: "通达信指数贡献正在读取"});
+      return;
+    }
+    runIndexContribution({source: "api"}).catch((error) => log("通达信指数贡献接口异常：" + error.message));
+    sendJson(res, 202, {ok: true, accepted: true, running: true, message: "通达信指数贡献已转入后台读取"});
+    return;
+  }
+
   if (url.pathname === "/health") {
     const page = pageStatus(PAGE_PATH);
     sendJson(res, 200, {
@@ -1159,6 +1264,8 @@ const server = http.createServer(async (req, res) => {
       nextWeekEvents: nextWeekEventsStatus(),
       derivativesRunning,
       derivatives: derivativesStatus(),
+      indexContributionRunning,
+      indexContribution: indexContributionStatus(),
     });
     return;
   }
@@ -1205,6 +1312,13 @@ const server = http.createServer(async (req, res) => {
         lastRunAt: lastNextWeekEventsAt,
         lastResult: lastNextWeekEventsResult,
         data: nextWeekEventsStatus(),
+      },
+      indexContribution: {
+        running: indexContributionRunning,
+        intervalMs: INDEX_CONTRIBUTION_CHECK_INTERVAL_MS,
+        lastRunAt: lastIndexContributionAt,
+        lastResult: lastIndexContributionResult,
+        data: indexContributionStatus(),
       },
     });
     return;
@@ -1298,5 +1412,6 @@ server.listen(PORT, HOST, () => {
     schedulePolicyNews(15000);
     scheduleNextWeekEvents(25000);
     scheduleDerivatives(20000);
+    scheduleIndexContribution(45000);
   }
 });

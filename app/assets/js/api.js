@@ -10,6 +10,7 @@ const DATA_URLS = {
   stocks: new URL("../../data/stocks.json", import.meta.url),
   analysis: new URL("../../data/analysis.json", import.meta.url),
   derivatives: new URL("../../data/derivatives.json", import.meta.url),
+  indexContribution: new URL("../../data/index-contribution.json", import.meta.url),
   config: new URL("../../data/config.json", import.meta.url),
   policyNews: new URL("../../data/policy-news.json", import.meta.url),
   nextWeekEvents: new URL("../../data/next-week-events.json", import.meta.url),
@@ -24,6 +25,7 @@ const API_MODULE_NAMES = {
   stocks: "stocks",
   analysis: "analysis",
   derivatives: "derivatives",
+  indexContribution: "index-contribution",
   config: "config",
   policyNews: "policy-news",
   nextWeekEvents: "next-week-events",
@@ -136,7 +138,7 @@ async function loadDataModule(key, label, timeoutMs = 5000) {
 export async function loadCoreData() {
   let lastReason = "数据文件尚未形成同一快照";
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    const coreKeys = ["market", "indices", "sectors", "analysis", "config"];
+    const coreKeys = ["market", "indices", "sectors", "analysis", "config", "indexContribution"];
     const entries = await Promise.all(coreKeys.map(async (key) => [key, await loadDataModule(key, `${key} 数据`)]));
     const data = Object.fromEntries(entries);
     const consistency = coreDataConsistency(data);
@@ -208,6 +210,15 @@ export function loadStockData() {
 
 export function loadDerivativesData() {
   return loadDataModule("derivatives", "机构衍生品", 15000);
+}
+
+export function refreshIndexContribution() {
+  return fetchJson(`${SERVICE_ORIGIN}/api/v1/index-contribution/refresh`, {
+    label: "通达信指数贡献",
+    timeoutMs: 10000,
+    method: "POST",
+    allowSnapshot: false,
+  });
 }
 
 export function loadPolicyNewsData() {

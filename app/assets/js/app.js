@@ -1,6 +1,6 @@
 import {getHealth, loadCoreData, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260727-3";
 import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNumber, formatPercent, formatYi, signed, summarizeMoneyEffect, valueClass} from "./analysis.js?v=20260726-1";
-import {createIndexCharts, createPlaybackController, marketMinuteToTime, selectSectorAttributions, updateIndexCharts, visiblePoints} from "./charts.js?v=20260727-1";
+import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260727-1";
 import {createSummaryDialog} from "./dialog.js";
 import {initializePwa} from "./pwa.js?v=20260719-2";
 import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260727-2";
@@ -115,28 +115,28 @@ function contributionPointAtMinute(index, minute) {
   };
 }
 
-function contributionRows(events, direction, limit = 5) {
-  const sectorNames = new Set();
-  return [...(events || [])]
-    .filter((item) => Math.sign(Number(item.flowDirection)) === direction)
-    .sort((left, right) => (
-      Number(right.minute || 0) - Number(left.minute || 0)
-      || Number(right.strength || 0) - Number(left.strength || 0)
-    ))
-    .filter((item) => {
-      const name = String(item.sectorName || "").trim();
-      if (!name || sectorNames.has(name)) return false;
-      sectorNames.add(name);
-      return true;
-    })
-    .slice(0, limit);
+function formatContributionPoints(value) {
+  const points = finiteNumber(value);
+  if (points === null) return "--";
+  return `${points > 0 ? "+" : ""}${points.toFixed(2)}点`;
 }
 
-function formatContributionAmount(value) {
-  const amount = finiteNumber(value);
-  if (amount === null) return "--";
-  const digits = Math.abs(amount) >= 100 ? 0 : 1;
-  return `${amount > 0 ? "+" : ""}${amount.toFixed(digits)}亿`;
+function contributionStockMarket(code) {
+  const text = String(code || "");
+  if (/^(6|68)/.test(text)) return "sh";
+  if (/^(0|3)/.test(text)) return "sz";
+  if (/^(4|8|9)/.test(text)) return "bj";
+  return "";
+}
+
+function contributionRows(indexData, direction) {
+  const key = direction > 0 ? "positive" : "negative";
+  return [...(indexData?.[key] || [])]
+    .filter((item) => Math.sign(Number(item.points)) === direction)
+    .sort((left, right) => direction > 0
+      ? Number(right.points) - Number(left.points)
+      : Number(left.points) - Number(right.points))
+    .slice(0, 10);
 }
 
 function renderContributionTabs(charts) {
@@ -161,32 +161,40 @@ function renderContributionTabs(charts) {
   });
 }
 
-function contributionColumn(title, rows, direction) {
+function contributionColumn(title, rows, direction, emptyMessage = "") {
   const column = el("section", `contribution-column ${direction > 0 ? "gain-side" : "loss-side"}`);
   const heading = el("div", "contribution-column-heading");
-  heading.append(el("h3", "", title), el("span", "", `${rows.length}个已确认行业`));
+  heading.append(el("h3", "", title), el("span", "", `${rows.length}只成分股`));
   column.append(heading);
   if (!rows.length) {
-    column.append(el("p", "contribution-empty", "当前时间点暂无已确认归因"));
+    column.append(el("p", "contribution-empty", emptyMessage || "通达信当前未返回该方向的贡献记录"));
     return column;
   }
   const list = el("div", "contribution-list");
   rows.forEach((item, index) => {
-    const row = el("div", "contribution-row");
+    const row = el("button", "contribution-row");
+    row.type = "button";
+    row.dataset.contributionStockOpen = "1";
+    row.dataset.stockCode = item.code || "";
+    row.dataset.stockName = item.name || "";
+    row.dataset.stockMarket = contributionStockMarket(item.code);
+    row.title = `在当前设备的股票软件中打开 ${item.name || item.code || "成分股"} 日K`;
     const rank = el("span", "contribution-rank", String(index + 1).padStart(2, "0"));
     const identity = el("div", "contribution-identity");
+    const weight = finiteNumber(item.weightPct);
+    const sourceRank = finiteNumber(item.rank);
     identity.append(
-      el("strong", "contribution-name", item.sectorName || "行业板块"),
-      el("span", "contribution-meta", `拐点 ${marketMinuteToTime(item.minute)} · 确认 ${marketMinuteToTime(item.revealMinute ?? item.minute)}`),
+      el("strong", "contribution-name", item.name || item.code || "成分股"),
+      el("span", "contribution-meta", `${item.code || "------"} · 权重 ${weight === null ? "--" : `${weight.toFixed(2)}%`}`),
     );
     const values = el("div", "contribution-values");
     values.append(
-      el("strong", "contribution-amount", formatContributionAmount(item.flowAmount)),
-      el("span", "contribution-delta", `窗口 ${formatContributionAmount(item.flowDelta)}`),
+      el("strong", "contribution-amount", formatContributionPoints(item.points)),
+      el("span", `contribution-delta ${valueClass(item.changePct)}`, `涨跌 ${signed(item.changePct, 2, "%")}`),
     );
-    const confidence = el("span", "contribution-confidence", `${item.confidenceLabel || "观察"} ${formatNumber(item.confidence)}`);
-    confidence.title = "归因置信度";
-    row.append(rank, identity, values, confidence);
+    const sourceOrder = el("span", "contribution-confidence", sourceRank === null ? "原榜 --" : `原榜 #${formatNumber(sourceRank)}`);
+    sourceOrder.title = "通达信贡献度排名原始名次";
+    row.append(rank, identity, values, sourceOrder);
     list.append(row);
   });
   column.append(list);
@@ -206,7 +214,14 @@ function renderIndexContribution(minute) {
   renderContributionTabs(charts);
   const chart = charts.find((item, index) => contributionChartKey(item, index) === state.contributionIndexKey) || charts[0];
   const snapshot = contributionPointAtMinute(chart.data, minute);
-  const events = selectSectorAttributions(chart.attributionEvents, minute);
+  const dataset = state.data?.indexContribution || {};
+  const source = dataset.source || {};
+  const indexData = dataset.indices?.[state.contributionIndexKey]
+    || Object.values(dataset.indices || {}).find((item) => item?.name === chart.data?.name)
+    || null;
+  const available = source.status === "ok" && indexData;
+  const positive = available ? contributionRows(indexData, 1) : [];
+  const negative = available ? contributionRows(indexData, -1) : [];
   const summary = el("section", "contribution-summary");
   const name = el("span", "contribution-index-name", chart.data?.name || "指数");
   const price = el("strong", "contribution-index-price", snapshot.price === null
@@ -214,13 +229,17 @@ function renderIndexContribution(minute) {
     : snapshot.price.toLocaleString("zh-CN", {minimumFractionDigits: 2, maximumFractionDigits: 2}));
   const change = el("div", `contribution-index-change ${valueClass(snapshot.change)}`);
   change.append(el("span", "", signed(snapshot.change, 2)), el("span", "", signed(snapshot.pct, 2, "%")));
-  const status = el("p", "contribution-status", `${marketMinuteToTime(snapshot.minute)} · 已确认 ${events.length} 个资金拐点`);
-  const note = el("p", "contribution-note", "按指数拐点方向匹配同期二级行业累计净流入/流出，不等同于成分股权重的精确点数贡献。");
+  const status = el("p", "contribution-status", available
+    ? `${marketMinuteToTime(snapshot.minute)} 指数行情 · 贡献榜 ${dataset.tradeDate || "--"} ${dataset.fetchedAt || "--"}`
+    : `${marketMinuteToTime(snapshot.minute)} 指数行情 · 通达信贡献榜不可用`);
+  const note = el("p", "contribution-note", available
+    ? `来源：通达信 .929 原生贡献点数；${formatNumber(indexData.constituentCount)}只成分股中分别取拉动前十、拖累前十。回放时间轴只改变指数行情，不伪造历史贡献榜。`
+    : `未读取到通达信原生贡献榜：${source.message || "数据尚未生成"}。此处不会使用行业资金推断结果替代。`);
   summary.append(name, price, change, status, note);
   dom.indexContribution.replaceChildren(
     summary,
-    contributionColumn("拉动贡献", contributionRows(events, 1), 1),
-    contributionColumn("拖累贡献", contributionRows(events, -1), -1),
+    contributionColumn("拉动前十", positive, 1, available ? "当前没有正贡献成分股" : "等待通达信原生贡献榜"),
+    contributionColumn("拖累前十", negative, -1, available ? "当前没有负贡献成分股" : "等待通达信原生贡献榜"),
   );
 }
 
@@ -849,6 +868,26 @@ function setupInteractions() {
     state.contributionIndexKey = button.dataset.contributionIndex;
     renderIndexContribution(Number(dom.timeline.value));
   });
+  dom.indexContribution?.addEventListener("click", async (event) => {
+    const button = event.target.closest("button[data-contribution-stock-open]");
+    if (!button || button.disabled) return;
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    try {
+      const result = await openTdxStock({
+        code: button.dataset.stockCode,
+        market: button.dataset.stockMarket,
+        name: button.dataset.stockName,
+      });
+      showNotice(result.message || "已在当前设备的股票软件中打开日K。");
+    } catch (error) {
+      showNotice(error.message, "error", true);
+      logTechnicalError(error, "指数贡献成分股日K");
+    } finally {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+    }
+  });
   [dom.industryInflow, dom.industryOutflow, dom.conceptInflow, dom.conceptOutflow].forEach((container) => {
     container.addEventListener("click", async (event) => {
       const button = event.target.closest("button[data-stock-open]");
@@ -908,6 +947,8 @@ function dataStamp(data) {
     data?.market?.syncedAt || "",
     data?.indices?.syncedAt || "",
     data?.sectors?.syncedAt || "",
+    data?.indexContribution?.fetchedAt || "",
+    data?.indexContribution?.source?.status || "",
   ].join("|");
 }
 

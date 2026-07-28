@@ -1,0 +1,1474 @@
+{
+  "version": 1,
+  "tradeDate": "2026-07-27",
+  "fetchedAt": "2026/07/28 01:29:57",
+  "source": {
+    "provider": "通达信",
+    "screen": ".929 贡献度排名",
+    "status": "ok",
+    "message": "已读取通达信 .929 原生贡献点数。",
+    "tradeDateBasis": "通达信实时榜单抓取日（按A股交易时段）"
+  },
+  "indices": {
+    "399001": {
+      "code": "399001",
+      "name": "深证成指",
+      "positive": [
+        {
+          "code": "300750",
+          "name": "宁德时代",
+          "points": 41.49,
+          "changePct": 4.44,
+          "volumeRatio": 1.3,
+          "preClose": 383.01,
+          "calculationSharesWan": 281998.72,
+          "weightPct": 6.79,
+          "rank": 1
+        },
+        {
+          "code": "300308",
+          "name": "中际旭创",
+          "points": 22.14,
+          "changePct": 2.91,
+          "volumeRatio": 0.71,
+          "preClose": 1046.51,
+          "calculationSharesWan": 84012.63,
+          "weightPct": 5.53,
+          "rank": 2
+        },
+        {
+          "code": "300502",
+          "name": "新易盛",
+          "points": 15.67,
+          "changePct": 3.15,
+          "volumeRatio": 0.63,
+          "preClose": 476.02,
+          "calculationSharesWan": 120776,
+          "weightPct": 3.61,
+          "rank": 3
+        },
+        {
+          "code": "002384",
+          "name": "东山精密",
+          "points": 13.45,
+          "changePct": 6.39,
+          "volumeRatio": 0.71,
+          "preClose": 199.18,
+          "calculationSharesWan": 122137.21,
+          "weightPct": 1.53,
+          "rank": 4
+        },
+        {
+          "code": "300408",
+          "name": "三环集团",
+          "points": 11.25,
+          "changePct": 10.64,
+          "volumeRatio": 0.91,
+          "preClose": 100.84,
+          "calculationSharesWan": 121105.04,
+          "weightPct": 0.77,
+          "rank": 5
+        },
+        {
+          "code": "002475",
+          "name": "立讯精密",
+          "points": 9.15,
+          "changePct": 3.8,
+          "volumeRatio": 0.88,
+          "preClose": 60.59,
+          "calculationSharesWan": 459353.75,
+          "weightPct": 1.75,
+          "rank": 6
+        },
+        {
+          "code": "002353",
+          "name": "杰瑞股份",
+          "points": 6.83,
+          "changePct": 10,
+          "volumeRatio": 1.17,
+          "preClose": 137.29,
+          "calculationSharesWan": 57450.48,
+          "weightPct": 0.5,
+          "rank": 7
+        },
+        {
+          "code": "002463",
+          "name": "沪电股份",
+          "points": 6.01,
+          "changePct": 4.71,
+          "volumeRatio": 0.64,
+          "preClose": 112.22,
+          "calculationSharesWan": 131448.83,
+          "weightPct": 0.93,
+          "rank": 8
+        },
+        {
+          "code": "301526",
+          "name": "国际复材",
+          "points": 4.78,
+          "changePct": 20,
+          "volumeRatio": 1.33,
+          "preClose": 25.7,
+          "calculationSharesWan": 107300.77,
+          "weightPct": 0.17,
+          "rank": 9
+        },
+        {
+          "code": "000725",
+          "name": "京东方Ａ",
+          "points": 4.77,
+          "changePct": 3.11,
+          "volumeRatio": 0.71,
+          "preClose": 5.79,
+          "calculationSharesWan": 3058566.75,
+          "weightPct": 1.11,
+          "rank": 10
+        }
+      ],
+      "negative": [
+        {
+          "code": "000333",
+          "name": "美的集团",
+          "points": -1.51,
+          "changePct": -0.44,
+          "volumeRatio": 0.65,
+          "preClose": 84.5,
+          "calculationSharesWan": 470031.66,
+          "weightPct": 2.5,
+          "rank": 500
+        },
+        {
+          "code": "300433",
+          "name": "蓝思科技",
+          "points": -1.12,
+          "changePct": -1.85,
+          "volumeRatio": 1.34,
+          "preClose": 37.32,
+          "calculationSharesWan": 187716.45,
+          "weightPct": 0.44,
+          "rank": 499
+        },
+        {
+          "code": "000425",
+          "name": "徐工机械",
+          "points": -0.64,
+          "changePct": -1.01,
+          "volumeRatio": 0.76,
+          "preClose": 8.89,
+          "calculationSharesWan": 817824.5,
+          "weightPct": 0.46,
+          "rank": 498
+        },
+        {
+          "code": "300001",
+          "name": "特锐德",
+          "points": -0.63,
+          "changePct": -2.9,
+          "volumeRatio": 0.71,
+          "preClose": 35.84,
+          "calculationSharesWan": 69461.42,
+          "weightPct": 0.16,
+          "rank": 497
+        },
+        {
+          "code": "300661",
+          "name": "圣邦股份",
+          "points": -0.53,
+          "changePct": -1.51,
+          "volumeRatio": 1.03,
+          "preClose": 100.41,
+          "calculationSharesWan": 40063.71,
+          "weightPct": 0.25,
+          "rank": 496
+        },
+        {
+          "code": "300677",
+          "name": "英科医疗",
+          "points": -0.45,
+          "changePct": -2.67,
+          "volumeRatio": 1.08,
+          "preClose": 47.62,
+          "calculationSharesWan": 40768.74,
+          "weightPct": 0.12,
+          "rank": 495
+        },
+        {
+          "code": "300832",
+          "name": "新产业",
+          "points": -0.4,
+          "changePct": -2.79,
+          "volumeRatio": 0.8,
+          "preClose": 48.32,
+          "calculationSharesWan": 34525.07,
+          "weightPct": 0.1,
+          "rank": 494
+        },
+        {
+          "code": "002128",
+          "name": "电投能源",
+          "points": -0.35,
+          "changePct": -1.58,
+          "volumeRatio": 0.71,
+          "preClose": 26.52,
+          "calculationSharesWan": 95662.09,
+          "weightPct": 0.16,
+          "rank": 493
+        },
+        {
+          "code": "002142",
+          "name": "宁波银行",
+          "points": -0.34,
+          "changePct": -0.37,
+          "volumeRatio": 0.57,
+          "preClose": 32.01,
+          "calculationSharesWan": 329448.06,
+          "weightPct": 0.66,
+          "rank": 492
+        },
+        {
+          "code": "002595",
+          "name": "豪迈科技",
+          "points": -0.31,
+          "changePct": -1.27,
+          "volumeRatio": 0.77,
+          "preClose": 49.43,
+          "calculationSharesWan": 56667.12,
+          "weightPct": 0.18,
+          "rank": 491
+        }
+      ],
+      "constituentCount": 500
+    },
+    "399006": {
+      "code": "399006",
+      "name": "创业板指",
+      "positive": [
+        {
+          "code": "300750",
+          "name": "宁德时代",
+          "points": 27.84,
+          "changePct": 4.44,
+          "volumeRatio": 1.3,
+          "preClose": 383.01,
+          "calculationSharesWan": 281998.72,
+          "weightPct": 18.03,
+          "rank": 1
+        },
+        {
+          "code": "300308",
+          "name": "中际旭创",
+          "points": 14.85,
+          "changePct": 2.91,
+          "volumeRatio": 0.71,
+          "preClose": 1046.51,
+          "calculationSharesWan": 84012.63,
+          "weightPct": 14.68,
+          "rank": 2
+        },
+        {
+          "code": "300502",
+          "name": "新易盛",
+          "points": 10.51,
+          "changePct": 3.15,
+          "volumeRatio": 0.63,
+          "preClose": 476.02,
+          "calculationSharesWan": 120776,
+          "weightPct": 9.6,
+          "rank": 3
+        },
+        {
+          "code": "300408",
+          "name": "三环集团",
+          "points": 7.55,
+          "changePct": 10.64,
+          "volumeRatio": 0.91,
+          "preClose": 100.84,
+          "calculationSharesWan": 121105.04,
+          "weightPct": 2.04,
+          "rank": 4
+        },
+        {
+          "code": "301526",
+          "name": "国际复材",
+          "points": 3.2,
+          "changePct": 20,
+          "volumeRatio": 1.33,
+          "preClose": 25.7,
+          "calculationSharesWan": 107300.77,
+          "weightPct": 0.46,
+          "rank": 5
+        },
+        {
+          "code": "300476",
+          "name": "胜宏科技",
+          "points": 3.01,
+          "changePct": 3.76,
+          "volumeRatio": 0.6,
+          "preClose": 230.01,
+          "calculationSharesWan": 59892.58,
+          "weightPct": 2.3,
+          "rank": 6
+        },
+        {
+          "code": "300285",
+          "name": "国瓷材料",
+          "points": 2.43,
+          "changePct": 9.14,
+          "volumeRatio": 0.96,
+          "preClose": 57.21,
+          "calculationSharesWan": 79898.29,
+          "weightPct": 0.76,
+          "rank": 7
+        },
+        {
+          "code": "300274",
+          "name": "阳光电源",
+          "points": 2.32,
+          "changePct": 2.46,
+          "volumeRatio": 0.56,
+          "preClose": 113.42,
+          "calculationSharesWan": 142967.55,
+          "weightPct": 2.71,
+          "rank": 8
+        },
+        {
+          "code": "300857",
+          "name": "协创数据",
+          "points": 2.25,
+          "changePct": 5.46,
+          "volumeRatio": 0.74,
+          "preClose": 230.4,
+          "calculationSharesWan": 30775.63,
+          "weightPct": 1.18,
+          "rank": 9
+        },
+        {
+          "code": "300394",
+          "name": "天孚通信",
+          "points": 2.03,
+          "changePct": 2.84,
+          "volumeRatio": 0.61,
+          "preClose": 203.41,
+          "calculationSharesWan": 60355.17,
+          "weightPct": 2.05,
+          "rank": 10
+        }
+      ],
+      "negative": [
+        {
+          "code": "300433",
+          "name": "蓝思科技",
+          "points": -0.75,
+          "changePct": -1.85,
+          "volumeRatio": 1.34,
+          "preClose": 37.32,
+          "calculationSharesWan": 187716.45,
+          "weightPct": 1.17,
+          "rank": 100
+        },
+        {
+          "code": "300001",
+          "name": "特锐德",
+          "points": -0.42,
+          "changePct": -2.9,
+          "volumeRatio": 0.71,
+          "preClose": 35.84,
+          "calculationSharesWan": 69461.42,
+          "weightPct": 0.42,
+          "rank": 99
+        },
+        {
+          "code": "300661",
+          "name": "圣邦股份",
+          "points": -0.35,
+          "changePct": -1.51,
+          "volumeRatio": 1.03,
+          "preClose": 100.41,
+          "calculationSharesWan": 40063.71,
+          "weightPct": 0.67,
+          "rank": 98
+        },
+        {
+          "code": "300677",
+          "name": "英科医疗",
+          "points": -0.3,
+          "changePct": -2.67,
+          "volumeRatio": 1.08,
+          "preClose": 47.62,
+          "calculationSharesWan": 40768.74,
+          "weightPct": 0.32,
+          "rank": 97
+        },
+        {
+          "code": "300832",
+          "name": "新产业",
+          "points": -0.27,
+          "changePct": -2.79,
+          "volumeRatio": 0.8,
+          "preClose": 48.32,
+          "calculationSharesWan": 34525.07,
+          "weightPct": 0.28,
+          "rank": 96
+        },
+        {
+          "code": "301536",
+          "name": "星宸科技",
+          "points": -0.18,
+          "changePct": -1.37,
+          "volumeRatio": 0.82,
+          "preClose": 131.8,
+          "calculationSharesWan": 17474.53,
+          "weightPct": 0.38,
+          "rank": 95
+        },
+        {
+          "code": "301165",
+          "name": "锐捷网络",
+          "points": -0.11,
+          "changePct": -1.03,
+          "volumeRatio": 0.88,
+          "preClose": 132,
+          "calculationSharesWan": 13363.64,
+          "weightPct": 0.29,
+          "rank": 94
+        },
+        {
+          "code": "300765",
+          "name": "石药创新",
+          "points": -0.1,
+          "changePct": -1.3,
+          "volumeRatio": 0.68,
+          "preClose": 36.9,
+          "calculationSharesWan": 35594.74,
+          "weightPct": 0.22,
+          "rank": 93
+        }
+      ],
+      "constituentCount": 100
+    },
+    "899050": {
+      "code": "899050",
+      "name": "北证50",
+      "positive": [
+        {
+          "code": "920438",
+          "name": "戈碧迦",
+          "points": 8.45,
+          "changePct": 8.79,
+          "volumeRatio": 0.77,
+          "preClose": 119.5,
+          "calculationSharesWan": 8667.65,
+          "weightPct": 9.32,
+          "rank": 1
+        },
+        {
+          "code": "920982",
+          "name": "锦波生物",
+          "points": 1.56,
+          "changePct": 3.05,
+          "volumeRatio": 0.63,
+          "preClose": 119.75,
+          "calculationSharesWan": 4602.61,
+          "weightPct": 4.96,
+          "rank": 2
+        },
+        {
+          "code": "920185",
+          "name": "贝特瑞",
+          "points": 1.55,
+          "changePct": 2.5,
+          "volumeRatio": 0.89,
+          "preClose": 19.57,
+          "calculationSharesWan": 34145.71,
+          "weightPct": 6.01,
+          "rank": 3
+        },
+        {
+          "code": "920522",
+          "name": "纳科诺尔",
+          "points": 1.43,
+          "changePct": 5.65,
+          "volumeRatio": 1.25,
+          "preClose": 17.7,
+          "calculationSharesWan": 15361.56,
+          "weightPct": 2.45,
+          "rank": 4
+        },
+        {
+          "code": "920809",
+          "name": "安达科技",
+          "points": 1.38,
+          "changePct": 4.21,
+          "volumeRatio": 1.08,
+          "preClose": 7.37,
+          "calculationSharesWan": 47924,
+          "weightPct": 3.18,
+          "rank": 5
+        },
+        {
+          "code": "920116",
+          "name": "星图测控",
+          "points": 1,
+          "changePct": 2.76,
+          "volumeRatio": 0.53,
+          "preClose": 43.5,
+          "calculationSharesWan": 8947.4,
+          "weightPct": 3.5,
+          "rank": 6
+        },
+        {
+          "code": "920394",
+          "name": "民士达",
+          "points": 0.99,
+          "changePct": 3.89,
+          "volumeRatio": 0.55,
+          "preClose": 46.78,
+          "calculationSharesWan": 5850,
+          "weightPct": 2.46,
+          "rank": 7
+        },
+        {
+          "code": "920047",
+          "name": "诺思兰德",
+          "points": 0.87,
+          "changePct": 2.95,
+          "volumeRatio": 0.75,
+          "preClose": 16.63,
+          "calculationSharesWan": 19199.03,
+          "weightPct": 2.87,
+          "rank": 8
+        },
+        {
+          "code": "920368",
+          "name": "连城数控",
+          "points": 0.71,
+          "changePct": 2.45,
+          "volumeRatio": 0.63,
+          "preClose": 22.04,
+          "calculationSharesWan": 14086.82,
+          "weightPct": 2.79,
+          "rank": 9
+        },
+        {
+          "code": "920978",
+          "name": "开特股份",
+          "points": 0.63,
+          "changePct": 3.49,
+          "volumeRatio": 1.04,
+          "preClose": 18.05,
+          "calculationSharesWan": 10801.7,
+          "weightPct": 1.75,
+          "rank": 10
+        }
+      ],
+      "negative": [
+        {
+          "code": "920088",
+          "name": "科力股份",
+          "points": -2.72,
+          "changePct": -15.7,
+          "volumeRatio": 0.95,
+          "preClose": 53,
+          "calculationSharesWan": 3522.86,
+          "weightPct": 1.68,
+          "rank": 50
+        },
+        {
+          "code": "920139",
+          "name": "华岭股份",
+          "points": -0.81,
+          "changePct": -3.48,
+          "volumeRatio": 1.44,
+          "preClose": 15.5,
+          "calculationSharesWan": 16170.44,
+          "weightPct": 2.26,
+          "rank": 49
+        }
+      ],
+      "constituentCount": 50
+    },
+    "000688": {
+      "code": "000688",
+      "name": "科创50",
+      "positive": [
+        {
+          "code": "688361",
+          "name": "中科飞测",
+          "points": 4.79,
+          "changePct": 8.96,
+          "volumeRatio": 0.99,
+          "preClose": 357.42,
+          "calculationSharesWan": 28164.14,
+          "weightPct": 2.99,
+          "rank": 1
+        },
+        {
+          "code": "688012",
+          "name": "中微公司",
+          "points": 4.59,
+          "changePct": 2.9,
+          "volumeRatio": 0.73,
+          "preClose": 388.5,
+          "calculationSharesWan": 76627.38,
+          "weightPct": 8.85,
+          "rank": 2
+        },
+        {
+          "code": "688498",
+          "name": "源杰科技",
+          "points": 4.39,
+          "changePct": 5.97,
+          "volumeRatio": 0.68,
+          "preClose": 1390,
+          "calculationSharesWan": 9960.03,
+          "weightPct": 4.12,
+          "rank": 3
+        },
+        {
+          "code": "688256",
+          "name": "寒武纪",
+          "points": 2.67,
+          "changePct": 1.31,
+          "volumeRatio": 0.64,
+          "preClose": 1225,
+          "calculationSharesWan": 31414.65,
+          "weightPct": 11.44,
+          "rank": 4
+        },
+        {
+          "code": "688111",
+          "name": "金山办公",
+          "points": 1.71,
+          "changePct": 6.11,
+          "volumeRatio": 0.79,
+          "preClose": 226.93,
+          "calculationSharesWan": 23200.66,
+          "weightPct": 1.57,
+          "rank": 5
+        },
+        {
+          "code": "688120",
+          "name": "华海清科",
+          "points": 1.4,
+          "changePct": 2.88,
+          "volumeRatio": 0.8,
+          "preClose": 263.9,
+          "calculationSharesWan": 34631.17,
+          "weightPct": 2.72,
+          "rank": 6
+        },
+        {
+          "code": "688183",
+          "name": "生益电子",
+          "points": 1.08,
+          "changePct": 6.25,
+          "volumeRatio": 0.63,
+          "preClose": 96.78,
+          "calculationSharesWan": 33503.65,
+          "weightPct": 0.96,
+          "rank": 7
+        },
+        {
+          "code": "688036",
+          "name": "传音控股",
+          "points": 1.02,
+          "changePct": 5.54,
+          "volumeRatio": 0.98,
+          "preClose": 59.96,
+          "calculationSharesWan": 57559.23,
+          "weightPct": 1.03,
+          "rank": 8
+        },
+        {
+          "code": "688777",
+          "name": "中控技术",
+          "points": 1,
+          "changePct": 3.64,
+          "volumeRatio": 0.7,
+          "preClose": 81.9,
+          "calculationSharesWan": 63295.16,
+          "weightPct": 1.54,
+          "rank": 9
+        },
+        {
+          "code": "688525",
+          "name": "佰维存储",
+          "points": 0.95,
+          "changePct": 2.01,
+          "volumeRatio": 0.69,
+          "preClose": 236.38,
+          "calculationSharesWan": 37725.33,
+          "weightPct": 2.65,
+          "rank": 10
+        }
+      ],
+      "negative": [
+        {
+          "code": "688347",
+          "name": "华虹宏力",
+          "points": -4.66,
+          "changePct": -6.52,
+          "volumeRatio": 0.96,
+          "preClose": 329.9,
+          "calculationSharesWan": 40775,
+          "weightPct": 4,
+          "rank": 50
+        },
+        {
+          "code": "688008",
+          "name": "澜起科技",
+          "points": -3.78,
+          "changePct": -2.66,
+          "volumeRatio": 0.79,
+          "preClose": 233.66,
+          "calculationSharesWan": 114476.44,
+          "weightPct": 7.95,
+          "rank": 49
+        },
+        {
+          "code": "688249",
+          "name": "晶合集成",
+          "points": -1.29,
+          "changePct": -5.15,
+          "volumeRatio": 0.96,
+          "preClose": 46.79,
+          "calculationSharesWan": 100379.59,
+          "weightPct": 1.4,
+          "rank": 48
+        },
+        {
+          "code": "688702",
+          "name": "盛科通信",
+          "points": -0.61,
+          "changePct": -2.38,
+          "volumeRatio": 0.8,
+          "preClose": 390.78,
+          "calculationSharesWan": 12300,
+          "weightPct": 1.43,
+          "rank": 47
+        },
+        {
+          "code": "688041",
+          "name": "海光信息",
+          "points": -0.34,
+          "changePct": -0.22,
+          "volumeRatio": 0.67,
+          "preClose": 314.28,
+          "calculationSharesWan": 92973.52,
+          "weightPct": 8.69,
+          "rank": 46
+        },
+        {
+          "code": "688220",
+          "name": "翱捷科技",
+          "points": -0.22,
+          "changePct": -1.48,
+          "volumeRatio": 0.66,
+          "preClose": 111.77,
+          "calculationSharesWan": 25098.05,
+          "weightPct": 0.83,
+          "rank": 45
+        },
+        {
+          "code": "688099",
+          "name": "晶晨股份",
+          "points": -0.07,
+          "changePct": -0.33,
+          "volumeRatio": 0.96,
+          "preClose": 98,
+          "calculationSharesWan": 42332,
+          "weightPct": 1.23,
+          "rank": 44
+        }
+      ],
+      "constituentCount": 50
+    },
+    "000001": {
+      "code": "000001",
+      "name": "上证指数",
+      "positive": [
+        {
+          "code": "601138",
+          "name": "工业富联",
+          "points": 1.61,
+          "changePct": 2.16,
+          "volumeRatio": 0.53,
+          "preClose": 60.25,
+          "calculationSharesWan": 1984409.25,
+          "weightPct": 1.95,
+          "rank": 1
+        },
+        {
+          "code": "688146",
+          "name": "中船特气",
+          "points": 1.29,
+          "changePct": 15.98,
+          "volumeRatio": 1.15,
+          "preClose": 245.67,
+          "calculationSharesWan": 52941.17,
+          "weightPct": 0.21,
+          "rank": 2
+        },
+        {
+          "code": "601288",
+          "name": "农业银行",
+          "points": 1.19,
+          "changePct": 0.9,
+          "volumeRatio": 0.94,
+          "preClose": 6.66,
+          "calculationSharesWan": 31924422,
+          "weightPct": 3.47,
+          "rank": 3
+        },
+        {
+          "code": "600183",
+          "name": "生益科技",
+          "points": 1.1,
+          "changePct": 6.13,
+          "volumeRatio": 0.74,
+          "preClose": 118.71,
+          "calculationSharesWan": 242900.34,
+          "weightPct": 0.47,
+          "rank": 4
+        },
+        {
+          "code": "600176",
+          "name": "中国巨石",
+          "points": 0.93,
+          "changePct": 9.99,
+          "volumeRatio": 1.05,
+          "preClose": 37.34,
+          "calculationSharesWan": 400313.69,
+          "weightPct": 0.24,
+          "rank": 5
+        },
+        {
+          "code": "603256",
+          "name": "宏和科技",
+          "points": 0.82,
+          "changePct": 10,
+          "volumeRatio": 1.52,
+          "preClose": 145.77,
+          "calculationSharesWan": 90458.64,
+          "weightPct": 0.22,
+          "rank": 6
+        },
+        {
+          "code": "688361",
+          "name": "中科飞测",
+          "points": 0.7,
+          "changePct": 8.96,
+          "volumeRatio": 0.99,
+          "preClose": 357.42,
+          "calculationSharesWan": 35205.17,
+          "weightPct": 0.21,
+          "rank": 7
+        },
+        {
+          "code": "688012",
+          "name": "中微公司",
+          "points": 0.67,
+          "changePct": 2.9,
+          "volumeRatio": 0.73,
+          "preClose": 388.5,
+          "calculationSharesWan": 95784.22,
+          "weightPct": 0.61,
+          "rank": 8
+        },
+        {
+          "code": "688498",
+          "name": "源杰科技",
+          "points": 0.64,
+          "changePct": 5.97,
+          "volumeRatio": 0.68,
+          "preClose": 1390,
+          "calculationSharesWan": 12450.04,
+          "weightPct": 0.28,
+          "rank": 9
+        },
+        {
+          "code": "688256",
+          "name": "寒武纪",
+          "points": 0.63,
+          "changePct": 1.31,
+          "volumeRatio": 0.64,
+          "preClose": 1225,
+          "calculationSharesWan": 62829.3,
+          "weightPct": 1.26,
+          "rank": 10
+        }
+      ],
+      "negative": [
+        {
+          "code": "601857",
+          "name": "中国石油",
+          "points": -1.31,
+          "changePct": -1.18,
+          "volumeRatio": 0.92,
+          "preClose": 11.03,
+          "calculationSharesWan": 16192208,
+          "weightPct": 2.91,
+          "rank": 2227
+        },
+        {
+          "code": "601088",
+          "name": "中国神华",
+          "points": -0.99,
+          "changePct": -1.9,
+          "volumeRatio": 0.68,
+          "preClose": 45.7,
+          "calculationSharesWan": 1831195.25,
+          "weightPct": 1.37,
+          "rank": 2226
+        },
+        {
+          "code": "603986",
+          "name": "兆易创新",
+          "points": -0.96,
+          "changePct": -5.03,
+          "volumeRatio": 0.98,
+          "preClose": 457,
+          "calculationSharesWan": 66849.19,
+          "weightPct": 0.5,
+          "rank": 2225
+        },
+        {
+          "code": "600900",
+          "name": "长江电力",
+          "points": -0.84,
+          "changePct": -1.9,
+          "volumeRatio": 0.8,
+          "preClose": 28.9,
+          "calculationSharesWan": 2446821.75,
+          "weightPct": 1.15,
+          "rank": 2224
+        },
+        {
+          "code": "601628",
+          "name": "中国人寿",
+          "points": -0.75,
+          "changePct": -1.44,
+          "volumeRatio": 0.68,
+          "preClose": 40.31,
+          "calculationSharesWan": 2082353,
+          "weightPct": 1.37,
+          "rank": 2223
+        },
+        {
+          "code": "600519",
+          "name": "贵州茅台",
+          "points": -0.62,
+          "changePct": -0.61,
+          "volumeRatio": 0.5,
+          "preClose": 1297.41,
+          "calculationSharesWan": 125008.15,
+          "weightPct": 2.65,
+          "rank": 2222
+        },
+        {
+          "code": "688347",
+          "name": "华虹宏力",
+          "points": -0.55,
+          "changePct": -6.52,
+          "volumeRatio": 0.96,
+          "preClose": 329.9,
+          "calculationSharesWan": 40775,
+          "weightPct": 0.22,
+          "rank": 2221
+        },
+        {
+          "code": "688008",
+          "name": "澜起科技",
+          "points": -0.44,
+          "changePct": -2.66,
+          "volumeRatio": 0.79,
+          "preClose": 233.66,
+          "calculationSharesWan": 114476.44,
+          "weightPct": 0.44,
+          "rank": 2220
+        },
+        {
+          "code": "601318",
+          "name": "中国平安",
+          "points": -0.4,
+          "changePct": -1.13,
+          "volumeRatio": 0.54,
+          "preClose": 54.02,
+          "calculationSharesWan": 1066006.5,
+          "weightPct": 0.94,
+          "rank": 2219
+        },
+        {
+          "code": "600887",
+          "name": "伊利股份",
+          "points": -0.39,
+          "changePct": -3.62,
+          "volumeRatio": 1.33,
+          "preClose": 27.04,
+          "calculationSharesWan": 632536.06,
+          "weightPct": 0.28,
+          "rank": 2218
+        }
+      ],
+      "constituentCount": 2227
+    },
+    "000905": {
+      "code": "000905",
+      "name": "中证500",
+      "positive": [
+        {
+          "code": "688361",
+          "name": "中科飞测",
+          "points": 7.14,
+          "changePct": 8.96,
+          "volumeRatio": 0.99,
+          "preClose": 357.42,
+          "calculationSharesWan": 28164.14,
+          "weightPct": 1.06,
+          "rank": 1
+        },
+        {
+          "code": "688498",
+          "name": "源杰科技",
+          "points": 6.55,
+          "changePct": 5.97,
+          "volumeRatio": 0.68,
+          "preClose": 1390,
+          "calculationSharesWan": 9960.03,
+          "weightPct": 1.46,
+          "rank": 2
+        },
+        {
+          "code": "301526",
+          "name": "国际复材",
+          "points": 4.61,
+          "changePct": 20,
+          "volumeRatio": 1.33,
+          "preClose": 25.7,
+          "calculationSharesWan": 113126.34,
+          "weightPct": 0.31,
+          "rank": 3
+        },
+        {
+          "code": "300285",
+          "name": "国瓷材料",
+          "points": 4.13,
+          "changePct": 9.14,
+          "volumeRatio": 0.96,
+          "preClose": 57.21,
+          "calculationSharesWan": 99704.82,
+          "weightPct": 0.6,
+          "rank": 4
+        },
+        {
+          "code": "002409",
+          "name": "雅克科技",
+          "points": 3.48,
+          "changePct": 10,
+          "volumeRatio": 1.34,
+          "preClose": 153.95,
+          "calculationSharesWan": 28555.66,
+          "weightPct": 0.46,
+          "rank": 5
+        },
+        {
+          "code": "300857",
+          "name": "协创数据",
+          "points": 3.42,
+          "changePct": 5.46,
+          "volumeRatio": 0.74,
+          "preClose": 230.4,
+          "calculationSharesWan": 34255.41,
+          "weightPct": 0.83,
+          "rank": 6
+        },
+        {
+          "code": "300136",
+          "name": "信维通信",
+          "points": 3.14,
+          "changePct": 6.54,
+          "volumeRatio": 0.76,
+          "preClose": 62.57,
+          "calculationSharesWan": 96756.86,
+          "weightPct": 0.64,
+          "rank": 7
+        },
+        {
+          "code": "002407",
+          "name": "多氟多",
+          "points": 2.88,
+          "changePct": 9.99,
+          "volumeRatio": 1.47,
+          "preClose": 30.52,
+          "calculationSharesWan": 119043.25,
+          "weightPct": 0.38,
+          "rank": 8
+        },
+        {
+          "code": "002851",
+          "name": "麦格米特",
+          "points": 2.71,
+          "changePct": 6.84,
+          "volumeRatio": 0.94,
+          "preClose": 122.27,
+          "calculationSharesWan": 40931.59,
+          "weightPct": 0.53,
+          "rank": 9
+        },
+        {
+          "code": "002436",
+          "name": "兴森科技",
+          "points": 2.56,
+          "changePct": 5.62,
+          "volumeRatio": 0.81,
+          "preClose": 33.8,
+          "calculationSharesWan": 169967.34,
+          "weightPct": 0.6,
+          "rank": 10
+        }
+      ],
+      "negative": [
+        {
+          "code": "688347",
+          "name": "华虹宏力",
+          "points": -6.95,
+          "changePct": -6.52,
+          "volumeRatio": 0.96,
+          "preClose": 329.9,
+          "calculationSharesWan": 40775,
+          "weightPct": 1.41,
+          "rank": 500
+        },
+        {
+          "code": "600909",
+          "name": "华安证券",
+          "points": -2.03,
+          "changePct": -9.43,
+          "volumeRatio": 1.1,
+          "preClose": 9.01,
+          "calculationSharesWan": 301452.56,
+          "weightPct": 0.29,
+          "rank": 499
+        },
+        {
+          "code": "688702",
+          "name": "盛科通信",
+          "points": -0.91,
+          "changePct": -2.38,
+          "volumeRatio": 0.8,
+          "preClose": 390.78,
+          "calculationSharesWan": 12300,
+          "weightPct": 0.51,
+          "rank": 498
+        },
+        {
+          "code": "300001",
+          "name": "特锐德",
+          "points": -0.61,
+          "changePct": -2.9,
+          "volumeRatio": 0.71,
+          "preClose": 35.84,
+          "calculationSharesWan": 73872.94,
+          "weightPct": 0.28,
+          "rank": 497
+        },
+        {
+          "code": "300677",
+          "name": "英科医疗",
+          "points": -0.46,
+          "changePct": -2.67,
+          "volumeRatio": 1.08,
+          "preClose": 47.62,
+          "calculationSharesWan": 45832.72,
+          "weightPct": 0.23,
+          "rank": 496
+        },
+        {
+          "code": "688220",
+          "name": "翱捷科技",
+          "points": -0.33,
+          "changePct": -1.48,
+          "volumeRatio": 0.66,
+          "preClose": 111.77,
+          "calculationSharesWan": 25098.05,
+          "weightPct": 0.3,
+          "rank": 495
+        },
+        {
+          "code": "301536",
+          "name": "星宸科技",
+          "points": -0.3,
+          "changePct": -1.37,
+          "volumeRatio": 0.82,
+          "preClose": 131.8,
+          "calculationSharesWan": 21085.76,
+          "weightPct": 0.29,
+          "rank": 494
+        },
+        {
+          "code": "601991",
+          "name": "大唐发电",
+          "points": -0.21,
+          "changePct": -1.11,
+          "volumeRatio": 0.63,
+          "preClose": 6.29,
+          "calculationSharesWan": 371882.66,
+          "weightPct": 0.25,
+          "rank": 493
+        },
+        {
+          "code": "002850",
+          "name": "科达利",
+          "points": -0.16,
+          "changePct": -0.56,
+          "volumeRatio": 1.36,
+          "preClose": 178,
+          "calculationSharesWan": 20041.78,
+          "weightPct": 0.38,
+          "rank": 492
+        },
+        {
+          "code": "600801",
+          "name": "华新建材",
+          "points": -0.15,
+          "changePct": -1.65,
+          "volumeRatio": 0.57,
+          "preClose": 21.2,
+          "calculationSharesWan": 53771.02,
+          "weightPct": 0.12,
+          "rank": 491
+        }
+      ],
+      "constituentCount": 500
+    },
+    "000300": {
+      "code": "000300",
+      "name": "沪深300",
+      "positive": [
+        {
+          "code": "300750",
+          "name": "宁德时代",
+          "points": 9.2,
+          "changePct": 4.44,
+          "volumeRatio": 1.3,
+          "preClose": 383.01,
+          "calculationSharesWan": 308584.84,
+          "weightPct": 4.46,
+          "rank": 1
+        },
+        {
+          "code": "300308",
+          "name": "中际旭创",
+          "points": 4.76,
+          "changePct": 2.91,
+          "volumeRatio": 0.71,
+          "preClose": 1046.51,
+          "calculationSharesWan": 89218.77,
+          "weightPct": 3.52,
+          "rank": 2
+        },
+        {
+          "code": "300502",
+          "name": "新易盛",
+          "points": 3.66,
+          "changePct": 3.15,
+          "volumeRatio": 0.63,
+          "preClose": 476.02,
+          "calculationSharesWan": 139425.67,
+          "weightPct": 2.5,
+          "rank": 3
+        },
+        {
+          "code": "002384",
+          "name": "东山精密",
+          "points": 2.86,
+          "changePct": 6.39,
+          "volumeRatio": 0.71,
+          "preClose": 199.18,
+          "calculationSharesWan": 128212.52,
+          "weightPct": 0.96,
+          "rank": 4
+        },
+        {
+          "code": "300408",
+          "name": "三环集团",
+          "points": 2.53,
+          "changePct": 10.64,
+          "volumeRatio": 0.91,
+          "preClose": 100.84,
+          "calculationSharesWan": 134154.81,
+          "weightPct": 0.51,
+          "rank": 5
+        },
+        {
+          "code": "002475",
+          "name": "立讯精密",
+          "points": 2.07,
+          "changePct": 3.8,
+          "volumeRatio": 0.88,
+          "preClose": 60.59,
+          "calculationSharesWan": 513926.31,
+          "weightPct": 1.18,
+          "rank": 6
+        },
+        {
+          "code": "600183",
+          "name": "生益科技",
+          "points": 1.86,
+          "changePct": 6.13,
+          "volumeRatio": 0.74,
+          "preClose": 118.71,
+          "calculationSharesWan": 145740.2,
+          "weightPct": 0.65,
+          "rank": 7
+        },
+        {
+          "code": "600176",
+          "name": "中国巨石",
+          "points": 1.57,
+          "changePct": 9.99,
+          "volumeRatio": 1.05,
+          "preClose": 37.34,
+          "calculationSharesWan": 240188.22,
+          "weightPct": 0.34,
+          "rank": 8
+        },
+        {
+          "code": "688012",
+          "name": "中微公司",
+          "points": 1.52,
+          "changePct": 2.9,
+          "volumeRatio": 0.73,
+          "preClose": 388.5,
+          "calculationSharesWan": 76627.38,
+          "weightPct": 1.12,
+          "rank": 9
+        },
+        {
+          "code": "002353",
+          "name": "杰瑞股份",
+          "points": 1.48,
+          "changePct": 10,
+          "volumeRatio": 1.17,
+          "preClose": 137.29,
+          "calculationSharesWan": 61431.36,
+          "weightPct": 0.32,
+          "rank": 10
+        }
+      ],
+      "negative": [
+        {
+          "code": "603986",
+          "name": "兆易创新",
+          "points": -2.69,
+          "changePct": -5.03,
+          "volumeRatio": 0.98,
+          "preClose": 457,
+          "calculationSharesWan": 66849.19,
+          "weightPct": 1.15,
+          "rank": 300
+        },
+        {
+          "code": "688008",
+          "name": "澜起科技",
+          "points": -1.25,
+          "changePct": -2.66,
+          "volumeRatio": 0.79,
+          "preClose": 233.66,
+          "calculationSharesWan": 114476.44,
+          "weightPct": 1.01,
+          "rank": 299
+        },
+        {
+          "code": "600900",
+          "name": "长江电力",
+          "points": -1.18,
+          "changePct": -1.9,
+          "volumeRatio": 0.8,
+          "preClose": 28.9,
+          "calculationSharesWan": 1223410.88,
+          "weightPct": 1.33,
+          "rank": 298
+        },
+        {
+          "code": "601318",
+          "name": "中国平安",
+          "points": -1.14,
+          "changePct": -1.13,
+          "volumeRatio": 0.54,
+          "preClose": 54.02,
+          "calculationSharesWan": 1066006.5,
+          "weightPct": 2.17,
+          "rank": 297
+        },
+        {
+          "code": "600887",
+          "name": "伊利股份",
+          "points": -1.09,
+          "changePct": -3.62,
+          "volumeRatio": 1.33,
+          "preClose": 27.04,
+          "calculationSharesWan": 632536.06,
+          "weightPct": 0.65,
+          "rank": 296
+        },
+        {
+          "code": "600519",
+          "name": "贵州茅台",
+          "points": -0.87,
+          "changePct": -0.61,
+          "volumeRatio": 0.5,
+          "preClose": 1297.41,
+          "calculationSharesWan": 62504.07,
+          "weightPct": 3.06,
+          "rank": 295
+        },
+        {
+          "code": "601211",
+          "name": "国泰海通",
+          "points": -0.54,
+          "changePct": -1.4,
+          "volumeRatio": 0.7,
+          "preClose": 19.22,
+          "calculationSharesWan": 1129853.25,
+          "weightPct": 0.82,
+          "rank": 294
+        },
+        {
+          "code": "600036",
+          "name": "招商银行",
+          "points": -0.43,
+          "changePct": -0.51,
+          "volumeRatio": 0.61,
+          "preClose": 39.2,
+          "calculationSharesWan": 1237736.63,
+          "weightPct": 1.83,
+          "rank": 293
+        },
+        {
+          "code": "601088",
+          "name": "中国神华",
+          "points": -0.41,
+          "changePct": -1.9,
+          "volumeRatio": 0.68,
+          "preClose": 45.7,
+          "calculationSharesWan": 267832.88,
+          "weightPct": 0.46,
+          "rank": 292
+        },
+        {
+          "code": "000333",
+          "name": "美的集团",
+          "points": -0.32,
+          "changePct": -0.44,
+          "volumeRatio": 0.65,
+          "preClose": 84.5,
+          "calculationSharesWan": 487381.31,
+          "weightPct": 1.55,
+          "rank": 291
+        }
+      ],
+      "constituentCount": 300
+    }
+  }
+}
