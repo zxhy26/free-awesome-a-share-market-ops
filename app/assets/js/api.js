@@ -14,6 +14,7 @@ const DATA_URLS = {
   config: new URL("../../data/config.json", import.meta.url),
   policyNews: new URL("../../data/policy-news.json", import.meta.url),
   nextWeekEvents: new URL("../../data/next-week-events.json", import.meta.url),
+  quant: new URL("../../data/quant.json", import.meta.url),
   health: new URL("../../data/health.json", import.meta.url),
   historyIndex: new URL("../../data/history-index.json", import.meta.url),
 };
@@ -29,6 +30,7 @@ const API_MODULE_NAMES = {
   config: "config",
   policyNews: "policy-news",
   nextWeekEvents: "next-week-events",
+  quant: "quant",
   health: "health",
   historyIndex: "history-index",
 };
@@ -208,6 +210,10 @@ export function loadStockData() {
   return loadDataModule("stocks", "个股详情");
 }
 
+export function loadQuantData() {
+  return loadDataModule("quant", "量化选股", 15000);
+}
+
 export function loadDerivativesData() {
   return loadDataModule("derivatives", "机构衍生品", 15000);
 }
@@ -364,6 +370,23 @@ export function requestDerivativesRefresh() {
       if (!result.ok) throw new AppError(result.message || "机构衍生品刷新失败。", {code: result.errorCode || "DERIVATIVES_REFRESH_FAILED", technical: result.stderr || result.stdout || ""});
       return result;
     });
+}
+
+export function requestQuantRefresh() {
+  return fetchJson(`${SERVICE_ORIGIN}/quant-refresh`, {
+    label: "量化选股更新",
+    timeoutMs: 17 * 60 * 1000,
+    method: "POST",
+    allowSnapshot: false,
+  }).then((result) => {
+    if (!result.ok) {
+      throw new AppError(result.message || "量化选股更新失败。", {
+        code: result.errorCode || "QUANT_REFRESH_FAILED",
+        technical: result.stderr || result.stdout || "",
+      });
+    }
+    return result;
+  });
 }
 
 export function exactQuoteUrl(stock = {}) {
