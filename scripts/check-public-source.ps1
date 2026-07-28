@@ -61,6 +61,24 @@ foreach ($LivePath in @("/api/v1/live/sector-flows", "/api/v1/live/sector-flows/
   }
 }
 
+$IndexContributionPath = Join-Path $AppRoot "backend\index-contribution-online.js"
+$LegacyIndexContributionPath = Join-Path $AppRoot "backend\读取通达信指数贡献.ps1"
+if (-not (Test-Path -LiteralPath $IndexContributionPath -PathType Leaf)) {
+  throw "The online index-contribution service is missing."
+}
+if (Test-Path -LiteralPath $LegacyIndexContributionPath -PathType Leaf) {
+  throw "The release must not depend on the legacy Tongdaxin index-contribution extractor."
+}
+if (-not $ServiceSource.Contains("/api/v1/index-contribution/refresh") -or -not $ServiceSource.Contains("index-contribution-online")) {
+  throw "The online index-contribution refresh route is not wired into the local service."
+}
+$IndexContributionSource = Get-Content -LiteralPath $IndexContributionPath -Raw -Encoding UTF8
+foreach ($RequiredFragment in @("www.cnindex.com.cn/sample-detail/detail", "datacenter-web.eastmoney.com", "push2delay.eastmoney.com", "readValidPayload")) {
+  if (-not $IndexContributionSource.Contains($RequiredFragment)) {
+    throw "The online index-contribution service is missing a required contract: $RequiredFragment"
+  }
+}
+
 $LiveFlowPath = Join-Path $AppRoot "backend\live-sector-flow.js"
 if (-not (Test-Path -LiteralPath $LiveFlowPath -PathType Leaf)) {
   throw "The one-second live-sector-flow service is missing."

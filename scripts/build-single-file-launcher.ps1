@@ -39,6 +39,10 @@ $AdminScript = Join-Path $PayloadRoot "程序\应用\assets\js\member-admin.js"
 $AdminStyle = Join-Path $PayloadRoot "程序\应用\assets\css\member-admin.css"
 $QuantPage = Join-Path $PayloadRoot "程序\应用\pages\quant.html"
 $QuantScript = Join-Path $PayloadRoot "程序\应用\backend\运行量化选股.ps1"
+$AppIndex = Join-Path $PayloadRoot "程序\应用\index.html"
+$AppIndexContent = Get-Content -LiteralPath $AppIndex -Raw -Encoding UTF8
+$IndexHasQuant = $AppIndexContent -match "quant\.html"
+$IndexHasAdmin = $AppIndexContent -match "member-admin\.html"
 
 switch ($Edition) {
   "Self" {
@@ -46,6 +50,9 @@ switch ($Edition) {
       if (-not (Test-Path -LiteralPath $RequiredPath)) {
         throw "自用版载荷缺少必要文件：$RequiredPath"
       }
+    }
+    if (-not $IndexHasQuant -or -not $IndexHasAdmin) {
+      throw "自用版首页必须同时提供量化选股和会员管理入口。"
     }
   }
   "Basic" {
@@ -59,12 +66,18 @@ switch ($Edition) {
         throw "基础版载荷不得包含激活码签发文件：$ForbiddenPath"
       }
     }
+    if (-not $IndexHasQuant -or $IndexHasAdmin) {
+      throw "基础版首页必须提供量化选股入口，且不得提供会员管理入口。"
+    }
   }
   default {
     foreach ($ForbiddenPath in @($PrivateKey, $AdminPage, $AdminScript, $AdminStyle, $QuantPage, $QuantScript)) {
       if (Test-Path -LiteralPath $ForbiddenPath) {
         throw "会员版载荷包含不应发布的管理或量化文件：$ForbiddenPath"
       }
+    }
+    if ($IndexHasQuant -or $IndexHasAdmin) {
+      throw "会员版首页不得提供量化选股或会员管理入口。"
     }
   }
 }

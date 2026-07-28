@@ -167,7 +167,7 @@ function contributionColumn(title, rows, direction, emptyMessage = "") {
   heading.append(el("h3", "", title), el("span", "", `${rows.length}只成分股`));
   column.append(heading);
   if (!rows.length) {
-    column.append(el("p", "contribution-empty", emptyMessage || "通达信当前未返回该方向的贡献记录"));
+    column.append(el("p", "contribution-empty", emptyMessage || "当前公开行情未形成该方向的贡献记录"));
     return column;
   }
   const list = el("div", "contribution-list");
@@ -192,8 +192,8 @@ function contributionColumn(title, rows, direction, emptyMessage = "") {
       el("strong", "contribution-amount", formatContributionPoints(item.points)),
       el("span", `contribution-delta ${valueClass(item.changePct)}`, `涨跌 ${signed(item.changePct, 2, "%")}`),
     );
-    const sourceOrder = el("span", "contribution-confidence", sourceRank === null ? "原榜 --" : `原榜 #${formatNumber(sourceRank)}`);
-    sourceOrder.title = "通达信贡献度排名原始名次";
+    const sourceOrder = el("span", "contribution-confidence", sourceRank === null ? "贡献 --" : `贡献 #${formatNumber(sourceRank)}`);
+    sourceOrder.title = "按实时计算贡献点排序";
     row.append(rank, identity, values, sourceOrder);
     list.append(row);
   });
@@ -230,16 +230,18 @@ function renderIndexContribution(minute) {
   const change = el("div", `contribution-index-change ${valueClass(snapshot.change)}`);
   change.append(el("span", "", signed(snapshot.change, 2)), el("span", "", signed(snapshot.pct, 2, "%")));
   const status = el("p", "contribution-status", available
-    ? `${marketMinuteToTime(snapshot.minute)} 指数行情 · 贡献榜 ${dataset.tradeDate || "--"} ${dataset.fetchedAt || "--"}`
-    : `${marketMinuteToTime(snapshot.minute)} 指数行情 · 通达信贡献榜不可用`);
+    ? `${marketMinuteToTime(snapshot.minute)} 指数行情 · 在线贡献 ${dataset.tradeDate || "--"} ${dataset.fetchedAt || "--"}`
+    : `${marketMinuteToTime(snapshot.minute)} 指数行情 · 公开行情贡献暂不可用`);
+  const sourceName = indexData?.componentSource || (Array.isArray(source.providers) ? source.providers.join("、") : source.provider) || "公开行情";
+  const methodology = indexData?.methodology || source.methodology || "指数前收盘点位 × 成分权重 × 个股涨跌幅";
   const note = el("p", "contribution-note", available
-    ? `来源：通达信 .929 原生贡献点数；${formatNumber(indexData.constituentCount)}只成分股中分别取拉动前十、拖累前十。回放时间轴只改变指数行情，不伪造历史贡献榜。`
-    : `未读取到通达信原生贡献榜：${source.message || "数据尚未生成"}。此处不会使用行业资金推断结果替代。`);
+    ? `来源：${sourceName}；计算：${methodology}。${formatNumber(indexData.constituentCount)}只样本中分别取拉动前十、拖累前十；后台自动更新，无需启动股票软件。回放时间轴只改变指数行情，不伪造历史贡献榜。`
+    : `公开行情贡献暂不可用：${source.message || "数据尚未生成"}。完整性校验失败时保留上一份有效结果，不使用行业资金推断替代。`);
   summary.append(name, price, change, status, note);
   dom.indexContribution.replaceChildren(
     summary,
-    contributionColumn("拉动前十", positive, 1, available ? "当前没有正贡献成分股" : "等待通达信原生贡献榜"),
-    contributionColumn("拖累前十", negative, -1, available ? "当前没有负贡献成分股" : "等待通达信原生贡献榜"),
+    contributionColumn("拉动前十", positive, 1, available ? "当前没有正贡献成分股" : "等待公开行情贡献榜"),
+    contributionColumn("拖累前十", negative, -1, available ? "当前没有负贡献成分股" : "等待公开行情贡献榜"),
   );
 }
 

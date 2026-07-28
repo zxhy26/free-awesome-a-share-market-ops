@@ -214,7 +214,7 @@ export function loadDerivativesData() {
 
 export function refreshIndexContribution() {
   return fetchJson(`${SERVICE_ORIGIN}/api/v1/index-contribution/refresh`, {
-    label: "通达信指数贡献",
+    label: "指数贡献公开行情",
     timeoutMs: 10000,
     method: "POST",
     allowSnapshot: false,
