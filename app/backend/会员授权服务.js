@@ -13,7 +13,7 @@ const PAYMENT_ORDER_STATUSES = new Set(["pending", "paid", "closed", "expired", 
 const PLAN_DEFINITIONS = {
   month: { label: "月付会员", days: 30, price: 72 },
   year: { label: "包年会员", days: 365, price: 699 },
-  lifetime: { label: "定制永久版", days: null, price: 1599, permanent: true },
+  lifetime: { label: "私人订制永久版", days: null, price: 1599, permanent: true },
 };
 
 function base64UrlEncode(value) {
@@ -235,7 +235,7 @@ function createMembershipService(options = {}) {
     const permanent = planDefinition.permanent === true;
     const expiresAt = permanent ? Number.POSITIVE_INFINITY : parseDate(payload.expiresAt);
     if (permanent && payload.permanent !== true) {
-      return { ok: false, code: "PERMANENT_FLAG_MISSING", reason: "定制永久版授权标记无效。" };
+      return { ok: false, code: "PERMANENT_FLAG_MISSING", reason: "私人订制永久版授权标记无效。" };
     }
     if (!permanent && (!Number.isFinite(expiresAt) || expiresAt <= validFrom)) {
       return { ok: false, code: "DATE_INVALID", reason: "激活码有效期无效。" };
@@ -340,7 +340,7 @@ function createMembershipService(options = {}) {
         ? null
         : Math.max(1, Math.ceil((verification.expiresAt - Date.now()) / (24 * 60 * 60 * 1000))),
       customer: payload.customer || "",
-      reason: verification.permanent ? "定制永久版授权有效，仅绑定当前设备。" : "会员授权有效。",
+      reason: verification.permanent ? "私人订制永久版授权有效，仅绑定当前设备。" : "会员授权有效。",
       checkedAt: new Date().toISOString(),
     };
   }
@@ -386,7 +386,7 @@ function createMembershipService(options = {}) {
     const deviceCode = normalizeDeviceCode(body.deviceCode);
     if (!deviceCode) throw Object.assign(new Error("请输入有效的 16 位设备码。"), { statusCode: 400 });
     const plan = PLAN_DEFINITIONS[body.plan] ? body.plan : "";
-    if (!plan) throw Object.assign(new Error("请选择月付、包年或定制永久版套餐。"), { statusCode: 400 });
+    if (!plan) throw Object.assign(new Error("请选择月付、包年或私人订制永久版套餐。"), { statusCode: 400 });
 
     const now = Date.now();
     const planDefinition = PLAN_DEFINITIONS[plan];
@@ -559,7 +559,7 @@ function createMembershipService(options = {}) {
       });
     }
     const plan = PLAN_DEFINITIONS[body.plan] ? body.plan : "";
-    if (!plan) throw Object.assign(new Error("请选择月付、包年或定制永久版套餐。"), { statusCode: 400 });
+    if (!plan) throw Object.assign(new Error("请选择月付、包年或私人订制永久版套餐。"), { statusCode: 400 });
     const current = memberStatus();
     const requestId = crypto.randomBytes(12).toString("hex").toUpperCase();
     const result = await requestPaymentAdapter("orders", {

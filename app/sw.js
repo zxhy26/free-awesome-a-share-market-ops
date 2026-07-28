@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v69-tdx-index-contribution";
+const CACHE_VERSION = "a-share-review-v70-private-custom-lifetime";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [

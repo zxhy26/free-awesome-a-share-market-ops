@@ -32,8 +32,8 @@ test("membership UI names the lifetime plan as custom lifetime edition", () => {
     path.join(__dirname, "..", "app", "assets", "js", "membership.js"),
     "utf8",
   );
-  assert.match(membershipScript, /lifetime:\s*\{\s*amount:\s*"1599 元",\s*label:\s*"定制永久版"\s*\}/);
-  assert.match(membershipScript, /<strong>定制永久版<\/strong><span>1599 元 \/ 永久有效<\/span>/);
+  assert.match(membershipScript, /lifetime:\s*\{\s*amount:\s*"1599 元",\s*label:\s*"私人订制永久版"\s*\}/);
+  assert.match(membershipScript, /<strong>私人订制永久版<\/strong><span>1599 元 \/ 永久有效<\/span>/);
   assert.doesNotMatch(membershipScript, /label:\s*"永久"/);
 });
 
@@ -85,7 +85,7 @@ test("permanent activation is signed, device-bound, and has no expiry countdown"
     });
     assert.equal(activated.statusCode, 200);
     assert.equal(activated.body.membership.active, true);
-    assert.equal(activated.body.membership.planLabel, "定制永久版");
+    assert.equal(activated.body.membership.planLabel, "私人订制永久版");
     assert.equal(activated.body.membership.permanent, true);
     assert.equal(activated.body.membership.expiresAt, "");
     assert.equal(activated.body.membership.remainingDays, null);
