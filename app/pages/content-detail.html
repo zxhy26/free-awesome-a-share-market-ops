@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#eef0f2">
+  <title>内容详情｜A股复盘</title>
+  <link rel="icon" href="../assets/icons/favicon-32.png">
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/responsive.css">
+  <link rel="stylesheet" href="../assets/css/internal-detail.css">
+</head>
+<body>
+  <main class="detail-shell internal-detail-shell">
+    <header class="detail-header internal-detail-header">
+      <div>
+        <p class="internal-detail-eyebrow">软件内生成内容</p>
+        <h1 id="contentDetailTitle">内容详情</h1>
+        <p id="contentDetailSubtitle">正在读取当前按钮对应的信息</p>
+      </div>
+      <nav class="detail-actions" aria-label="内容详情操作">
+        <button class="button" id="contentDetailBack" type="button">返回上一页</button>
+        <a class="button" href="../index.html">返回首页</a>
+        <fieldset class="theme-segment" aria-label="主题模式">
+          <legend class="visually-hidden">主题模式</legend>
+          <button type="button" data-theme-choice="system">跟随</button>
+          <button type="button" data-theme-choice="light">浅色</button>
+          <button type="button" data-theme-choice="dark">深色</button>
+        </fieldset>
+      </nav>
+    </header>
+    <div class="internal-detail-status" id="contentDetailStatus" aria-live="polite">读取中</div>
+    <section class="internal-detail-content" id="contentDetailContent" aria-label="软件内详情内容"></section>
+  </main>
+  <script type="module" src="../assets/js/internal-content-detail.js"></script>
+</body>
+</html>

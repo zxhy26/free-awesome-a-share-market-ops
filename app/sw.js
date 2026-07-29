@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v75-index-contribution-membership";
+const CACHE_VERSION = "a-share-review-v76-internal-details";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [
@@ -8,6 +8,8 @@ const CORE_ASSETS = [
   "/app/pages/limit-down.html",
   "/app/pages/yesterday-limit.html",
   "/app/pages/yesterday-broken.html",
+  "/app/pages/market-detail.html",
+  "/app/pages/content-detail.html",
   "/app/assets/css/variables.css",
   "/app/assets/css/layout.css",
   "/app/assets/css/components.css",
@@ -19,7 +21,12 @@ const CORE_ASSETS = [
   "/app/assets/css/derivatives-page.css",
   "/app/assets/css/upgrade.css",
   "/app/assets/css/membership.css",
+  "/app/assets/css/internal-detail.css",
   "/app/assets/js/api.js",
+  "/app/assets/js/internal-navigation.js",
+  "/app/assets/js/mobile-live.js",
+  "/app/assets/js/internal-market-detail.js",
+  "/app/assets/js/internal-content-detail.js",
   "/app/assets/js/theme.js",
   "/app/assets/js/analysis.js",
   "/app/assets/js/charts.js",

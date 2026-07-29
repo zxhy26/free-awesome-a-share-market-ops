@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.17.5 - 2026-07-29
+
+- Replaced Eastmoney-page and local-stock-application jumps with first-party stock, sector, policy, news, and event detail pages.
+- Added a loopback market-detail endpoint so the Windows editions can retrieve real quotes and adjusted daily K-line history without weakening the desktop content-security policy.
+- Added responsive Android/iOS PWA builds with internal navigation and real-time data refresh behavior shared with the Windows editions.
+- Preserved edition boundaries: Member has no quantitative assets, Basic includes quantitative selection without activation administration, and Self includes the complete private administration toolset.
+- Added regression coverage for internal navigation, market-detail target normalization, live public-data retrieval, mobile package structure, and horizontal-overflow protection.
+
 ## 2.17.4 - 2026-07-28
 
 - Fixed quantitative-only refreshes so completed full-A scans are written to the application data endpoint without requiring a legacy market-page snapshot.

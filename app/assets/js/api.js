@@ -1,3 +1,5 @@
+import "./internal-navigation.js";
+
 const runtimeLocation = globalThis.location || {protocol: "http:", origin: "http://127.0.0.1:18765"};
 const SERVICE_ORIGIN = runtimeLocation.protocol === "http:" || runtimeLocation.protocol === "https:"
   ? runtimeLocation.origin
@@ -418,23 +420,19 @@ export function requestQuantRefresh() {
 }
 
 export function exactQuoteUrl(stock = {}) {
-  const code = String(stock.code || "").trim().toUpperCase();
-  const boardCode = String(stock.boardCode || "").trim().toUpperCase();
-  const market = String(stock.market ?? "").trim().toLowerCase();
-  const name = String(stock.name || "").trim();
-  const exactBoardCode = /^BK\d{4}$/.test(boardCode)
-    ? boardCode
-    : (/^BK\d{4}$/.test(code) ? code : "");
-  if (market === "sector" || exactBoardCode || /^880\d{3}$/.test(code)) {
-    if (exactBoardCode) return `https://quote.eastmoney.com/bk/90.${exactBoardCode}.html`;
-    return `https://so.eastmoney.com/web/s?keyword=${encodeURIComponent(`${name || code} 板块 日K`)}`;
-  }
-  if (/^\d{6}$/.test(code)) {
-    if (/^(4|8|92)/.test(code)) return `https://quote.eastmoney.com/bj/${code}.html`;
-    if (/^(5|6|9)/.test(code)) return `https://quote.eastmoney.com/sh${code}.html`;
-    return `https://quote.eastmoney.com/sz${code}.html`;
-  }
-  return `https://so.eastmoney.com/web/s?keyword=${encodeURIComponent(`${code || name} 股票 日K`)}`;
+  const root = new URL("../../", import.meta.url);
+  const url = new URL("pages/market-detail.html", root);
+  const values = {
+    code: String(stock.code || ""),
+    boardCode: String(stock.boardCode || ""),
+    market: String(stock.market ?? ""),
+    name: String(stock.name || ""),
+    action: "日K",
+  };
+  Object.entries(values).forEach(([key, value]) => {
+    if (value) url.searchParams.set(key, value);
+  });
+  return url.href;
 }
 
 function usesPackagedStaticRuntime() {
@@ -447,22 +445,14 @@ function openExactQuote(stock) {
   runtimeLocation.assign(url);
   return {
     ok: true,
-    mode: "exactWebQuote",
+    mode: "internalMarketDetail",
     url,
-    targetUrlExact: !url.includes("/web/s?"),
-    message: `已打开${String(stock.name || stock.code || "目标")}的具体行情页。`,
+    targetUrlExact: true,
+    message: `已在软件内生成${String(stock.name || stock.code || "目标")}的日K和行情详情。`,
   };
 }
 export async function openLocalStock(stock) {
-  if (usesPackagedStaticRuntime()) return openExactQuote(stock);
-  const params = new URLSearchParams({
-    code: String(stock.code || ""),
-    market: String(stock.market ?? ""),
-    name: String(stock.name || ""),
-  });
-  const result = await fetchJson(`${SERVICE_ORIGIN}/stock-open?${params}`, {label: "本机股票软件日K", timeoutMs: 95000, method: "POST"});
-  if (!result.ok) throw new AppError(result.message || "本机股票软件没有打开日K。", {code: "STOCK_APP_FAILED"});
-  return result;
+  return openExactQuote(stock);
 }
 
 export const openTdxStock = openLocalStock;
