@@ -18,6 +18,10 @@ test("desktop quote actions use the current-device trading application service",
   const api = readApp(path.join("assets", "js", "api.js"));
   assert.match(api, /new URL\("\/stock-open", SERVICE_ORIGIN\)/);
   assert.match(api, /method:\s*"POST"/);
+  assert.match(api, /result\.directNavigation === true/);
+  assert.match(api, /result\.verifiedTarget === true/);
+  assert.match(api, /result\.verifiedPage === true/);
+  assert.match(api, /result\.targetPage === "dailyK"/);
   assert.match(api, /globalThis\.AShareTradingApp/);
   assert.doesNotMatch(api, /pages\/market-detail\.html|internalMarketDetail/);
 
@@ -39,6 +43,19 @@ test("Windows adapter discovers installed market applications without a webpage 
   assert.match(adapter, /指南针/);
   assert.match(adapter, /券商行情软件/);
   assert.match(adapter, /verifiedTarget=\$true/);
+  assert.match(adapter, /directNavigation=\$true/);
+  assert.match(adapter, /verifiedPage=\$true/);
+  assert.match(adapter, /targetPage="dailyK"/);
+  assert.match(adapter, /method="exec_to_tdx"/);
+  assert.match(adapter, /http:\/\/www\.treeid\/code_\$stockCode/);
+  assert.match(adapter, /targetAndDailyKWindow/);
+  assert.match(adapter, /TRADING_APP_LOGIN_REQUIRED/);
+  assert.match(adapter, /function Resolve-TdxSectorCode/);
+  assert.match(adapter, /T0002\\hq_cache\\\$name/);
+  assert.match(adapter, /GetEncoding\(936\)/);
+  assert.match(adapter, /Invoke-TdxDirectNavigation \$query/);
+  assert.match(adapter, /function Match-TitleTarget/);
+  assert.match(adapter, /板块标题误命中拦截自检失败/);
   assert.match(adapter, /webFallback=\$false/);
   assert.match(adapter, /function Find-StockApps/);
   assert.match(adapter, /if\(\$StrictPreferred\)\{return \$preferred\}/);

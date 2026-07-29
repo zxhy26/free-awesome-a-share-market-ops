@@ -75,6 +75,10 @@ targetAppJs = targetAppJs.replace(
   /未检测到可自动操作的本机股票软件，已尝试网页行情兜底。/g,
   "未检测到可自动操作的本机交易软件，请先安装或登录交易软件。",
 );
+targetAppJs = targetAppJs.replace(
+  /\.\/api\.js\?v=[^"]+/,
+  "./api.js?v=20260729-8",
+);
 fs.writeFileSync(targetAppJsPath, targetAppJs, "utf8");
 
 const sourceService = fs.readFileSync(path.join(sourceApp, "backend", "复盘同步服务.js"), "utf8");
@@ -105,7 +109,7 @@ service = service.replace(/endpoints:\s*\[([^\]]*)\]/, (match, endpoints) => {
 });
 service = service.replace(
   /const SERVICE_VERSION = "[^"]+";/,
-  'const SERVICE_VERSION = "3.14.6";',
+  'const SERVICE_VERSION = "3.14.7";',
 );
 if (!service.includes('["/stock-open", "/tdx-stock", "/tdx-sector"]')) {
   throw new Error(`目标同步服务缺少 /stock-open 路由：${servicePath}`);
@@ -123,7 +127,7 @@ let serviceWorker = fs.readFileSync(serviceWorkerPath, "utf8");
 serviceWorker = serviceWorker
   .replace(
     /const CACHE_VERSION = "[^"]+";/,
-    'const CACHE_VERSION = "a-share-review-v78-outflow-bar";',
+    'const CACHE_VERSION = "a-share-review-v79-direct-daily-k";',
   )
   .split(/\r?\n/)
   .filter((line) => !/market-detail/.test(line))
@@ -151,7 +155,8 @@ const visit = (directory) => {
     const original = fs.readFileSync(absolute, "utf8");
     const updated = original
       .replace(/http:\/\/127\.0\.0\.1:18765\/stock-open/g, "/stock-open")
-      .replace(/网页行情兜底/g, "本机交易软件跳转");
+      .replace(/网页行情兜底/g, "本机交易软件跳转")
+      .replace(/assets\/js\/app\.js\?v=[^"']+/g, "assets/js/app.js?v=20260729-8");
     if (updated !== original) {
       fs.writeFileSync(absolute, updated, "utf8");
       patchedHtmlFiles += 1;

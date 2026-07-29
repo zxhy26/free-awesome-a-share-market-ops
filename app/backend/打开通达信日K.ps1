@@ -114,14 +114,22 @@ function Refresh-Process($process){try{$process.Refresh();$process}catch{$null}}
 function Window-Class($process){try{$p=Refresh-Process $process;if($p-and$p.MainWindowHandle-ne 0){[LocalStockWindowApi]::ClassName($p.MainWindowHandle)}else{""}}catch{""}}
 function Window-SurfaceText($process){try{$p=Refresh-Process $process;if($p-and$p.MainWindowHandle-ne 0){([string]$p.MainWindowTitle)+"`n"+[LocalStockWindowApi]::SurfaceText($p.MainWindowHandle)}else{""}}catch{""}}
 
-function Test-ReadyWindow($process,$profile) {
+function Test-LoginWindow($process,$profile) {
+  if($profile.Id-ne"tongdaxin"){return $false}
   $p=Refresh-Process $process
   if(-not$p-or$p.MainWindowHandle-eq 0){return $false}
   $class=Window-Class $p
   $surface=Window-SurfaceText $p
+  if($surface-match"账号|密码|用户登录|登录通达信|短信登录|扫码登录|游客登录|免费注册|记住密码|找回密码"){return $true}
+  [bool]($class-eq"#32770"-and$surface-notmatch"分析图表|行情报价|自选股|沪深|上证指数|板块指数|\[[^\]]+\]")
+}
+
+function Test-ReadyWindow($process,$profile) {
+  $p=Refresh-Process $process
+  if(-not$p-or$p.MainWindowHandle-eq 0){return $false}
+  $surface=Window-SurfaceText $p
   if($profile.Id-eq"tongdaxin"){
-    if($class-eq"#32770"){return $false}
-    if($surface-match"账号|密码|用户登录|登录通达信"){return $false}
+    if(Test-LoginWindow $p $profile){return $false}
     return [bool]($surface-match"分析图表|行情报价|自选股|沪深|上证指数|板块指数|\[[^\]]+\]")
   }
   [bool]($surface.Trim())
@@ -226,8 +234,8 @@ function Wait-ReadyWindow($candidate,[int]$preferred=0,[int]$timeoutSeconds=20) 
     $p=Matching-Process $candidate;if($p){$last=$p;if(Test-ReadyWindow $p $candidate.Profile){return $p}}
     Start-Sleep -Milliseconds 400
   }while((Get-Date)-lt$deadline)
-  if($last-and$candidate.Profile.Id-eq"tongdaxin"-and(Window-Class $last)-eq"#32770"){
-    throw "通达信已启动，但仍停留在登录窗口。为避免把股票代码输入账号栏，本次没有执行软件内跳转"
+  if($last-and(Test-LoginWindow $last $candidate.Profile)){
+    throw "通达信已启动，但仍停留在登录窗口。请先在通达信完成登录；登录后再次点击，程序会直接定位到对应日K页面"
   }
   $null
 }
@@ -238,8 +246,64 @@ function Activate-App($process,$appName) {
   throw "$appName 已启动，但窗口暂时无法操作。请完成该软件登录并显示行情主窗口后重试。"
 }
 
-function Search-Query($profile,$stockCode,$marketText,$stockName) {
-  if($marketText-eq"sector"){if($profile.Id-eq"tongdaxin"-and$stockCode-match'^880\d{3}$'){return $stockCode};if($stockName){return $stockName};return $stockCode};$stockCode
+function Normalize-SectorName($text) {
+  (([string]$text).Trim()-replace'[ⅠⅡⅢⅣⅤ]+$',''-replace'(概念|板块)$','').Trim()
+}
+
+function Resolve-TdxSectorCode($stockCode,$stockName,$appPath="") {
+  if($stockCode-match'^88\d{4}$'){return $stockCode}
+  $target=Normalize-SectorName $stockName
+  if(-not$target-or-not$appPath){return ""}
+  $installDir=Split-Path -Parent $appPath
+  $roots=@($installDir,(Split-Path -Parent $installDir))|Where-Object{$_}|Select-Object -Unique
+  $fallback=""
+  foreach($root in $roots){
+    foreach($name in @("tdxzs.cfg","tdxzs3.cfg")){
+      $cfg=Join-Path $root "T0002\hq_cache\$name"
+      if(-not(Test-Path -LiteralPath $cfg -PathType Leaf)){continue}
+      try{$text=[Text.Encoding]::GetEncoding(936).GetString([IO.File]::ReadAllBytes($cfg))}catch{continue}
+      foreach($line in $text-split"\r?\n"){
+        $parts=$line.Trim()-split'\|'
+        if($parts.Count-lt2){continue}
+        $candidateName=Normalize-SectorName $parts[0]
+        $candidateCode=([string]$parts[1]).Trim()
+        if($candidateName-ne$target-or$candidateCode-notmatch'^88\d{4}$'){continue}
+        if($candidateCode-match'^880\d{3}$'){return $candidateCode}
+        if(-not$fallback){$fallback=$candidateCode}
+      }
+    }
+  }
+  $fallback
+}
+
+function Search-Query($profile,$stockCode,$marketText,$stockName,$appPath="") {
+  if($marketText-eq"sector"){
+    if($profile.Id-eq"tongdaxin"){
+      $resolved=Resolve-TdxSectorCode $stockCode $stockName $appPath
+      if($resolved){return $resolved}
+    }
+    if($stockName){return $stockName}
+    return $stockCode
+  }
+  $stockCode
+}
+
+function Tdx-InternalUrl($stockCode) {
+  if($stockCode-match'^\d{6}$'){"http://www.treeid/code_$stockCode"}else{""}
+}
+
+function Invoke-TdxDirectNavigation($stockCode) {
+  $url=Tdx-InternalUrl $stockCode
+  if(-not$url){return [pscustomobject]@{Attempted=$false;Success=$false;Method="keyboard";Url="";Detail="目标没有通达信六位代码"}}
+  try{
+    $body=[ordered]@{id=1;method="exec_to_tdx";params=[ordered]@{url=$url}}|ConvertTo-Json -Depth 5 -Compress
+    $response=Invoke-RestMethod -Uri "http://127.0.0.1:17709/" -Method Post -ContentType "application/json; charset=utf-8" -Body $body -TimeoutSec 2
+    $json=$response|ConvertTo-Json -Depth 8 -Compress
+    $success=[bool]($json-match'"ErrorId"\s*:\s*"?0"?'-or$json-match'"Value"\s*:\s*(?:1|2)')
+    [pscustomobject]@{Attempted=$true;Success=$success;Method="tongdaxinOfficialExec";Url=$url;Detail=$json}
+  }catch{
+    [pscustomobject]@{Attempted=$true;Success=$false;Method="keyboard";Url=$url;Detail=$_.Exception.Message}
+  }
 }
 
 function Paste-Text($shell,$text) {
@@ -247,10 +311,15 @@ function Paste-Text($shell,$text) {
   try{$had=[Windows.Forms.Clipboard]::ContainsText();if($had){$saved=[Windows.Forms.Clipboard]::GetText()};[Windows.Forms.Clipboard]::SetText([string]$text);$shell.SendKeys("^v");Start-Sleep -Milliseconds 280}finally{try{if($had){[Windows.Forms.Clipboard]::SetText($saved)}else{[Windows.Forms.Clipboard]::Clear()}}catch{}}
 }
 
+function Send-DailyKShortcut($shell,$profile) {
+  if($profile.Mode-eq"05"){$shell.SendKeys("05");Start-Sleep -Milliseconds 180;$shell.SendKeys("{ENTER}")}else{$shell.SendKeys("{F5}")}
+  Start-Sleep -Milliseconds 700
+}
+
 function Send-Search($shell,$profile,$query) {
   if($query-match'^\d{6}$'){$shell.SendKeys($query)}else{Paste-Text $shell $query}
   Start-Sleep -Milliseconds 260;$shell.SendKeys("{ENTER}");Start-Sleep -Milliseconds 750
-  if($profile.Mode-eq"05"){$shell.SendKeys("05");Start-Sleep -Milliseconds 160;$shell.SendKeys("{ENTER}")}else{$shell.SendKeys("{F5}")}
+  Send-DailyKShortcut $shell $profile
 }
 
 function Send-AlternativeSearch($shell,$profile,$query) {
@@ -263,21 +332,36 @@ function Send-AlternativeSearch($shell,$profile,$query) {
 function Normalize-WindowText($text){(([string]$text)-replace'[\s\p{P}\p{S}]','').ToUpperInvariant()}
 function Navigation-Tokens($stockCode,$stockName,$marketText) {
   $tokens=@();$name=Normalize-WindowText $stockName
-  if($name){$tokens+=$name;$plain=$name-replace'^\*?ST','';if($plain.Length-ge 2){$tokens+=$plain};if($marketText-eq"sector"){$base=$name-replace'[ⅠⅡⅢⅣⅤ]+$','';$base=$base-replace'概念$','';if($base.Length-ge 2){$tokens+=$base}}}
+  if($name){$tokens+=$name;$plain=$name-replace'^\*?ST','';if($plain.Length-ge 2){$tokens+=$plain};if($marketText-eq"sector"){$base=Normalize-WindowText (Normalize-SectorName $stockName);if($base.Length-ge 2){$tokens+=$base}}}
   if(-not$tokens-and$stockCode){$tokens+=(Normalize-WindowText $stockCode)}
   @($tokens|Where-Object{$_.Length-ge 2}|Select-Object -Unique)
 }
 
-function Navigation-Observation($process,$stockCode,$stockName,$marketText) {
-  $p=Refresh-Process $process;$title=if($p){[string]$p.MainWindowTitle}else{""};$surface=Window-SurfaceText $p;$normalized=Normalize-WindowText $surface
-  foreach($token in @(Navigation-Tokens $stockCode $stockName $marketText)){if($normalized.Contains($token)){return [pscustomobject]@{Verified=$true;Matched=$token;Title=$title}}}
-  [pscustomobject]@{Verified=$false;Matched="";Title=$title}
+function Title-Target($title) {
+  $match=[regex]::Match([string]$title,'\[(?:分析图表|技术分析|日线|日K|K线)\s*[-—:：]?\s*(?<target>[^\]]+)\]')
+  if($match.Success){Normalize-WindowText $match.Groups["target"].Value}else{""}
 }
 
-function Wait-Navigation($process,$stockCode,$stockName,$marketText,[int]$timeoutMilliseconds=6000) {
+function Match-TitleTarget($title,$stockCode,$stockName,$marketText) {
+  $observed=Title-Target $title
+  if(-not$observed){return ""}
+  foreach($token in @(Navigation-Tokens $stockCode $stockName $marketText)){if($observed-eq$token){return $token}}
+  ""
+}
+
+function Navigation-Observation($process,$profile,$stockCode,$stockName,$marketText) {
+  $p=Refresh-Process $process;$title=if($p){[string]$p.MainWindowTitle}else{""};$surface=Window-SurfaceText $p;$normalized=Normalize-WindowText $surface
+  $matched=""
+  if($profile.Id-eq"tongdaxin"){$matched=Match-TitleTarget $title $stockCode $stockName $marketText}else{foreach($token in @(Navigation-Tokens $stockCode $stockName $marketText)){if($normalized.Contains($token)){$matched=$token;break}}}
+  $dailyK=[bool]($normalized-match"分析图表|日线|日K|K线|MACD|MA5")
+  if($profile.Id-ne"tongdaxin"-and$matched){$dailyK=$true}
+  [pscustomobject]@{Verified=[bool]($matched-and$dailyK);TargetMatched=[bool]$matched;PageMatched=$dailyK;Matched=$matched;ObservedTarget=(Title-Target $title);Page="dailyK";Title=$title}
+}
+
+function Wait-Navigation($process,$profile,$stockCode,$stockName,$marketText,[int]$timeoutMilliseconds=6000) {
   $deadline=(Get-Date).AddMilliseconds([Math]::Max(500,$timeoutMilliseconds));$observation=$null
-  do{$observation=Navigation-Observation $process $stockCode $stockName $marketText;if($observation.Verified){return $observation};Start-Sleep -Milliseconds 250}while((Get-Date)-lt$deadline)
-  if($observation){$observation}else{[pscustomobject]@{Verified=$false;Matched="";Title=""}}
+  do{$observation=Navigation-Observation $process $profile $stockCode $stockName $marketText;if($observation.Verified){return $observation};Start-Sleep -Milliseconds 250}while((Get-Date)-lt$deadline)
+  if($observation){$observation}else{[pscustomobject]@{Verified=$false;TargetMatched=$false;PageMatched=$false;Matched="";Page="dailyK";Title=""}}
 }
 
 function Save-Choice($candidate) {
@@ -287,13 +371,14 @@ function Save-Choice($candidate) {
 function Run-SelfTest {
   foreach($s in @(@("C:\x\Tdxw.exe","","tongdaxin"),@("C:\x\hexin.exe","","ths"),@("C:\x\mainfree.exe","","eastmoney"),@("C:\x\dzh2.exe","","dazhihui"),@("C:\x\x.exe","指南针全赢","compass"),@("C:\x\x.exe","中信证券至信版","broker"))){$p=Profile-For $s[0] $s[1];if(-not$p-or$p.Id-ne$s[2]){throw "软件识别自检失败：$($s-join'|')"}}
   $tdx=$profiles|Where-Object Id -eq tongdaxin|Select-Object -First 1;$ths=$profiles|Where-Object Id -eq ths|Select-Object -First 1
-  if((Search-Query $tdx "880123" "sector" "通信设备")-ne"880123"){throw "通达信板块代码自检失败"};if((Search-Query $ths "BK1036" "sector" "通信设备")-ne"通信设备"){throw "跨软件板块名称自检失败"};if((Search-Query $ths "600000" "stock" "浦发银行")-ne"600000"){throw "个股代码自检失败"}
-  [pscustomobject]@{ok=$true;selfTest=$true;supported=@($profiles|ForEach-Object{$_.Name});webFallback=$false;navigationRequiresVerification=$true}
+  if((Search-Query $tdx "880123" "sector" "通信设备")-ne"880123"){throw "通达信板块代码自检失败"};if((Search-Query $ths "BK1036" "sector" "通信设备")-ne"通信设备"){throw "跨软件板块名称自检失败"};if((Search-Query $ths "600000" "stock" "浦发银行")-ne"600000"){throw "个股代码自检失败"};if((Tdx-InternalUrl "600000")-ne"http://www.treeid/code_600000"){throw "通达信官方页面地址自检失败"}
+  if((Normalize-SectorName "银行Ⅱ")-ne"银行"){throw "板块名称标准化自检失败"};if((Match-TitleTarget "通达信金融终端 - [分析图表-平安银行]" "BK0475" "银行Ⅱ" "sector")){throw "板块标题误命中拦截自检失败"};if((Match-TitleTarget "通达信金融终端 - [分析图表-银行]" "BK0475" "银行Ⅱ" "sector")-ne"银行"){throw "板块标题精确命中自检失败"}
+  [pscustomobject]@{ok=$true;selfTest=$true;supported=@($profiles|ForEach-Object{$_.Name});webFallback=$false;directNavigationRequired=$true;targetPage="dailyK";navigationRequiresVerification=$true}
 }
 
 function Invoke-Open {
   $rawCode=([string]$Code).Trim().ToUpperInvariant();$marketText=([string]$Market).Trim().ToLowerInvariant();$stockName=([string]$Name).Trim()
-  $stockCode=if($marketText-eq"sector"){if($rawCode-match'^(880\d{3}|BK\d{4})$'){$rawCode}elseif($rawCode-match'^\d{6}$'){$rawCode}else{""}}else{($rawCode-replace"\D","")}
+  $stockCode=if($marketText-eq"sector"){if($rawCode-match'^(88\d{4}|BK\d{4})$'){$rawCode}elseif($rawCode-match'^\d{6}$'){$rawCode}else{""}}else{($rawCode-replace"\D","")}
   if($marketText-ne"sector"-and$stockCode-notmatch'^\d{6}$'){throw "股票代码无效：$Code"}
   if($marketText-eq"sector"-and-not$stockCode-and-not$stockName){throw "板块代码和名称均为空"}
   $candidates=@(Find-StockApps)
@@ -302,22 +387,27 @@ function Invoke-Open {
     throw "未在这台电脑检测到受支持的股票软件"
   }
   if($DryRun){
-    $candidate=$candidates[0];$query=Search-Query $candidate.Profile $stockCode $marketText $stockName;$existing=Matching-Process $candidate
-    return [pscustomobject]@{ok=$true;mode="localApp";code=$stockCode;market=$marketText;name=$stockName;query=$query;localApp=$candidate.Profile.Name;localAppPath=$candidate.Exe;discoverySource=$candidate.Source;existingProcessId=$(if($existing){$existing.Id}else{$null});willLaunch=-not[bool]$existing;requiresReadyWindow=$true;requiresTargetVerification=$true;webFallback=$false;candidateCount=$candidates.Count;candidates=@($candidates|Select-Object -First 8|ForEach-Object{[pscustomobject]@{app=$_.Profile.Name;source=$_.Source;running=[bool](Matching-Process $_);path=$_.Exe}});dryRun=$true}
+    $candidate=$candidates[0];$query=Search-Query $candidate.Profile $stockCode $marketText $stockName $candidate.Exe;$existing=Matching-Process $candidate
+    return [pscustomobject]@{ok=$true;mode="localApp";code=$stockCode;market=$marketText;name=$stockName;query=$query;localApp=$candidate.Profile.Name;localAppPath=$candidate.Exe;discoverySource=$candidate.Source;existingProcessId=$(if($existing){$existing.Id}else{$null});willLaunch=-not[bool]$existing;requiresReadyWindow=$true;directNavigationRequired=$true;requiresTargetVerification=$true;targetPage="dailyK";webFallback=$false;candidateCount=$candidates.Count;candidates=@($candidates|Select-Object -First 8|ForEach-Object{[pscustomobject]@{app=$_.Profile.Name;source=$_.Source;running=[bool](Matching-Process $_);path=$_.Exe}});dryRun=$true}
   }
   $failures=@()
   foreach($candidate in $candidates){
-    $query=Search-Query $candidate.Profile $stockCode $marketText $stockName
+    $query=Search-Query $candidate.Profile $stockCode $marketText $stockName $candidate.Exe
     if(-not$query){$failures+="$($candidate.Profile.Name)：缺少可搜索代码或名称";continue}
     $launched=$false;$proc=Matching-Process $candidate
     try{
       if($proc){$proc=Wait-ReadyWindow $candidate $proc.Id 4;if(-not$proc){throw "$($candidate.Profile.Name) 当前没有可操作的行情主窗口"}}
       if(-not$proc){$launch=if($candidate.Launch){$candidate.Launch}else{$candidate.Exe};if(-not$launch){throw "已识别 $($candidate.Profile.Name)，但缺少可启动路径"};$cwd=if($candidate.Exe){Split-Path -Parent $candidate.Exe}else{$env:USERPROFILE};$started=Start-Process -FilePath $launch -WorkingDirectory $cwd -PassThru;$launched=$true;$proc=Wait-ReadyWindow $candidate $(if($started){$started.Id}else{0}) 30;if(-not$proc){throw "$($candidate.Profile.Name) 启动后没有检测到已登录的行情主窗口"}}
-      $shell=Activate-App $proc $candidate.Profile.Name;Send-Search $shell $candidate.Profile $query;$observation=Wait-Navigation $proc $stockCode $stockName $marketText 6000
-      if(-not$observation.Verified){$shell=Activate-App $proc $candidate.Profile.Name;Send-AlternativeSearch $shell $candidate.Profile $query;$observation=Wait-Navigation $proc $stockCode $stockName $marketText 5000}
+      $shell=Activate-App $proc $candidate.Profile.Name;$observation=$null;$navigationMethod="keyboard"
+      if($candidate.Profile.Id-eq"tongdaxin"){
+        $direct=Invoke-TdxDirectNavigation $query
+        if($direct.Success){$navigationMethod=$direct.Method;Start-Sleep -Milliseconds 650;$shell=Activate-App $proc $candidate.Profile.Name;Send-DailyKShortcut $shell $candidate.Profile;$observation=Wait-Navigation $proc $candidate.Profile $stockCode $stockName $marketText 5000}
+      }
+      if((-not $observation)-or(-not $observation.Verified)){$navigationMethod="keyboard";$shell=Activate-App $proc $candidate.Profile.Name;Send-Search $shell $candidate.Profile $query;$observation=Wait-Navigation $proc $candidate.Profile $stockCode $stockName $marketText 6000}
+      if(-not$observation.Verified){$shell=Activate-App $proc $candidate.Profile.Name;Send-AlternativeSearch $shell $candidate.Profile $query;$observation=Wait-Navigation $proc $candidate.Profile $stockCode $stockName $marketText 5000}
       if(-not$observation.Verified){throw "$($candidate.Profile.Name) 已启动，但未能确认进入 $stockName $stockCode 对应的日K页面"}
       Save-Choice $candidate;Write-RunLog "本机股票软件日K跳转并验证：$stockCode $stockName；软件：$($candidate.Profile.Name)；查询：$query；标题：$($observation.Title)；来源：$($candidate.Source)；新启动：$launched"
-      return [pscustomobject]@{ok=$true;mode="localApp";code=$stockCode;market=$marketText;name=$stockName;query=$query;localApp=$candidate.Profile.Name;localAppPath=$candidate.Exe;discoverySource=$candidate.Source;processId=$proc.Id;launched=$launched;verifiedTarget=$true;verifiedBy="windowTitleOrControls";matchedTarget=$observation.Matched;observedWindowTitle=$observation.Title;dryRun=$false;message="已在当前$($candidate.Profile.Name)中打开 $stockName $stockCode 日K（页面已验证）"}
+      return [pscustomobject]@{ok=$true;mode="localApp";code=$stockCode;market=$marketText;name=$stockName;query=$query;localApp=$candidate.Profile.Name;localAppPath=$candidate.Exe;discoverySource=$candidate.Source;processId=$proc.Id;launched=$launched;directNavigation=$true;navigationMethod=$navigationMethod;targetPage="dailyK";verifiedTarget=$true;verifiedPage=$true;verifiedBy="targetAndDailyKWindow";matchedTarget=$observation.Matched;observedWindowTitle=$observation.Title;dryRun=$false;message="已在当前$($candidate.Profile.Name)中直接定位到 $stockName $stockCode 日K页面"}
     }catch{
       $reason=$_.Exception.Message
       $failures+="$($candidate.Profile.Name)：$reason"
@@ -327,4 +417,4 @@ function Invoke-Open {
   throw "已自动尝试本机 $($candidates.Count) 个交易软件候选，但都未完成目标日K验证：$($failures -join '；')"
 }
 
-try{$result=if($SelfTest){Run-SelfTest}else{Invoke-Open};$result|ConvertTo-Json -Depth 6 -Compress;exit 0}catch{$message=$_.Exception.Message;Write-RunLog "本机股票软件跳转失败：$message";[pscustomobject]@{ok=$false;code=([string]$Code-replace"\D","");name=$Name;message=$message}|ConvertTo-Json -Compress;[Console]::Error.WriteLine($message);exit 1}
+try{$result=if($SelfTest){Run-SelfTest}else{Invoke-Open};$result|ConvertTo-Json -Depth 6 -Compress;exit 0}catch{$message=$_.Exception.Message;$errorCode=if($message-match"登录窗口|完成登录"){"TRADING_APP_LOGIN_REQUIRED"}else{"TRADING_APP_TARGET_NOT_REACHED"};Write-RunLog "本机股票软件跳转失败：$message";[pscustomobject]@{ok=$false;errorCode=$errorCode;code=([string]$Code-replace"\D","");name=$Name;targetPage="dailyK";directNavigation=$false;verifiedTarget=$false;verifiedPage=$false;message=$message}|ConvertTo-Json -Compress;[Console]::Error.WriteLine($message);exit 1}

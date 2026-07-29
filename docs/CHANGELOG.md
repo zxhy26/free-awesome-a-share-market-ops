@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.17.8 - 2026-07-29
+
+- Required every Windows stock and sector action to verify both the requested target and the daily-K page before reporting success.
+- Added Tongdaxin's official `exec_to_tdx` internal target URL as the preferred direct-navigation path, with the verified keyboard flow retained as a fallback.
+- Resolved Eastmoney board identifiers through each local Tongdaxin installation's index catalog and required an exact chart-title match, preventing a stock such as Ping An Bank from being mistaken for the Bank sector.
+- Distinguished a real Tongdaxin login window from the market workspace and returned a dedicated login-required error instead of treating application launch as navigation success.
+- Preserved automatic installed-application discovery in Member and Basic while keeping Self pinned to Tongdaxin.
+
 ## 2.17.7 - 2026-07-29
 
 - Anchored the green outflow bars in the lower capital-flow rankings to the left so live width changes animate linearly from left to right.

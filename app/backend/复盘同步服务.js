@@ -13,7 +13,7 @@ const { refreshIndexContribution } = require("./index-contribution-online");
 
 const PORT = Number(process.env.A_SHARE_REVIEW_PORT) || 18765;
 const HOST = process.env.A_SHARE_REVIEW_HOST || "127.0.0.1";
-const SERVICE_VERSION = "3.14.6";
+const SERVICE_VERSION = "3.14.7";
 const ALLOW_REMOTE = process.env.A_SHARE_REVIEW_ALLOW_REMOTE === "1";
 const TEST_MODE = process.env.A_SHARE_REVIEW_TEST_MODE === "1";
 const DISABLE_SCHEDULES = process.env.A_SHARE_REVIEW_DISABLE_SCHEDULES === "1";
@@ -897,7 +897,7 @@ function runLocalStock(searchParams) {
       ...result,
       ...(payload || {}),
       ok,
-      message: payload?.message || (ok ? "已在这台设备的股票软件中打开日K" : result.message),
+      message: payload?.message || (ok ? "已在这台设备的股票软件中定位到对应日K页面" : result.message),
     };
   });
 }

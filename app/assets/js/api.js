@@ -445,8 +445,13 @@ export async function openLocalStock(stock) {
     method: "POST",
     allowSnapshot: false,
   });
-  if (!result.ok) {
-    throw new AppError(result.message || "未检测到可操作的本机交易软件。", {
+  const reachedDailyK = result.ok
+    && result.directNavigation === true
+    && result.verifiedTarget === true
+    && result.verifiedPage === true
+    && result.targetPage === "dailyK";
+  if (!reachedDailyK) {
+    throw new AppError(result.message || "交易软件已启动，但没有定位到对应的日K页面。", {
       code: result.errorCode || "TRADING_APP_OPEN_FAILED",
       technical: result.stderr || result.stdout || "",
     });
