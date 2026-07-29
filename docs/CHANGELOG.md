@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.17.7 - 2026-07-29
+
+- Anchored the green outflow bars in the lower capital-flow rankings to the left so live width changes animate linearly from left to right.
+- Left the sector-flow trajectory charts, values, and ranking order unchanged.
+- Added regression coverage for the outflow-bar direction and included the corrected stylesheet explicitly in every packaged edition.
+
 ## 2.17.6 - 2026-07-29
 
 - Restored stock and sector daily-chart actions to the current device's installed market application instead of rendering a first-party daily chart.

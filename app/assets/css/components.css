@@ -457,8 +457,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .flow-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 .flow-value { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
 .flow-bar-track { position: relative; height: 12px; overflow: hidden; background: var(--surface-hover); border: 1px solid var(--border); border-radius: 2px; }
-.flow-bar { display: block; width: 0; height: 100%; min-width: 2px; background: var(--gain); border-radius: 1px; transition: width 90ms linear; will-change: width; }
-.flow-row.outflow .flow-bar { margin-left: auto; background: var(--loss); }
+.flow-bar { display: block; width: 0; height: 100%; min-width: 2px; margin-left: 0; background: var(--gain); border-radius: 1px; transform-origin: left center; transition: width 90ms linear; will-change: width; }
+.flow-row.outflow .flow-bar { margin-left: 0; background: var(--loss); }
 .k-button { min-width: 34px; height: 23px; padding: 0 7px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--accent); text-decoration: none; font: inherit; font-size: 10px; font-weight: 800; cursor: pointer; }
 .k-button:disabled { color: var(--text-muted); cursor: not-allowed; opacity: .68; }
 

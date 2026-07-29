@@ -32,6 +32,7 @@ function replaceRequired(source, pattern, replacement, label) {
 
 const sharedFiles = [
   "pages/content-detail.html",
+  "assets/css/components.css",
   "assets/css/internal-detail.css",
   "assets/js/internal-navigation.js",
   "assets/js/internal-content-detail.js",
@@ -104,7 +105,7 @@ service = service.replace(/endpoints:\s*\[([^\]]*)\]/, (match, endpoints) => {
 });
 service = service.replace(
   /const SERVICE_VERSION = "[^"]+";/,
-  'const SERVICE_VERSION = "3.14.5";',
+  'const SERVICE_VERSION = "3.14.6";',
 );
 if (!service.includes('["/stock-open", "/tdx-stock", "/tdx-sector"]')) {
   throw new Error(`目标同步服务缺少 /stock-open 路由：${servicePath}`);
@@ -122,7 +123,7 @@ let serviceWorker = fs.readFileSync(serviceWorkerPath, "utf8");
 serviceWorker = serviceWorker
   .replace(
     /const CACHE_VERSION = "[^"]+";/,
-    'const CACHE_VERSION = "a-share-review-v77-trading-app";',
+    'const CACHE_VERSION = "a-share-review-v78-outflow-bar";',
   )
   .split(/\r?\n/)
   .filter((line) => !/market-detail/.test(line))
