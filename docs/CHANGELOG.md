@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.17.6 - 2026-07-29
+
+- Restored stock and sector daily-chart actions to the current device's installed market application instead of rendering a first-party daily chart.
+- Re-enabled Windows discovery across running processes, prior successful choices, App Paths, uninstall registry entries, Start Menu shortcuts, and common installation folders.
+- Added verified multi-candidate failover so an unlogged or unavailable first application is skipped and the next detected trading application is tried automatically.
+- Pinned the Windows Self edition to Tongdaxin while leaving Member and Basic on automatic per-device discovery.
+- Removed Eastmoney webpage fallback; a failed discovery now reports the missing or unready local application without opening a browser page.
+- Added Android/iOS trading-app deep links with a remembered per-device preference and removed the mobile in-application market-detail page.
+- Kept policy, news, event, and other text-oriented details inside the application.
+
 ## 2.17.5 - 2026-07-29
 
 - Replaced Eastmoney-page and local-stock-application jumps with first-party stock, sector, policy, news, and event detail pages.

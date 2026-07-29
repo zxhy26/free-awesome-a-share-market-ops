@@ -992,7 +992,7 @@ function setupInteractions() {
       } catch (error) {
         button.textContent = "未打开";
         button.title = error.message;
-        showNotice(error.message || "未检测到可自动操作的本机股票软件，已尝试网页行情兜底。", "error", true);
+        showNotice(error.message || "未检测到可自动操作的本机交易软件，请先安装或登录交易软件。", "error", true);
         logTechnicalError(error, "本机板块日K");
       } finally {
         window.setTimeout(() => {

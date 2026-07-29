@@ -23,25 +23,25 @@ using System.Windows.Forms;
 #endif
 [assembly: AssemblyCompany("Free & Awesome A-Share Market Ops")]
 [assembly: AssemblyCopyright("Copyright 2026")]
-[assembly: AssemblyVersion("2.17.5.0")]
-[assembly: AssemblyFileVersion("2.17.5.0")]
+[assembly: AssemblyVersion("2.17.6.0")]
+[assembly: AssemblyFileVersion("2.17.6.0")]
 
 internal static class Program
 {
 #if BASIC_EDITION
     private const string EditionName = "基础版";
     private const string EditionCode = "basic";
-    private const string RuntimeTag = "版本_20260729-2.17.5-基础版";
+    private const string RuntimeTag = "版本_20260729-2.17.6-基础版";
     private const string MutexName = "Local\\AshareReviewLauncher_Basic_21705";
 #elif SELF_EDITION
     private const string EditionName = "自用版";
     private const string EditionCode = "self";
-    private const string RuntimeTag = "版本_20260729-2.17.5-自用版";
+    private const string RuntimeTag = "版本_20260729-2.17.6-自用版";
     private const string MutexName = "Local\\AshareReviewLauncher_Self_21705";
 #else
     private const string EditionName = "会员版";
     private const string EditionCode = "member";
-    private const string RuntimeTag = "版本_20260729-2.17.5-会员版";
+    private const string RuntimeTag = "版本_20260729-2.17.6-会员版";
     private const string MutexName = "Local\\AshareReviewLauncher_Member_21705";
 #endif
     private const string PayloadResource = "AshareReviewPayload";

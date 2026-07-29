@@ -6019,7 +6019,7 @@ function buildLimitDetailHtml(marketData, kind) {
     "    event.preventDefault();",
     "    var text=link.textContent;",
     "    link.textContent='打开中';",
-    "    fetch(link.href,{method:'POST',cache:'no-store'}).then(function(res){return res.json().then(function(data){if(!res.ok||!data.ok)throw new Error(data.message||'本机股票软件接口未完成');return data;});}).then(function(data){link.textContent='已打开';link.title=data.message||'已自动检索当前设备的股票软件并打开日K';setTimeout(function(){link.textContent=text;},1400);}).catch(function(error){link.textContent='未打开';link.title=(error&&error.message)||'未检测到可自动操作的本机股票软件，已尝试网页行情兜底';setTimeout(function(){link.textContent=text;},2600);});",
+    "    fetch(link.href,{method:'POST',cache:'no-store'}).then(function(res){return res.json().then(function(data){if(!res.ok||!data.ok)throw new Error(data.message||'本机股票软件接口未完成');return data;});}).then(function(data){link.textContent='已打开';link.title=data.message||'已自动检索当前设备的股票软件并打开日K';setTimeout(function(){link.textContent=text;},1400);}).catch(function(error){link.textContent='未打开';link.title=(error&&error.message)||'未检测到可自动操作的本机股票软件';setTimeout(function(){link.textContent=text;},2600);});",
     "  });",
     "</script>",
     "</main></body>",
@@ -6063,7 +6063,7 @@ function plainListHtml(rows) {
 }
 
 function quantStockKLocalUrl(row) {
-  return "http://127.0.0.1:18765/stock-open?code=" + encodeURIComponent(row.code || "") +
+  return "/stock-open?code=" + encodeURIComponent(row.code || "") +
     "&market=" + encodeURIComponent(row.market ?? "") +
     "&name=" + encodeURIComponent(row.name || "");
 }
@@ -6222,7 +6222,7 @@ function buildQuantHtml(data) {
     "    event.preventDefault();",
     "    var text=link.textContent;",
     "    link.textContent='打开中';",
-    "    fetch(link.href,{method:'POST',cache:'no-store'}).then(function(res){return res.json().then(function(data){if(!res.ok||!data.ok)throw new Error(data.message||'本机股票软件接口未完成');return data;});}).then(function(data){link.textContent='已打开';link.title=data.message||'已自动检索当前设备的股票软件并打开日K';setTimeout(function(){link.textContent=text;},1400);}).catch(function(error){link.textContent='未打开';link.title=(error&&error.message)||'未检测到可自动操作的本机股票软件，已尝试网页行情兜底';setTimeout(function(){link.textContent=text;},2600);});",
+    "    fetch(link.href,{method:'POST',cache:'no-store'}).then(function(res){return res.json().then(function(data){if(!res.ok||!data.ok)throw new Error(data.message||'本机股票软件接口未完成');return data;});}).then(function(data){link.textContent='已打开';link.title=data.message||'已自动检索当前设备的股票软件并打开日K';setTimeout(function(){link.textContent=text;},1400);}).catch(function(error){link.textContent='未打开';link.title=(error&&error.message)||'未检测到可自动操作的本机股票软件';setTimeout(function(){link.textContent=text;},2600);});",
     "  });",
     "</script>",
     "</main></body>",
@@ -6457,12 +6457,12 @@ function buildMainPageRuntimeScript() {
     function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"}[ch]))}
     function rowLabel(row){return row.tdxName||row.name||""}
 function sectorSearchName(row){return row.name||row.tdxName||""}
-function sectorKUrl(row){const tdx=String(row.tdxCode||"").toUpperCase();const board=String(row.code||"").toUpperCase();const code=/^880\\d{3}$/.test(tdx)?tdx:(/^BK\\d{4}$/.test(board)?board:"");const name=sectorSearchName(row);if(!code&&!name)return "";return "http://127.0.0.1:18765/stock-open?code="+encodeURIComponent(code)+"&market=sector&name="+encodeURIComponent(name)}
+function sectorKUrl(row){const tdx=String(row.tdxCode||"").toUpperCase();const board=String(row.code||"").toUpperCase();const code=/^880\\d{3}$/.test(tdx)?tdx:(/^BK\\d{4}$/.test(board)?board:"");const name=sectorSearchName(row);if(!code&&!name)return "";return "/stock-open?code="+encodeURIComponent(code)+"&market=sector&name="+encodeURIComponent(name)}
     function rowMaxAmount(row){const points=Array.isArray(row.points)?row.points:[];return Math.max(Math.abs(Number(row.amount)||0),...points.map(p=>Math.abs(Number(p.amount)||0)),1)}
     function axisMax(groups){const raw=Math.max(1,...groups.flatMap(group=>group.rows.map(row=>rowMaxAmount(row)))); const padded=raw*1.35; const step=padded>=1000?500:padded>=500?200:padded>=100?100:padded>=50?20:10; return Math.ceil(padded/step)*step}
     function renderAxis(el, max){el.innerHTML="";[-1,-.5,0,.5,1].forEach(step=>{const tick=document.createElement("div");tick.className="tick";tick.style.left=((step+1)*50)+"%";tick.textContent=String(Math.round(max*step));el.appendChild(tick)})}
 function initBarRows(container, rows){container.innerHTML='<div class="zero"></div>';rows.forEach((row,index)=>{const rowEl=document.createElement("div");rowEl.className="bar-row";rowEl.dataset.index=index;const label=rowLabel(row);const safeName=escapeHtml(label);const original=row.name&&row.name!==label?" / 原："+escapeHtml(row.name):"";const url=sectorKUrl(row);const kHtml=url?'<a class="kbtn local-stock-link" href="'+url+'" title="自动检索当前设备的股票软件并打开 '+safeName+' 日K图'+original+'">日K</a>':'<span class="kbtn disabled" title="该板块缺少可搜索名称">无名称</span>';rowEl.innerHTML='<div class="name-cell"><div class="name" title="'+safeName+original+'">'+safeName+'</div>'+kHtml+'</div><div class="track"><div class="bar"></div><div class="amount"></div></div>';container.appendChild(rowEl)})}
-document.addEventListener("click",event=>{const link=event.target.closest&&event.target.closest("a.local-stock-link");if(!link)return;event.preventDefault();const text=link.textContent;link.textContent="打开中";fetch(link.href,{method:"POST",cache:"no-store"}).then(response=>response.json().then(data=>{if(!response.ok||!data.ok)throw new Error(data.message||"本机股票软件接口未完成");return data})).then(data=>{link.textContent="已打开";link.title=data.message||"已自动检索当前设备的股票软件并打开日K";setTimeout(()=>{link.textContent=text},1400)}).catch(error=>{link.textContent="未打开";link.title=error&&error.message||"未检测到可自动操作的本机股票软件，已尝试网页行情兜底";setTimeout(()=>{link.textContent=text},2600)})})
+document.addEventListener("click",event=>{const link=event.target.closest&&event.target.closest("a.local-stock-link");if(!link)return;event.preventDefault();const text=link.textContent;link.textContent="打开中";fetch(link.href,{method:"POST",cache:"no-store"}).then(response=>response.json().then(data=>{if(!response.ok||!data.ok)throw new Error(data.message||"本机股票软件接口未完成");return data})).then(data=>{link.textContent="已打开";link.title=data.message||"已自动检索当前设备的股票软件并打开日K";setTimeout(()=>{link.textContent=text},1400)}).catch(error=>{link.textContent="未打开";link.title=error&&error.message||"未检测到可自动操作的本机股票软件";setTimeout(()=>{link.textContent=text},2600)})})
     function updateBars(container, rows, max, minute){[...container.querySelectorAll(".bar-row")].forEach((rowEl,index)=>{const row=rows[index];let value=currentAmount(row,minute,index+1);const bar=rowEl.querySelector(".bar");const amount=rowEl.querySelector(".amount");if(value===null||!Number.isFinite(Number(value))){value=Number(row&&row.amount);if(!Number.isFinite(value))value=0;if(isLiveMinute(minute)&&inTradingWindow())requestFlowSample(minute)}const w=Math.min(42,Math.abs(value)/max*50);const tone=value>=0?"pos":"neg";bar.className="bar "+tone;bar.style.width=w+"%";amount.className="amount "+tone;amount.style.setProperty("--w",w+"%");amount.title="最近一次真实同步累计净流入";amount.textContent=fmtAmount(value)})}
     function interpolateSeries(points, minute, key){if(!points.length)return 0; let prev=points[0], next=points[points.length-1]; for(let i=0;i<points.length;i++){if(points[i].minute<=minute) prev=points[i]; if(points[i].minute>=minute){next=points[i]; break}} const span=Math.max(1,next.minute-prev.minute); const t=Math.max(0,Math.min(1,(minute-prev.minute)/span)); return prev[key]+(next[key]-prev[key])*t}
     function renderLine(svg, points, minute, key, baseline){const value=interpolateSeries(points,minute,key); const visible=points.filter(p=>p.minute<=minute); const base=Number(baseline)||Number(points[0]?.[key])||value; const all=points.map(p=>p[key]).concat([base]); const min=Math.min(...all), max=Math.max(...all); const pad=(max-min)*.16||1; const y=v=>148-((v-(min-pad))/(max-min+pad*2))*132; const x=m=>14+(m/DAY_MINUTES)*972; const changePct=base?((value-base)/base*100):0; let path=""; visible.forEach((p,i)=>{path+=(i?"L":"M")+x(p.minute).toFixed(2)+" "+y(p[key]).toFixed(2)}); if(visible.length){path+="L"+x(minute).toFixed(2)+" "+y(value).toFixed(2)} else {path="M14 "+y(value).toFixed(2)} const color=changePct>=0?"#d9413a":"#16825c"; const baseY=y(base); const grid='<line x1="14" x2="986" y1="'+baseY+'" y2="'+baseY+'" stroke="#a8b2bd" stroke-width="1" stroke-dasharray="4 5"/><line x1="500" x2="500" y1="10" y2="148" stroke="#dde3ea" stroke-width="1" stroke-dasharray="4 6"/>'; svg.innerHTML=grid+'<path d="'+path+'" fill="none" stroke="'+color+'" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="'+x(minute).toFixed(2)+'" cy="'+y(value).toFixed(2)+'" r="5" fill="'+color+'"/>'; return {value,changePct,pointChange:value-base}}
@@ -7157,7 +7157,7 @@ function runQuantSelfTest() {
   const runtime = buildMainPageRuntimeScript();
   const countMatches = (pattern) => (runtime.match(pattern) || []).length;
   if (/tdx:\/\/sector/i.test(runtime)) throw new Error("前端自检失败：仍存在依赖发送电脑注册协议的板块跳转");
-  if (!runtime.includes("local-stock-link") || !runtime.includes("127.0.0.1:18765/stock-open")) {
+  if (!runtime.includes("local-stock-link") || !runtime.includes('return "/stock-open?code="')) {
     throw new Error("前端自检失败：板块日K没有统一走接收设备本机服务");
   }
   if (countMatches(/timeRange\.addEventListener\("input"/g) !== 1) throw new Error("前端自检失败：时间轴监听不是唯一实例");

@@ -7,7 +7,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
 const mobileTemplateDir = path.join(repoRoot, "mobile");
 const packageInfo = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
-const mobileReleaseRevision = "internal-detail-1";
+const mobileReleaseRevision = "trading-app-1";
 
 function parseArguments(argv) {
   const values = {};
@@ -180,6 +180,7 @@ function injectMobileHead(html, prefix, edition) {
     `<link rel="stylesheet" href="${prefix}assets/css/mobile.css?v=${packageInfo.version}">`,
     `<script src="${prefix}assets/js/mobile-runtime.js" data-edition="${edition}"></script>`,
     `<script src="${prefix}assets/js/mobile-live.js"></script>`,
+    `<script src="${prefix}assets/js/mobile-trading-app.js"></script>`,
     `<script src="${prefix}assets/js/mobile-api-shim.js"></script>`,
     `<script src="${prefix}assets/js/mobile-internal-navigation.js"></script>`,
   ].join("\n  ");
@@ -239,10 +240,10 @@ function rewriteFrontendScripts(targetDir, edition) {
     if ([
       "mobile-runtime.js",
       "mobile-live.js",
+      "mobile-trading-app.js",
       "mobile-api-shim.js",
       "mobile-internal-navigation.js",
       "mobile-content-detail.js",
-      "mobile-market-detail.js",
       "pwa.js",
       "membership-guard.js",
     ].includes(entry.name)) continue;
@@ -276,49 +277,8 @@ const SERVICE_ORIGIN = runtimeLocation.protocol === "http:" || runtimeLocation.p
         .replace(
           'return runtimeLocation.protocol === "file:"',
           'return globalThis.__A_SHARE_MOBILE__ === true\n    || runtimeLocation.protocol === "file:"',
-        )
-        .replace(
-          /export function exactQuoteUrl\(stock = \{\}\) \{[\s\S]*?\n\}\n\nfunction usesPackagedStaticRuntime/,
-          `export function exactQuoteUrl(stock = {}) {
-  const root = new URL(globalThis.__A_SHARE_ROOT_URL__ || "../../", import.meta.url);
-  const url = new URL("pages/market-detail.html", root);
-  const values = {
-    code: String(stock.code || ""),
-    boardCode: String(stock.boardCode || ""),
-    market: String(stock.market ?? ""),
-    name: String(stock.name || ""),
-    action: "日K",
-  };
-  Object.entries(values).forEach(([key, value]) => {
-    if (value) url.searchParams.set(key, value);
-  });
-  return url.href;
-}
-
-function usesPackagedStaticRuntime`,
-        )
-        .replace(
-          /function openExactQuote\(stock\) \{[\s\S]*?\n\}\nexport async function openLocalStock/,
-          `function openExactQuote(stock) {
-  const url = exactQuoteUrl(stock);
-  runtimeLocation.assign(url);
-  return {
-    ok: true,
-    mode: "internalMarketDetail",
-    url,
-    targetUrlExact: true,
-    message: \`已在软件内生成\${String(stock.name || stock.code || "目标")}的日K和行情详情。\`,
-  };
-}
-export async function openLocalStock`,
         );
     }
-    source = source
-      .replaceAll("在当前设备的股票软件中打开", "在软件内查看")
-      .replaceAll("自动检索当前设备的股票软件并打开", "在软件内生成")
-      .replaceAll("已在当前设备的股票软件中打开", "已在软件内生成")
-      .replaceAll("当前设备的其他股票软件", "软件内行情详情")
-      .replaceAll("本机股票软件", "软件内行情详情");
     writeText(filePath, source);
   }
 
@@ -543,7 +503,8 @@ function createInstructions(targetDir, edition, historyDates, tradeDate) {
 
 安全说明：
 - 手机版不包含 Windows 后台程序、通达信路径或会员私钥。
-- 手机中的日K、股票、板块、政策和新闻按钮均在软件内生成对应内容，不跳转东财网页。
+- 手机中的股票和板块日K按钮调用当前设备已安装的交易软件；首次选择后会记住该设备的交易软件。
+- 政策、新闻和事件文字详情仍在复盘软件内展示，不跳转第三方行情网页。
 - ${edition === "self"
     ? "自用手机版保留量化选股查看功能；激活码签发仍只在自用 Windows 版中进行。"
     : "后勤部手机版不包含量化选股；会员激活码仅在当前手机本地校验，激活码签发仍由自用 Windows 版完成。"}
@@ -555,16 +516,15 @@ function copyMobileTemplates(targetDir) {
   for (const name of [
     "mobile-runtime.js",
     "mobile-live.js",
+    "mobile-trading-app.js",
     "mobile-api-shim.js",
     "mobile-internal-navigation.js",
     "mobile-content-detail.js",
-    "mobile-market-detail.js",
   ]) {
     fs.copyFileSync(path.join(mobileTemplateDir, name), path.join(targetDir, "assets", "js", name));
   }
   fs.copyFileSync(path.join(mobileTemplateDir, "mobile.css"), path.join(targetDir, "assets", "css", "mobile.css"));
   fs.copyFileSync(path.join(mobileTemplateDir, "mobile-detail.css"), path.join(targetDir, "assets", "css", "mobile-detail.css"));
-  fs.copyFileSync(path.join(mobileTemplateDir, "pages", "market-detail.html"), path.join(targetDir, "pages", "market-detail.html"));
   fs.copyFileSync(path.join(mobileTemplateDir, "pages", "content-detail.html"), path.join(targetDir, "pages", "content-detail.html"));
   fs.rmSync(path.join(targetDir, ".mobile-template-copy"), {recursive: true, force: true});
 }
@@ -586,6 +546,8 @@ function buildEdition(options) {
   copyDirectory(path.join(source, "assets", "payment"), path.join(target, "assets", "payment"));
   copyDirectory(dataSource, path.join(target, "data"));
 
+  fs.rmSync(path.join(target, "pages", "market-detail.html"), {force: true});
+  fs.rmSync(path.join(target, "assets", "js", "internal-market-detail.js"), {force: true});
   fs.rmSync(path.join(target, "pages", "member-admin.html"), {force: true});
   fs.rmSync(path.join(target, "assets", "js", "member-admin.js"), {force: true});
   fs.rmSync(path.join(target, "assets", "css", "member-admin.css"), {force: true});

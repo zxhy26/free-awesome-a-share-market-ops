@@ -3,6 +3,8 @@ param(
   [string]$Code = "",
   [string]$Market = "",
   [string]$Name = "",
+  [string]$PreferredApp = "",
+  [switch]$StrictPreferred,
   [switch]$DryRun,
   [switch]$SelfTest,
   [switch]$NoWebFallback
@@ -199,9 +201,14 @@ function Add-CommonPaths {
   }
 }
 
-function Find-StockApp {
+function Find-StockApps {
   $script:candidates=@();Add-Running;Add-Configured;Add-Shortcuts;Add-Registry;Add-CommonPaths
-  $script:candidates|Sort-Object @{Expression="Score";Descending=$true},@{Expression={$_.Profile.Priority};Descending=$true}|Select-Object -First 1
+  $ordered=@($script:candidates|Sort-Object @{Expression="Score";Descending=$true},@{Expression={$_.Profile.Priority};Descending=$true})
+  $preferredId=([string]$PreferredApp).Trim().ToLowerInvariant()
+  if(-not$preferredId){return $ordered}
+  $preferred=@($ordered|Where-Object{$_.Profile.Id-eq$preferredId})
+  if($StrictPreferred){return $preferred}
+  @($preferred+@($ordered|Where-Object{$_.Profile.Id-ne$preferredId}))
 }
 
 function Matching-Process($candidate) {
@@ -277,30 +284,11 @@ function Save-Choice($candidate) {
   try{if(-not(Test-Path -LiteralPath $stateDir -PathType Container)){New-Item -ItemType Directory -Path $stateDir -Force|Out-Null};[ordered]@{appId=$candidate.Profile.Id;appName=$candidate.Profile.Name;executablePath=$candidate.Exe;launchPath=$candidate.Launch;source=$candidate.Source;savedAt=Get-Date -Format "yyyy-MM-dd HH:mm:ss"}|ConvertTo-Json|Set-Content -LiteralPath $choicePath -Encoding UTF8}catch{}
 }
 
-function Web-Url($stockCode,$stockName,$marketText) {
-  $code=([string]$stockCode).Trim().ToUpperInvariant()
-  if($marketText-eq"sector"-and$code-match'^BK\d{4}$'){return "https://quote.eastmoney.com/bk/90.$code.html"}
-  if($marketText-ne"sector"-and$code-match'^\d{6}$'){
-    if($code-match'^(4|8|92)'){return "https://quote.eastmoney.com/bj/$code.html"}
-    if($code-match'^(5|6|9)'){return "https://quote.eastmoney.com/sh$code.html"}
-    return "https://quote.eastmoney.com/sz$code.html"
-  }
-  $key=if($marketText-eq"sector"){($(if($stockName){$stockName}else{$stockCode}))+" 板块 日K"}else{($(if($stockCode){$stockCode}else{$stockName}))+" 股票 日K"}
-  "https://so.eastmoney.com/web/s?keyword="+[Uri]::EscapeDataString($key)
-}
-
-function Open-Web($stockCode,$stockName,$marketText,$reason) {
-  $url=Web-Url $stockCode $stockName $marketText;if(-not$DryRun){Start-Process -FilePath $url|Out-Null};Write-RunLog "本机股票软件不可用，改用东方财富网页：$stockCode $stockName；原因：$reason"
-  [pscustomobject]@{ok=$true;mode="webFallback";code=$stockCode;market=$marketText;name=$stockName;localApp="默认浏览器";discoverySource="东方财富精确行情页兜底";url=$url;targetUrlExact=($url-notmatch'/web/s\?');verifiedTarget=$false;dryRun=[bool]$DryRun;message="本机股票软件未能确认进入对应页面，已打开 $stockName $stockCode 的具体行情页";fallbackReason=$reason}
-}
-
 function Run-SelfTest {
   foreach($s in @(@("C:\x\Tdxw.exe","","tongdaxin"),@("C:\x\hexin.exe","","ths"),@("C:\x\mainfree.exe","","eastmoney"),@("C:\x\dzh2.exe","","dazhihui"),@("C:\x\x.exe","指南针全赢","compass"),@("C:\x\x.exe","中信证券至信版","broker"))){$p=Profile-For $s[0] $s[1];if(-not$p-or$p.Id-ne$s[2]){throw "软件识别自检失败：$($s-join'|')"}}
   $tdx=$profiles|Where-Object Id -eq tongdaxin|Select-Object -First 1;$ths=$profiles|Where-Object Id -eq ths|Select-Object -First 1
   if((Search-Query $tdx "880123" "sector" "通信设备")-ne"880123"){throw "通达信板块代码自检失败"};if((Search-Query $ths "BK1036" "sector" "通信设备")-ne"通信设备"){throw "跨软件板块名称自检失败"};if((Search-Query $ths "600000" "stock" "浦发银行")-ne"600000"){throw "个股代码自检失败"}
-  $stockUrl=Web-Url "600000" "浦发银行" "stock";$bjUrl=Web-Url "920266" "生物谷" "stock";$sectorUrl=Web-Url "BK1238" "IT服务Ⅱ" "sector"
-  if($stockUrl-ne'https://quote.eastmoney.com/sh600000.html'-or$bjUrl-ne'https://quote.eastmoney.com/bj/920266.html'-or$sectorUrl-ne'https://quote.eastmoney.com/bk/90.BK1238.html'){throw "精确网页兜底自检失败"}
-  [pscustomobject]@{ok=$true;selfTest=$true;supported=@($profiles|ForEach-Object{$_.Name});fallback=$stockUrl;sectorFallback=$sectorUrl;navigationRequiresVerification=$true}
+  [pscustomobject]@{ok=$true;selfTest=$true;supported=@($profiles|ForEach-Object{$_.Name});webFallback=$false;navigationRequiresVerification=$true}
 }
 
 function Invoke-Open {
@@ -308,22 +296,35 @@ function Invoke-Open {
   $stockCode=if($marketText-eq"sector"){if($rawCode-match'^(880\d{3}|BK\d{4})$'){$rawCode}elseif($rawCode-match'^\d{6}$'){$rawCode}else{""}}else{($rawCode-replace"\D","")}
   if($marketText-ne"sector"-and$stockCode-notmatch'^\d{6}$'){throw "股票代码无效：$Code"}
   if($marketText-eq"sector"-and-not$stockCode-and-not$stockName){throw "板块代码和名称均为空"}
-  $candidate=Find-StockApp
-  if(-not$candidate){if($NoWebFallback){throw "未在这台电脑检测到受支持的股票软件"};return Open-Web $stockCode $stockName $marketText "未检测到受支持的股票软件"}
-  $query=Search-Query $candidate.Profile $stockCode $marketText $stockName
-  if(-not$query){if($NoWebFallback){throw "没有可供本机股票软件搜索的代码或名称"};return Open-Web $stockCode $stockName $marketText "缺少可搜索的代码或名称"}
-  $existing=Matching-Process $candidate
-  if($DryRun){return [pscustomobject]@{ok=$true;mode="localApp";code=$stockCode;market=$marketText;name=$stockName;query=$query;localApp=$candidate.Profile.Name;localAppPath=$candidate.Exe;discoverySource=$candidate.Source;existingProcessId=$(if($existing){$existing.Id}else{$null});willLaunch=-not[bool]$existing;requiresReadyWindow=$true;requiresTargetVerification=$true;fallbackUrl=(Web-Url $stockCode $stockName $marketText);candidateCount=$script:candidates.Count;candidates=@($script:candidates|Sort-Object Score -Descending|Select-Object -First 8|ForEach-Object{[pscustomobject]@{app=$_.Profile.Name;source=$_.Source;running=[bool]$_.Pid;path=$_.Exe}});dryRun=$true}}
-  $launched=$false;$proc=$existing
-  try{
-    if($proc){$proc=Wait-ReadyWindow $candidate $proc.Id 4;if(-not$proc){throw "$($candidate.Profile.Name) 当前没有可操作的行情主窗口"}}
-    if(-not$proc){$launch=if($candidate.Launch){$candidate.Launch}else{$candidate.Exe};if(-not$launch){throw "已识别 $($candidate.Profile.Name)，但缺少可启动路径"};$cwd=if($candidate.Exe){Split-Path -Parent $candidate.Exe}else{$env:USERPROFILE};$started=Start-Process -FilePath $launch -WorkingDirectory $cwd -PassThru;$launched=$true;$proc=Wait-ReadyWindow $candidate $(if($started){$started.Id}else{0}) 30;if(-not$proc){throw "$($candidate.Profile.Name) 启动后没有检测到已登录的行情主窗口"}}
-    $shell=Activate-App $proc $candidate.Profile.Name;Send-Search $shell $candidate.Profile $query;$observation=Wait-Navigation $proc $stockCode $stockName $marketText 6000
-    if(-not$observation.Verified){$shell=Activate-App $proc $candidate.Profile.Name;Send-AlternativeSearch $shell $candidate.Profile $query;$observation=Wait-Navigation $proc $stockCode $stockName $marketText 5000}
-    if(-not$observation.Verified){throw "$($candidate.Profile.Name) 已启动，但未能确认进入 $stockName $stockCode 对应的日K页面"}
-    Save-Choice $candidate;Write-RunLog "本机股票软件日K跳转并验证：$stockCode $stockName；软件：$($candidate.Profile.Name)；查询：$query；标题：$($observation.Title)；来源：$($candidate.Source)；新启动：$launched"
-    return [pscustomobject]@{ok=$true;mode="localApp";code=$stockCode;market=$marketText;name=$stockName;query=$query;localApp=$candidate.Profile.Name;localAppPath=$candidate.Exe;discoverySource=$candidate.Source;processId=$proc.Id;launched=$launched;verifiedTarget=$true;verifiedBy="windowTitleOrControls";matchedTarget=$observation.Matched;observedWindowTitle=$observation.Title;dryRun=$false;message="已在当前$($candidate.Profile.Name)中打开 $stockName $stockCode 日K（页面已验证）"}
-  }catch{if($NoWebFallback){throw};return Open-Web $stockCode $stockName $marketText $_.Exception.Message}
+  $candidates=@(Find-StockApps)
+  if(-not$candidates.Count){
+    if($StrictPreferred-and$PreferredApp-eq"tongdaxin"){throw "自用版已固定使用通达信，但这台电脑未检测到通达信"}
+    throw "未在这台电脑检测到受支持的股票软件"
+  }
+  if($DryRun){
+    $candidate=$candidates[0];$query=Search-Query $candidate.Profile $stockCode $marketText $stockName;$existing=Matching-Process $candidate
+    return [pscustomobject]@{ok=$true;mode="localApp";code=$stockCode;market=$marketText;name=$stockName;query=$query;localApp=$candidate.Profile.Name;localAppPath=$candidate.Exe;discoverySource=$candidate.Source;existingProcessId=$(if($existing){$existing.Id}else{$null});willLaunch=-not[bool]$existing;requiresReadyWindow=$true;requiresTargetVerification=$true;webFallback=$false;candidateCount=$candidates.Count;candidates=@($candidates|Select-Object -First 8|ForEach-Object{[pscustomobject]@{app=$_.Profile.Name;source=$_.Source;running=[bool](Matching-Process $_);path=$_.Exe}});dryRun=$true}
+  }
+  $failures=@()
+  foreach($candidate in $candidates){
+    $query=Search-Query $candidate.Profile $stockCode $marketText $stockName
+    if(-not$query){$failures+="$($candidate.Profile.Name)：缺少可搜索代码或名称";continue}
+    $launched=$false;$proc=Matching-Process $candidate
+    try{
+      if($proc){$proc=Wait-ReadyWindow $candidate $proc.Id 4;if(-not$proc){throw "$($candidate.Profile.Name) 当前没有可操作的行情主窗口"}}
+      if(-not$proc){$launch=if($candidate.Launch){$candidate.Launch}else{$candidate.Exe};if(-not$launch){throw "已识别 $($candidate.Profile.Name)，但缺少可启动路径"};$cwd=if($candidate.Exe){Split-Path -Parent $candidate.Exe}else{$env:USERPROFILE};$started=Start-Process -FilePath $launch -WorkingDirectory $cwd -PassThru;$launched=$true;$proc=Wait-ReadyWindow $candidate $(if($started){$started.Id}else{0}) 30;if(-not$proc){throw "$($candidate.Profile.Name) 启动后没有检测到已登录的行情主窗口"}}
+      $shell=Activate-App $proc $candidate.Profile.Name;Send-Search $shell $candidate.Profile $query;$observation=Wait-Navigation $proc $stockCode $stockName $marketText 6000
+      if(-not$observation.Verified){$shell=Activate-App $proc $candidate.Profile.Name;Send-AlternativeSearch $shell $candidate.Profile $query;$observation=Wait-Navigation $proc $stockCode $stockName $marketText 5000}
+      if(-not$observation.Verified){throw "$($candidate.Profile.Name) 已启动，但未能确认进入 $stockName $stockCode 对应的日K页面"}
+      Save-Choice $candidate;Write-RunLog "本机股票软件日K跳转并验证：$stockCode $stockName；软件：$($candidate.Profile.Name)；查询：$query；标题：$($observation.Title)；来源：$($candidate.Source)；新启动：$launched"
+      return [pscustomobject]@{ok=$true;mode="localApp";code=$stockCode;market=$marketText;name=$stockName;query=$query;localApp=$candidate.Profile.Name;localAppPath=$candidate.Exe;discoverySource=$candidate.Source;processId=$proc.Id;launched=$launched;verifiedTarget=$true;verifiedBy="windowTitleOrControls";matchedTarget=$observation.Matched;observedWindowTitle=$observation.Title;dryRun=$false;message="已在当前$($candidate.Profile.Name)中打开 $stockName $stockCode 日K（页面已验证）"}
+    }catch{
+      $reason=$_.Exception.Message
+      $failures+="$($candidate.Profile.Name)：$reason"
+      Write-RunLog "候选股票软件跳转未通过：$($candidate.Profile.Name)；$reason"
+    }
+  }
+  throw "已自动尝试本机 $($candidates.Count) 个交易软件候选，但都未完成目标日K验证：$($failures -join '；')"
 }
 
 try{$result=if($SelfTest){Run-SelfTest}else{Invoke-Open};$result|ConvertTo-Json -Depth 6 -Compress;exit 0}catch{$message=$_.Exception.Message;Write-RunLog "本机股票软件跳转失败：$message";[pscustomobject]@{ok=$false;code=([string]$Code-replace"\D","");name=$Name;message=$message}|ConvertTo-Json -Compress;[Console]::Error.WriteLine($message);exit 1}

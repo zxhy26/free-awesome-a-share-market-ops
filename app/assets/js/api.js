@@ -420,8 +420,7 @@ export function requestQuantRefresh() {
 }
 
 export function exactQuoteUrl(stock = {}) {
-  const root = new URL("../../", import.meta.url);
-  const url = new URL("pages/market-detail.html", root);
+  const url = new URL("/stock-open", SERVICE_ORIGIN);
   const values = {
     code: String(stock.code || ""),
     boardCode: String(stock.boardCode || ""),
@@ -435,24 +434,24 @@ export function exactQuoteUrl(stock = {}) {
   return url.href;
 }
 
-function usesPackagedStaticRuntime() {
-  return runtimeLocation.protocol === "file:"
-    || runtimeLocation.hostname === "appassets.androidplatform.net";
-}
-
-function openExactQuote(stock) {
-  const url = exactQuoteUrl(stock);
-  runtimeLocation.assign(url);
-  return {
-    ok: true,
-    mode: "internalMarketDetail",
-    url,
-    targetUrlExact: true,
-    message: `已在软件内生成${String(stock.name || stock.code || "目标")}的日K和行情详情。`,
-  };
-}
 export async function openLocalStock(stock) {
-  return openExactQuote(stock);
+  const adapter = globalThis.AShareTradingApp;
+  if (adapter?.open) {
+    return adapter.open(stock);
+  }
+  const result = await fetchJson(exactQuoteUrl(stock), {
+    label: "交易软件跳转",
+    timeoutMs: 95000,
+    method: "POST",
+    allowSnapshot: false,
+  });
+  if (!result.ok) {
+    throw new AppError(result.message || "未检测到可操作的本机交易软件。", {
+      code: result.errorCode || "TRADING_APP_OPEN_FAILED",
+      technical: result.stderr || result.stdout || "",
+    });
+  }
+  return result;
 }
 
 export const openTdxStock = openLocalStock;

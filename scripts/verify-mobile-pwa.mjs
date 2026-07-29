@@ -132,9 +132,8 @@ function validateEdition(edition) {
     path.relative(root, filePath).replaceAll("\\", "/"),
   );
   const requiredInternalDetailFiles = [
-    "pages/market-detail.html",
     "pages/content-detail.html",
-    "assets/js/mobile-market-detail.js",
+    "assets/js/mobile-trading-app.js",
     "assets/js/mobile-content-detail.js",
     "assets/js/mobile-internal-navigation.js",
     "assets/css/mobile-detail.css",
@@ -145,6 +144,12 @@ function validateEdition(edition) {
       `${label}: missing internal detail asset ${requiredFile}`,
     );
   }
+  assert(
+    !relativeFiles.includes("pages/market-detail.html") &&
+      !relativeFiles.includes("assets/js/mobile-market-detail.js") &&
+      !relativeFiles.includes("assets/js/internal-market-detail.js"),
+    `${label}: 不得继续包含软件内日K详情页`,
+  );
   const textExtensions = new Set([
     ".css",
     ".html",
@@ -244,12 +249,17 @@ function validateEdition(edition) {
     indexHtml.includes("mobile-internal-navigation.js"),
     `${label}: 缺少软件内跳转接管脚本`,
   );
+  assert(
+    indexHtml.includes("mobile-trading-app.js"),
+    `${label}: 缺少当前设备交易软件适配脚本`,
+  );
 
   const apiSource = fs.readFileSync(path.join(root, "assets", "js", "api.js"), "utf8");
   assert(
-    apiSource.includes("pages/market-detail.html") &&
-      apiSource.includes("internalMarketDetail"),
-    `${label}: 日K与行情按钮未改为软件内详情页`,
+    apiSource.includes("AShareTradingApp") &&
+      apiSource.includes("/stock-open") &&
+      !apiSource.includes("internalMarketDetail"),
+    `${label}: 日K按钮未改为当前设备交易软件`,
   );
 
   const historyIndex = readJson(path.join(root, "data", "history-index.json"));
