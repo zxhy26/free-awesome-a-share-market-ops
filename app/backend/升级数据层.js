@@ -65,16 +65,21 @@ function latestMinute(points) {
 }
 
 function minuteText(minute) {
-  const bounded = Math.max(0, Math.min(240, Math.floor(Number(minute) || 0)));
+  const bounded = Math.max(0, Math.min(240, Number(minute) || 0));
   const minuteOfDay = bounded <= 120 ? 570 + bounded : 780 + bounded - 120;
-  return `${String(Math.floor(minuteOfDay / 60)).padStart(2, "0")}:${String(minuteOfDay % 60).padStart(2, "0")}`;
+  const totalSeconds = Math.round(minuteOfDay * 60);
+  const hour = Math.floor(totalSeconds / 3600);
+  const minutePart = Math.floor((totalSeconds % 3600) / 60);
+  const secondPart = totalSeconds % 60;
+  return `${String(hour).padStart(2, "0")}:${String(minutePart).padStart(2, "0")}:${String(secondPart).padStart(2, "0")}`;
 }
 
 function marketPhase(tradeDate, minute, now = new Date()) {
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   if (tradeDate !== today) return "历史数据";
   const current = now.getHours() * 60 + now.getMinutes();
-  if (current < 570) return "盘前";
+  if (current < 555) return "盘前";
+  if (current < 570) return "集合竞价";
   if (current <= 690) return "上午交易";
   if (current < 780) return "午间休市";
   if (current <= 900) return "下午交易";
@@ -743,7 +748,7 @@ function buildHealth(data, archiveCount = 0) {
     generatedAt: new Date().toISOString(),
     tradeDate: dates[0] || "",
     overall: {status: errorCount ? "error" : warningCount ? "warning" : "ok", score: overallScore, errorCount, warningCount},
-    session: {phase: marketPhase(dates[0] || "", currentMinute), latestMinute: currentMinute, latestTime: minuteText(currentMinute), samplePolicy: "只使用真实样本；仅在前后两个真实样本之间线性显示；午休冻结在11:30，收盘冻结在15:00。"},
+    session: {phase: marketPhase(dates[0] || "", currentMinute), latestMinute: currentMinute, latestTime: minuteText(currentMinute), samplePolicy: "只使用真实样本；仅在前后两个真实样本之间线性显示；午休冻结在11:30:00，收盘冻结在15:00:00。"},
     modules,
     crossChecks,
   };

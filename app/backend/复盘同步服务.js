@@ -13,7 +13,7 @@ const { refreshIndexContribution } = require("./index-contribution-online");
 
 const PORT = Number(process.env.A_SHARE_REVIEW_PORT) || 18765;
 const HOST = process.env.A_SHARE_REVIEW_HOST || "127.0.0.1";
-const SERVICE_VERSION = "3.14.7";
+const SERVICE_VERSION = "3.15.0";
 const ALLOW_REMOTE = process.env.A_SHARE_REVIEW_ALLOW_REMOTE === "1";
 const TEST_MODE = process.env.A_SHARE_REVIEW_TEST_MODE === "1";
 const DISABLE_SCHEDULES = process.env.A_SHARE_REVIEW_DISABLE_SCHEDULES === "1";
@@ -70,7 +70,7 @@ const NEXT_WEEK_EVENTS_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const DERIVATIVES_INTERVAL_MS = 30 * 60 * 1000;
 const INDEX_CONTRIBUTION_ACTIVE_INTERVAL_MS = 90 * 1000;
 const INDEX_CONTRIBUTION_IDLE_INTERVAL_MS = 10 * 60 * 1000;
-const PREOPEN_WATCH_START_MINUTE = 9 * 60 + 25;
+const PREOPEN_WATCH_START_MINUTE = 9 * 60 + 15;
 const MARKET_CLOSE_MINUTE = 15 * 60;
 let autoSyncTimer = null;
 let autoSyncEnabled = !DISABLE_SCHEDULES;
@@ -909,7 +909,7 @@ function inTradingWindowDate(date = new Date()) {
   const day = date.getDay();
   if (day === 0 || day === 6) return false;
   const minute = minuteOfDay(date);
-  return (minute >= 9 * 60 + 30 && minute <= 11 * 60 + 30) || (minute >= 13 * 60 && minute <= 15 * 60);
+  return (minute >= 9 * 60 + 15 && minute <= 11 * 60 + 30) || (minute >= 13 * 60 && minute <= 15 * 60);
 }
 
 function inMarketWatchWindowDate(date = new Date()) {

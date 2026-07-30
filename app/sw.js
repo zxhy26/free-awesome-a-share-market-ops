@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v79-direct-daily-k";
+const CACHE_VERSION = "a-share-review-v80-0915-seconds";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [

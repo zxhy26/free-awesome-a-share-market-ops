@@ -4,6 +4,7 @@ const {
   clampQuoteTimestampToTradingSession,
   GROUP_DEFINITIONS,
   createLiveSectorFlowService,
+  hasAcceptableBoardCoverage,
   marketPhaseAt,
   normalizeBoardRows,
 } = require("../app/backend/live-sector-flow");
@@ -133,13 +134,57 @@ test("live sector flow rejects snapshots whose group times are too far apart", a
 });
 
 test("trading boundaries stop immediately after the closing second", () => {
+  const beforeAuction = marketPhaseAt(new Date("2026-07-27T09:14:59+08:00"));
+  const auctionStart = marketPhaseAt(new Date("2026-07-27T09:15:00+08:00"));
+  const auctionEnd = marketPhaseAt(new Date("2026-07-27T09:29:59+08:00"));
+  const regularStart = marketPhaseAt(new Date("2026-07-27T09:30:00+08:00"));
+  assert.equal(beforeAuction.active, false);
+  assert.equal(beforeAuction.phase, "盘前");
+  assert.equal(auctionStart.active, true);
+  assert.equal(auctionStart.auction, true);
+  assert.equal(auctionStart.regularSession, false);
+  assert.equal(auctionStart.marketMinute, 0);
+  assert.equal(auctionEnd.active, true);
+  assert.equal(auctionEnd.auction, true);
+  assert.equal(regularStart.active, true);
+  assert.equal(regularStart.auction, false);
+  assert.equal(regularStart.regularSession, true);
   assert.equal(marketPhaseAt(new Date("2026-07-27T11:30:00+08:00")).active, true);
   assert.equal(marketPhaseAt(new Date("2026-07-27T11:30:01+08:00")).active, false);
   assert.equal(marketPhaseAt(new Date("2026-07-27T15:00:00+08:00")).active, true);
   assert.equal(marketPhaseAt(new Date("2026-07-27T15:00:01+08:00")).active, false);
 });
 
+test("auction snapshots refresh every second without entering the regular-session timeline", async () => {
+  let current = new Date("2026-07-27T09:15:00+08:00");
+  let groupCalls = 0;
+  const service = createLiveSectorFlowService({
+    now: () => new Date(current),
+    fetchBoardGroup: async (definition) => {
+      groupCalls += 1;
+      return mockGroup(definition, epochSeconds(current.toISOString()));
+    },
+    fetchIndexQuotes: async () => mockIndices(epochSeconds(current.toISOString())),
+  });
+
+  const first = await service.getSnapshot();
+  assert.equal(first.active, true);
+  assert.equal(first.auction, true);
+  assert.equal(first.regularSession, false);
+  assert.equal(first.marketPhase, "集合竞价");
+  assert.equal(first.marketMinute, 0);
+  assert.equal(first.sourceTime, "09:15:00");
+  current = new Date("2026-07-27T09:15:01+08:00");
+  const second = await service.getSnapshot();
+  assert.equal(second.sequence, 2);
+  assert.equal(groupCalls, 4);
+});
+
 test("quote timestamps are frozen at lunch and close", () => {
+  assert.equal(
+    clampQuoteTimestampToTradingSession(epochSeconds("2026-07-27T09:15:20+08:00")),
+    epochSeconds("2026-07-27T09:15:20+08:00"),
+  );
   assert.equal(
     clampQuoteTimestampToTradingSession(epochSeconds("2026-07-27T12:15:20+08:00")),
     epochSeconds("2026-07-27T11:30:00+08:00"),
@@ -160,4 +205,12 @@ test("primary board funding rows publish the same-round percentage in display un
   }], definition, {changePctScale: 100});
   assert.equal(result.rows[0].amount, 15.2713);
   assert.equal(result.rows[0].changePct, 1.04);
+});
+
+test("board coverage accepts a 500-of-504 provider cap but rejects materially incomplete data", () => {
+  assert.equal(hasAcceptableBoardCoverage(500, 504, 400), true);
+  assert.equal(hasAcceptableBoardCoverage(494, 504, 400), true);
+  assert.equal(hasAcceptableBoardCoverage(493, 504, 400), false);
+  assert.equal(hasAcceptableBoardCoverage(500, 600, 400), false);
+  assert.equal(hasAcceptableBoardCoverage(100, 124, 100), false);
 });

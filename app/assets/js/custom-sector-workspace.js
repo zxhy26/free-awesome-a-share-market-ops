@@ -123,7 +123,7 @@ function createCard(selection) {
         <path class="custom-sector-line"></path>
         <circle class="custom-sector-cursor" r="3"></circle>
       </svg>
-      <div class="custom-sector-axis"><span>09:30</span><span>11:30 / 13:00</span><span>15:00</span></div>
+      <div class="custom-sector-axis"><span>09:30:00</span><span>11:30:00 / 13:00:00</span><span>15:00:00</span></div>
     </div>
     <footer class="custom-sector-card-footer">
       <span class="custom-sector-source">读取真实板块指数分时</span>

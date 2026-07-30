@@ -1,4 +1,9 @@
 export const SESSION_MINUTES = 240;
+const AUCTION_START_SECOND = (9 * 60 + 15) * 60;
+const MORNING_START_SECOND = (9 * 60 + 30) * 60;
+const MORNING_END_SECOND = (11 * 60 + 30) * 60;
+const AFTERNOON_START_SECOND = 13 * 60 * 60;
+const AFTERNOON_END_SECOND = 15 * 60 * 60;
 
 const SHANGHAI_CLOCK = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Shanghai",
@@ -27,7 +32,7 @@ export function clampMarketMinute(value) {
   return Math.max(0, Math.min(SESSION_MINUTES, Number.isFinite(number) ? number : 0));
 }
 
-export function marketMinuteToTime(minute, includeSeconds = false) {
+export function marketMinuteToTime(minute, includeSeconds = true) {
   const value = clampMarketMinute(minute);
   const minutesOfDay = value <= 120 ? 570 + value : 780 + value - 120;
   const totalSeconds = Math.round(minutesOfDay * 60);
@@ -42,8 +47,23 @@ export function inTradingWindow(now = new Date()) {
   const parts = shanghaiClockParts(now);
   if (parts.weekDay === 0 || parts.weekDay === 6) return false;
   const second = parts.hour * 3600 + parts.minute * 60 + parts.second;
-  return (second >= 570 * 60 && second <= 690 * 60)
-    || (second >= 780 * 60 && second <= 900 * 60);
+  return (second >= AUCTION_START_SECOND && second <= MORNING_END_SECOND)
+    || (second >= AFTERNOON_START_SECOND && second <= AFTERNOON_END_SECOND);
+}
+
+export function isAuctionWindow(now = new Date()) {
+  const parts = shanghaiClockParts(now);
+  if (parts.weekDay === 0 || parts.weekDay === 6) return false;
+  const second = parts.hour * 3600 + parts.minute * 60 + parts.second;
+  return second >= AUCTION_START_SECOND && second < MORNING_START_SECOND;
+}
+
+export function shouldAppendRegularSessionSample(snapshot) {
+  return Boolean(
+    snapshot
+    && snapshot.auction !== true
+    && Number.isFinite(Number(snapshot.marketMinute)),
+  );
 }
 
 export function marketPhase(tradeDate, minute, now = new Date()) {
@@ -52,10 +72,11 @@ export function marketPhase(tradeDate, minute, now = new Date()) {
   if (tradeDate && tradeDate !== today) return "已收盘";
   if (parts.weekDay === 0 || parts.weekDay === 6) return "已收盘";
   const daySecond = parts.hour * 3600 + parts.minute * 60 + parts.second;
-  if (daySecond < 570 * 60) return "盘前";
-  if (daySecond <= 690 * 60) return "交易中";
-  if (daySecond < 780 * 60) return "午间休市";
-  if (daySecond <= 900 * 60) return "交易中";
+  if (daySecond < AUCTION_START_SECOND) return "盘前";
+  if (daySecond < MORNING_START_SECOND) return "集合竞价";
+  if (daySecond <= MORNING_END_SECOND) return "交易中";
+  if (daySecond < AFTERNOON_START_SECOND) return "午间休市";
+  if (daySecond <= AFTERNOON_END_SECOND) return "交易中";
   return clampMarketMinute(minute) >= SESSION_MINUTES ? "已收盘" : "收盘补采";
 }
 

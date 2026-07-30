@@ -265,7 +265,7 @@ export function dataFreshness(marketData, validation = {}) {
   let status = "历史数据";
   let className = "stale";
   if (!tradeDate) status = "数据可能过期";
-  else if (sameDay && minute >= 570 && minute <= 900) { status = "实时"; className = "realtime"; }
+  else if (sameDay && minute >= 555 && minute <= 900) { status = minute < 570 ? "集合竞价实时" : "实时"; className = "realtime"; }
   else if (sameDay && minute > 900) { status = "已收盘"; className = "closed"; }
   if (validation.status === "error" || validation.errors?.length) {
     status = status === "历史数据" ? "历史数据 · 部分缺失" : "部分数据缺失";

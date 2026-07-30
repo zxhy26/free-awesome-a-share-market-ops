@@ -2,16 +2,16 @@
 
 Free & Awesome A-Share Market Ops is an open-source desktop application for monitoring the Chinese A-share market intraday and reviewing market structure after the close. It uses native HTML, CSS, JavaScript, and Node.js. The Windows edition runs through a local service and Microsoft Edge WebView2.
 
-Current open-source version: `2.17.8`.
+Current open-source version: `2.17.9`.
 
 ## Features
 
 - Eight major-index intraday charts in a four-by-two desktop grid, with persistent industry and thematic turning-point labels
 - A six-slot custom workspace for real secondary-industry and thematic-concept index charts, backed by full-session trade samples and one-second live quote polling
 - Automatically refreshed index contribution rankings from public constituent weights and live quotes, with no stock-software process required
-- Atomic one-second capital-flow snapshots for secondary industries and concept sectors during A-share trading sessions
+- Atomic one-second capital-flow snapshots for secondary industries and concept sectors from the 09:15 call auction through the close
 - Separate top-ten inflow and outflow panels for secondary industries and concept sectors, each with its own intraday chart, amount bar, and amount/percentage scale
-- Manual market synchronization, source timestamps, and strict lunch/close freezing without synthetic extrapolation
+- Second-level intraday timestamps, manual market synchronization, and strict lunch/close freezing without synthetic extrapolation
 - Limit-up, limit-down, previous-day continuation, and failed-breakout recovery analysis
 - Market structure, breadth, trading effectiveness, and historical session comparisons
 - Policy news, upcoming events, institutional positioning, historical replay, and stock search

@@ -1,12 +1,12 @@
 import {getHealth, loadBoardIntradayTrend, loadCoreData, loadIndexContributionData, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260729-8";
-import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNumber, formatPercent, formatYi, signed, summarizeMoneyEffect, valueClass} from "./analysis.js?v=20260726-1";
-import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260728-5";
+import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNumber, formatPercent, formatYi, signed, summarizeMoneyEffect, valueClass} from "./analysis.js?v=20260730-1";
+import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260730-1";
 import {createSummaryDialog} from "./dialog.js";
 import {initializePwa} from "./pwa.js?v=20260719-2";
 import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260727-2";
 import {createCustomSectorWorkspace} from "./custom-sector-workspace.js?v=20260728-5";
 import {initializeTheme} from "./theme.js";
-import {inTradingWindow} from "./market-session.js?v=20260727-4";
+import {inTradingWindow, shouldAppendRegularSessionSample} from "./market-session.js?v=20260730-1";
 
 const dom = {
   tradeDate: document.querySelector("#tradeDate"),
@@ -345,6 +345,7 @@ function mergeLiveFlowGroup(groupName, snapshot) {
   const liveByKey = new Map(liveGroup.rows.map((row) => [liveRowKey(row), row]).filter(([key]) => key));
   const mergedRows = [];
   const usedKeys = new Set();
+  const appendRegularSample = shouldAppendRegularSessionSample(snapshot);
 
   for (const baseRow of baseRows) {
     const key = liveRowKey(baseRow);
@@ -363,7 +364,8 @@ function mergeLiveFlowGroup(groupName, snapshot) {
       liveValidated: true,
       liveSampledAt: snapshot.fetchedAt,
       liveSourceTime: snapshot.sourceTime,
-      points: [...points, livePoint],
+      liveAuction: snapshot.auction === true,
+      points: appendRegularSample ? [...points, livePoint] : points,
     });
   }
 
@@ -376,7 +378,8 @@ function mergeLiveFlowGroup(groupName, snapshot) {
       liveValidated: true,
       liveSampledAt: snapshot.fetchedAt,
       liveSourceTime: snapshot.sourceTime,
-      points: [livePointForRow(liveRow, snapshot)],
+      liveAuction: snapshot.auction === true,
+      points: appendRegularSample ? [livePointForRow(liveRow, snapshot)] : [],
     });
   }
 
@@ -392,6 +395,8 @@ function mergeLiveFlowGroup(groupName, snapshot) {
       sourceLatencyMs: snapshot.sourceLatencyMs,
       fetchedAt: snapshot.fetchedAt,
       active: snapshot.active,
+      auction: snapshot.auction,
+      regularSession: snapshot.regularSession,
       marketPhase: snapshot.marketPhase,
     },
   };
@@ -408,6 +413,12 @@ function applyLiveIndexQuotes(snapshot) {
   for (const index of indices) {
     const quote = quoteByKey.get(String(index.key || "")) || quoteByKey.get(String(index.code || ""));
     if (!quote || finiteNumber(quote.price) === null) continue;
+    index.liveAuctionQuote = snapshot.auction === true ? {
+      ...quote,
+      sourceTime: snapshot.sourceTime,
+      fetchedAt: snapshot.fetchedAt,
+    } : null;
+    if (!shouldAppendRegularSessionSample(snapshot)) continue;
     const points = (Array.isArray(index.points) ? index.points : []).filter((point) => point?.source !== "tencent-live-index-quote");
     const previous = [...points].reverse().find((point) => (finiteNumber(point.minute) ?? -1) <= quote.minute) || points.at(-1) || {};
     index.points = [...points, {
@@ -442,9 +453,10 @@ function updateLiveFlowStatus(snapshot, error = null) {
   if (snapshot.active) {
     const stale = snapshot.consecutiveErrors > 0 || latencySeconds > 8;
     dom.liveFlowStatus.dataset.state = stale ? "stale" : "live";
+    const phaseLabel = snapshot.auction ? "集合竞价" : "逐秒资金";
     dom.liveFlowStatus.textContent = stale
-      ? `逐秒资金延迟 · ${snapshot.sourceTime || "--"}`
-      : `逐秒资金 ${snapshot.sourceTime || "--"} · ${latencySeconds.toFixed(1)}秒`;
+      ? `${phaseLabel}延迟 · ${snapshot.sourceTime || "--"}`
+      : `${phaseLabel} ${snapshot.sourceTime || "--"} · ${latencySeconds.toFixed(1)}秒`;
   } else {
     dom.liveFlowStatus.dataset.state = "stopped";
     dom.liveFlowStatus.textContent = `${snapshot.marketPhase || "休市"} · ${snapshot.sourceTime || "--"}已冻结`;
@@ -688,7 +700,11 @@ function renderFlow(groupName, minute) {
     : {inflow: dom.conceptInflow, outflow: dom.conceptOutflow};
   const group = flowGroupAtMinute(groupName, minute);
   if (!group) return;
-  const rows = (group.rows || []).map((row) => ({...row, currentAmount: currentFlowAmount(row, minute)}));
+  const useAuctionAmount = state.liveFlowSnapshot?.auction === true && group === state.liveFlowGroups[groupName];
+  const rows = (group.rows || []).map((row) => ({
+    ...row,
+    currentAmount: useAuctionAmount ? finiteNumber(row.amount) : currentFlowAmount(row, minute),
+  }));
   const inflowRows = addDistinctFlowLabels(rows
     .filter((row) => row.currentAmount > 0)
     .sort(compareFlowRank)

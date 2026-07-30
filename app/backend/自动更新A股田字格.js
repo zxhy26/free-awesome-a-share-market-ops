@@ -40,6 +40,7 @@ const CONFIG = {
   flowHistoryDir: path.join(PORTABLE_CACHE_DIR, "板块资金分时历史"),
   marketBreadthCachePath: path.join(PORTABLE_CACHE_DIR, "A股市场广度实时缓存.json"),
   stockUniversePath: path.join(PORTABLE_CACHE_DIR, "全A基础代码表.json"),
+  bundledStockUniversePath: path.join(PORTABLE_APP_DIR, "data", "a-share-stock-universe.json"),
   marketHistoryPath: path.join(PORTABLE_CACHE_DIR, "A股复盘历史库.json"),
   dailyArchiveDir: path.join(PORTABLE_HISTORY_DIR, "每日完整数据"),
   structuredHistoryDir: path.join(PORTABLE_HISTORY_DIR, "结构化复盘历史"),
@@ -292,7 +293,7 @@ function previousWeekdayDate(date) {
 function expectedMarketDate() {
   const now = new Date();
   const minutes = now.getHours() * 60 + now.getMinutes();
-  if (now.getDay() === 0 || now.getDay() === 6 || minutes < 9 * 60 + 25) {
+  if (now.getDay() === 0 || now.getDay() === 6 || minutes < 9 * 60 + 15) {
     return toLocalDateText(previousWeekdayDate(now));
   }
   return todayLocal();
@@ -524,7 +525,8 @@ async function fetchEastmoneyBoardMinuteJson(url, timeoutSec = 18) {
 function minuteToTime(minute) {
   const bounded = Math.max(0, Math.min(240, minute));
   const total = bounded <= 120 ? 570 + bounded : 780 + (bounded - 120);
-  return `${pad2(Math.floor(total / 60))}:${pad2(total % 60)}`;
+  const totalSeconds = Math.round(total * 60);
+  return `${pad2(Math.floor(totalSeconds / 3600))}:${pad2(Math.floor((totalSeconds % 3600) / 60))}:${pad2(totalSeconds % 60)}`;
 }
 
 function timeTextToMinute(time) {
@@ -1794,26 +1796,30 @@ function loadLocalTdxStockQuotes() {
 }
 
 function loadBundledAStockUniverse() {
-  if (!CONFIG.stockUniversePath || !fs.existsSync(CONFIG.stockUniversePath)) return [];
-  try {
-    const parsed = JSON.parse(fs.readFileSync(CONFIG.stockUniversePath, "utf8"));
-    const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed.items) ? parsed.items : [];
-    const byCode = new Map();
-    for (const item of items) {
-      const code = String(item?.code || "").trim();
-      const prefix = String(item?.prefix || "").toLowerCase() || tencentSymbolForCode(code).slice(0, 2);
-      if (!isAStockCodeForTdxPrefix(code, prefix)) continue;
-      byCode.set(code, {
-        code,
-        market: prefix === "sh" ? 1 : 0,
-        name: String(item?.name || code),
-      });
+  const candidates = [CONFIG.stockUniversePath, CONFIG.bundledStockUniversePath]
+    .filter((filePath, index, values) => filePath && values.indexOf(filePath) === index);
+  for (const filePath of candidates) {
+    if (!fs.existsSync(filePath)) continue;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed.items) ? parsed.items : [];
+      const byCode = new Map();
+      for (const item of items) {
+        const code = String(item?.code || "").trim();
+        const prefix = String(item?.prefix || "").toLowerCase() || tencentSymbolForCode(code).slice(0, 2);
+        if (!isAStockCodeForTdxPrefix(code, prefix)) continue;
+        byCode.set(code, {
+          code,
+          market: prefix === "sh" ? 1 : 0,
+          name: String(item?.name || code),
+        });
+      }
+      if (byCode.size) return [...byCode.values()];
+    } catch (error) {
+      log(`全 A 基础代码表读取失败（${filePath}）：${error.message}`);
     }
-    return [...byCode.values()];
-  } catch (error) {
-    log(`内置全 A 基础代码表读取失败：${error.message}`);
-    return [];
   }
+  return [];
 }
 
 function tencentSymbolForCode(code) {
@@ -2037,7 +2043,7 @@ function readFreshMarketBreadthCache(tradeDate) {
     if (!complete) return null;
     const now = new Date();
     const minute = now.getHours() * 60 + now.getMinutes();
-    const liveTrading = (minute >= 570 && minute <= 690) || (minute >= 780 && minute <= 900);
+    const liveTrading = (minute >= 555 && minute <= 690) || (minute >= 780 && minute <= 900);
     const ageMs = Date.now() - Number(cached.fetchedAtMs || 0);
     if (liveTrading && ageMs > 90 * 1000) return null;
     return { ...cached, source: `${cached.source || "全 A 实时行情"}（同日最后真实快照 ${cached.fetchedAt || ""}）` };
@@ -5078,7 +5084,7 @@ function buildMarketData(index, industry, concept, market, syncedAt = nowText(),
     syncedAt,
     sourceNote:
       `数据来源：东方财富公开行情接口和板块资金备用接口；同步时间 ${syncedAt}。` +
-      "主要指数、二级行业、概念板块为同一轮刷新结果；主要指数优先使用真实分钟分时，分钟接口不可用时只展示同日当前真实快照点，不使用昨日快照合成走势；板块资金展示净流入前 10 与净流出前 10，行业和概念板块优先使用东方财富官方分钟资金序列，并以同轮实时排名末值逐项复核；分钟接口暂不可用时保留此前已验证轨迹并追加当前排名真实点，发现差异会自动修正当前真实采样点并重新排序，不改写此前分钟历史；指数线标签只在真实分时形成经反向波动确认的关键高低拐点时生成，标记落在实际拐点、确认后才显示，并从同期二级行业与具体题材概念中选择累计净额方向与反转一致且资金行为最强的板块；每张图最多 10 个标签、同一板块最多 2 个，红色只表示该板块确认时累计净流入，绿色只表示累计净流出，标签金额为确认时累计值；标签按出现时间持续保留，只作资金行为归因，不等同于成分股精确权重贡献；自选板块分时最多保存 6 个行业或题材概念，直接使用后台分钟采样缓存与逐秒真实排名，不生成模拟点；相邻真实样本只做线性显示，不反向填充未知数据；开盘后实时更新，午休停在 11:30，收盘停在 15:00。前台保留通达信880板块代码，并同时携带原始板块名称供当前设备的其他股票软件检索；市场强度统计包含涨停/跌停专题、沪深成交额、昨日涨停延续性和昨日炸板修复力度。",
+      "主要指数、二级行业、概念板块为同一轮刷新结果；主要指数优先使用真实分钟分时，分钟接口不可用时只展示同日当前真实快照点，不使用昨日快照合成走势；板块资金展示净流入前 10 与净流出前 10，行业和概念板块优先使用东方财富官方分钟资金序列，并以同轮实时排名末值逐项复核；分钟接口暂不可用时保留此前已验证轨迹并追加当前排名真实点，发现差异会自动修正当前真实采样点并重新排序，不改写此前分钟历史；指数线标签只在真实分时形成经反向波动确认的关键高低拐点时生成，标记落在实际拐点、确认后才显示，并从同期二级行业与具体题材概念中选择累计净额方向与反转一致且资金行为最强的板块；每张图最多 10 个标签、同一板块最多 2 个，红色只表示该板块确认时累计净流入，绿色只表示累计净流出，标签金额为确认时累计值；标签按出现时间持续保留，只作资金行为归因，不等同于成分股精确权重贡献；自选板块分时最多保存 6 个行业或题材概念，直接使用后台分钟采样缓存与逐秒真实排名，不生成模拟点；相邻真实样本只做线性显示，不反向填充未知数据；09:15:00集合竞价起实时更新，午休停在11:30:00，13:00:00恢复，收盘停在15:00:00。前台保留通达信880板块代码，并同时携带原始板块名称供当前设备的其他股票软件检索；市场强度统计包含涨停/跌停专题、沪深成交额、昨日涨停延续性和昨日炸板修复力度。",
   };
 }
 
@@ -6445,7 +6451,7 @@ function buildMainPageRuntimeScript() {
       marketAmount: document.getElementById("marketAmount"), marketVolume: document.getElementById("marketVolume"), yLimitStrength: document.getElementById("yLimitStrength"), yLimitSummary: document.getElementById("yLimitSummary"),
       yBrokenStrength: document.getElementById("yBrokenStrength"), yBrokenSummary: document.getElementById("yBrokenSummary"), marketDate: document.getElementById("marketDate"), marketFetchedAt: document.getElementById("marketFetchedAt")
     };
-    function minuteToTime(minute){minute=Math.max(0,Math.min(DAY_MINUTES,minute)); let total=minute<=120?570+minute:780+(minute-120); const h=Math.floor(total/60),m=Math.floor(total%60); return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")}
+    function minuteToTime(minute){minute=Math.max(0,Math.min(DAY_MINUTES,minute));const total=minute<=120?570+minute:780+(minute-120);const seconds=Math.round(total*60),h=Math.floor(seconds/3600),m=Math.floor((seconds%3600)/60),s=seconds%60;return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0")}
     function fmtAmount(v){const sign=v>0?"+":v<0?"-":"";return sign+Math.abs(v).toFixed(1)+"亿"}
     function fmtPct(v){const n=Number(v)||0;const sign=n>0?"+":"";return sign+n.toFixed(2)+"%"}
     function fmtPoint(v){const n=Number(v)||0;const sign=n>0?"+":n<0?"-":"";return sign+Math.abs(n).toFixed(2)}
@@ -6492,8 +6498,8 @@ document.addEventListener("click",event=>{const link=event.target.closest&&event
     async function pollSyncResult(){const startedAt=Date.now();while(Date.now()-startedAt<5*60*1000){if(disposed||document.hidden){const error=new Error("页面已隐藏，同步状态轮询已暂停");error.code="PAUSED";throw error}const status=await requestJson(API_BASE+"/status",{},5000);if(status.running){const progress=status.progress||{};showNotice("info",progress.message||"正在同步最新盘面数据",true);await waitForProgress(1200);continue}if(status.lastResult){if(status.lastResult.ok)return status.lastResult;const error=new Error(status.lastResult.message||"同步失败");error.data=status.lastResult;throw error}await waitForProgress(800)}const timeoutError=new Error("同步结果等待超时");timeoutError.code="TIMEOUT";throw timeoutError}
     async function syncLatest(silent){if(syncInFlight||disposed)return;syncInFlight=true;updateSyncButton();if(!silent)showNotice("info","正在连接同步服务",true);try{if(!serviceAvailable&&!(await checkServiceHealth(true))){const error=new Error("同步服务未启动");error.code="SERVICE_UNAVAILABLE";throw error}const accepted=await requestJson(API_BASE+"/refresh?async=1",{method:"POST"},30000);if(!accepted.ok&&!accepted.running)throw Object.assign(new Error(accepted.message||"同步请求未被接受"),{data:accepted});showNotice("info",accepted.message||"正在获取指数",true);const result=await pollSyncResult();showNotice("success",result.message||"同步完成，正在刷新页面",true);if(els.syncMarketButton)els.syncMarketButton.textContent="同步成功";reloadTimer=setTimeout(()=>location.reload(),700)}catch(error){if(error.code!=="PAUSED")showNotice("error",syncErrorMessage(error),true);console.error("A股复盘同步失败",error)}finally{syncInFlight=false;updateSyncButton()}}
     function reloadLatest(){if(reloadTimer||disposed)return;showNotice("info","正在重新读取本地最新页面",true);reloadTimer=setTimeout(()=>location.reload(),80)}
-    function inTradingWindow(){const d=new Date();const day=d.getDay();if(day===0||day===6)return false;const m=d.getHours()*60+d.getMinutes();return (m>=9*60+30&&m<=11*60+30)||(m>=13*60&&m<=15*60)}
-    function shouldKeepAutoReloadCheck(){const d=new Date();const day=d.getDay();if(day===0||day===6)return false;const m=d.getHours()*60+d.getMinutes();return m>=9*60+30&&m<=15*60}
+    function inTradingWindow(){const d=new Date();const day=d.getDay();if(day===0||day===6)return false;const m=d.getHours()*60+d.getMinutes();return (m>=9*60+15&&m<=11*60+30)||(m>=13*60&&m<=15*60)}
+    function shouldKeepAutoReloadCheck(){const d=new Date();const day=d.getDay();if(day===0||day===6)return false;const m=d.getHours()*60+d.getMinutes();return m>=9*60+15&&m<=15*60}
     function clearAutoReload(){if(autoReloadTimer)clearTimeout(autoReloadTimer);autoReloadTimer=0}
     function scheduleAutoReload(){clearAutoReload();if(disposed||document.hidden||!shouldKeepAutoReloadCheck())return;autoReloadTimer=setTimeout(()=>{autoReloadTimer=0;if(inTradingWindow())location.reload();else scheduleAutoReload()},20000)}
     function startHealthMonitor(){if(healthTimer)clearInterval(healthTimer);if(disposed||document.hidden)return;healthTimer=setInterval(()=>checkServiceHealth(true),30000)}

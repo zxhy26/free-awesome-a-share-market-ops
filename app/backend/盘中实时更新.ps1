@@ -43,7 +43,7 @@ try {
     exit 0
   }
 
-  $start = Get-Date -Year $now.Year -Month $now.Month -Day $now.Day -Hour 9 -Minute 30 -Second 0
+  $start = Get-Date -Year $now.Year -Month $now.Month -Day $now.Day -Hour 9 -Minute 15 -Second 0
   $end = Get-Date -Year $now.Year -Month $now.Month -Day $now.Day -Hour 15 -Minute 0 -Second 0
   if (-not $Force -and ($now -lt $start -or $now -gt $end)) {
     Write-RunLog "盘中实时更新跳过：当前不在盘中刷新时间段。"
@@ -68,7 +68,7 @@ try {
   if ($Force) {
     Write-RunLog "手动同步启动"
   } else {
-    Write-RunLog "盘中实时更新启动"
+    Write-RunLog "09:15集合竞价与盘中实时更新启动"
   }
   $updateArgs = @("--intraday", "--skip-quant", "--no-compass")
   if ($Force) {

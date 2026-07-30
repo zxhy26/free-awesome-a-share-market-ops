@@ -89,9 +89,9 @@ function shell() {
   controls.append(node("label", "", "回放周"), weekSelect, play, speed, weekStatus, clock);
 
   const timelineWrap = node("section", "history-timeline");
-  const timelineStart = node("span", "history-timeline-edge", "周一 --:--");
+  const timelineStart = node("span", "history-timeline-edge", "周一 --:--:--");
   const timeline = document.createElement("input"); timeline.type = "range"; timeline.min = "0"; timeline.max = "1"; timeline.step = "0.001"; timeline.value = "0"; timeline.setAttribute("aria-label", "本周连续回放时间轴");
-  const timelineEnd = node("span", "history-timeline-edge history-timeline-end", "周五 --:--");
+  const timelineEnd = node("span", "history-timeline-edge history-timeline-end", "周五 --:--:--");
   const dayTabs = node("div", "history-week-days"); dayTabs.setAttribute("aria-label", "本周交易日");
   timelineWrap.append(timelineStart, timeline, timelineEnd, dayTabs);
 

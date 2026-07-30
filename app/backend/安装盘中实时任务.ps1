@@ -150,7 +150,7 @@ try {
     Unregister-ScheduledTask -TaskName "A股0AMV盘前数据源准备" -Confirm:$false
     Write-RunLog "已删除旧任务：A股0AMV盘前数据源准备。"
   }
-  Register-XmlTask -taskName "A股盘中实时自动更新" -scriptPath (Join-Path $scriptDir "盘中实时更新.ps1") -startTime ([TimeSpan]"09:25") -repeatInterval "PT1M" -repeatDuration "PT5H40M"
+  Register-XmlTask -taskName "A股盘中实时自动更新" -scriptPath (Join-Path $scriptDir "盘中实时更新.ps1") -startTime ([TimeSpan]"09:15") -repeatInterval "PT1M" -repeatDuration "PT5H45M"
   Register-XmlTask -taskName "A股收盘最终复盘更新" -scriptPath (Join-Path $scriptDir "运行自动更新.ps1") -startTime ([TimeSpan]"15:05") -repeatInterval $null -repeatDuration $null -executionTimeLimit "PT40M"
   # 普通版不注册量化选股任务。
   Register-XmlTask -taskName "A股机构衍生品收盘更新" -scriptPath (Join-Path $scriptDir "更新机构衍生品.ps1") -startTime ([TimeSpan]"17:15") -repeatInterval $null -repeatDuration $null -executionTimeLimit "PT10M"
@@ -159,7 +159,7 @@ try {
   if (-not $RegisterOnly) {
     Start-ScheduledTask -TaskName "A股复盘同步服务"
   }
-  Write-RunLog "复盘软件自动同步已安装：登录后启动本地同步服务；09:25预启动，09:30-15:00每1分钟同步市场；15:05收盘最终更新；17:15更新中金所机构衍生品；15:00后开机自动补更新。"
+  Write-RunLog "复盘软件自动同步已安装：登录后启动本地同步服务；09:15集合竞价起逐秒获取板块与指数实时快照、每1分钟完整同步市场；15:05收盘最终更新；17:15更新中金所机构衍生品；15:00后开机自动补更新。"
   "installed"
 } catch {
   Write-RunLog ("盘中实时任务安装失败：" + $_.Exception.Message)

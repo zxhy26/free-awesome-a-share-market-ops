@@ -156,11 +156,21 @@ function addAxis(svg, maximum, view, minute, scaleMode) {
     }
     svg.append(label);
   });
-  [[0, "09:30"], [120, "11:30/13:00"], [240, "15:00"]].forEach(([tickMinute, labelText]) => {
+  [[0, ["09:30:00"]], [120, ["11:30:00", "13:00:00"]], [240, ["15:00:00"]]].forEach(([tickMinute, labelLines]) => {
     const x = PLOT.left + width * tickMinute / 240;
     svg.append(svgElement("line", {class: "sector-flow-grid vertical", x1: x, x2: x, y1: PLOT.top, y2: PLOT.top + height}));
-    const label = svgElement("text", {class: "sector-flow-axis-label", x, y: VIEWBOX_HEIGHT - 4, "text-anchor": tickMinute === 0 ? "start" : tickMinute === 240 ? "end" : "middle"});
-    label.textContent = labelText;
+    const multiline = labelLines.length > 1;
+    const label = svgElement("text", {
+      class: "sector-flow-axis-label",
+      x,
+      y: VIEWBOX_HEIGHT - (multiline ? 12 : 4),
+      "text-anchor": tickMinute === 0 ? "start" : tickMinute === 240 ? "end" : "middle",
+    });
+    labelLines.forEach((line, lineIndex) => {
+      const span = svgElement("tspan", {x, dy: lineIndex ? 9 : 0});
+      span.textContent = line;
+      label.append(span);
+    });
     svg.append(label);
   });
   const cursorX = PLOT.left + width * Math.max(0, Math.min(240, minute)) / 240;

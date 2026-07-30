@@ -109,7 +109,7 @@ service = service.replace(/endpoints:\s*\[([^\]]*)\]/, (match, endpoints) => {
 });
 service = service.replace(
   /const SERVICE_VERSION = "[^"]+";/,
-  'const SERVICE_VERSION = "3.14.7";',
+  'const SERVICE_VERSION = "3.15.0";',
 );
 if (!service.includes('["/stock-open", "/tdx-stock", "/tdx-sector"]')) {
   throw new Error(`目标同步服务缺少 /stock-open 路由：${servicePath}`);
@@ -127,7 +127,7 @@ let serviceWorker = fs.readFileSync(serviceWorkerPath, "utf8");
 serviceWorker = serviceWorker
   .replace(
     /const CACHE_VERSION = "[^"]+";/,
-    'const CACHE_VERSION = "a-share-review-v79-direct-daily-k";',
+    'const CACHE_VERSION = "a-share-review-v80-0915-seconds";',
   )
   .split(/\r?\n/)
   .filter((line) => !/market-detail/.test(line))
@@ -156,7 +156,7 @@ const visit = (directory) => {
     const updated = original
       .replace(/http:\/\/127\.0\.0\.1:18765\/stock-open/g, "/stock-open")
       .replace(/网页行情兜底/g, "本机交易软件跳转")
-      .replace(/assets\/js\/app\.js\?v=[^"']+/g, "assets/js/app.js?v=20260729-8");
+      .replace(/assets\/js\/app\.js\?v=[^"']+/g, "assets/js/app.js?v=20260730-1");
     if (updated !== original) {
       fs.writeFileSync(absolute, updated, "utf8");
       patchedHtmlFiles += 1;

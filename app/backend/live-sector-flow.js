@@ -97,26 +97,51 @@ function marketPhaseAt(date = new Date()) {
   const parts = shanghaiParts(date);
   const tradeDate = dateText(parts);
   if (parts.day === 0 || parts.day === 6) {
-    return {active: false, phase: "周末休市", tradeDate, marketMinute: marketMinuteFromParts(parts)};
+    return {
+      active: false,
+      auction: false,
+      regularSession: false,
+      phase: "周末休市",
+      tradeDate,
+      marketMinute: marketMinuteFromParts(parts),
+    };
   }
   const secondOfDay = parts.hour * 3600 + parts.minute * 60 + parts.second;
+  const auctionStart = 9 * 3600 + 15 * 60;
   const morningStart = 9 * 3600 + 30 * 60;
   const morningEnd = 11 * 3600 + 30 * 60;
   const afternoonStart = 13 * 3600;
   const afternoonEnd = 15 * 3600;
+  if (secondOfDay < auctionStart) {
+    return {active: false, auction: false, regularSession: false, phase: "盘前", tradeDate, marketMinute: 0};
+  }
   if (secondOfDay < morningStart) {
-    return {active: false, phase: "盘前", tradeDate, marketMinute: 0};
+    return {active: true, auction: true, regularSession: false, phase: "集合竞价", tradeDate, marketMinute: 0};
   }
   if (secondOfDay <= morningEnd) {
-    return {active: true, phase: "交易中", tradeDate, marketMinute: marketMinuteFromParts(parts)};
+    return {
+      active: true,
+      auction: false,
+      regularSession: true,
+      phase: "交易中",
+      tradeDate,
+      marketMinute: marketMinuteFromParts(parts),
+    };
   }
   if (secondOfDay < afternoonStart) {
-    return {active: false, phase: "午间休市", tradeDate, marketMinute: 120};
+    return {active: false, auction: false, regularSession: false, phase: "午间休市", tradeDate, marketMinute: 120};
   }
   if (secondOfDay <= afternoonEnd) {
-    return {active: true, phase: "交易中", tradeDate, marketMinute: marketMinuteFromParts(parts)};
+    return {
+      active: true,
+      auction: false,
+      regularSession: true,
+      phase: "交易中",
+      tradeDate,
+      marketMinute: marketMinuteFromParts(parts),
+    };
   }
-  return {active: false, phase: "已收盘", tradeDate, marketMinute: 240};
+  return {active: false, auction: false, regularSession: false, phase: "已收盘", tradeDate, marketMinute: 240};
 }
 
 function clampQuoteTimestampToTradingSession(timestamp) {
@@ -223,13 +248,22 @@ function normalizeBoardRows(diff, definition, options = {}) {
   };
 }
 
+function hasAcceptableBoardCoverage(rowCount, reportedRows, minimumRows) {
+  const rows = Math.max(0, Number(rowCount) || 0);
+  const minimum = Math.max(0, Number(minimumRows) || 0);
+  const reported = finite(reportedRows);
+  if (rows < minimum) return false;
+  if (reported === null || reported <= 0) return true;
+  return rows >= Math.max(minimum, Math.ceil(reported * 0.98));
+}
+
 async function defaultFetchBoardGroup(definition, options = {}) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const cacheBust = Number(options.nowMs) || Date.now();
   const primaryUrl = "https://data.eastmoney.com/dataapi/bkzj/getbkzj"
     + `?key=${encodeURIComponent("f62,f3")}&code=${encodeURIComponent(definition.fsCode)}&_=${cacheBust}`;
   const fallbackUrl = "https://push2.eastmoney.com/api/qt/clist/get"
-    + "?pn=1&pz=500&po=1&np=1&fltt=2&invt=2&fid=f62"
+    + "?pn=1&pz=1000&po=1&np=1&fltt=2&invt=2&fid=f62"
     + `&fs=${encodeURIComponent(definition.fsCode)}`
     + `&fields=f12,f14,f3,f62,f124&_=${cacheBust}`;
   const errors = [];
@@ -241,10 +275,16 @@ async function defaultFetchBoardGroup(definition, options = {}) {
       const json = await fetchJson(fetchImpl, url, {timeoutMs: options.timeoutMs || DEFAULT_TIMEOUT_MS});
       const normalized = normalizeBoardRows(json?.data?.diff, definition, {changePctScale});
       const total = finite(json?.data?.total);
-      if (total !== null && total > normalized.rows.length) {
-        throw new Error(`${definition.title}只返回 ${normalized.rows.length}/${total} 行`);
+      if (!hasAcceptableBoardCoverage(normalized.rows.length, total, definition.minimumRows)) {
+        throw new Error(`${definition.title}只返回 ${normalized.rows.length}/${total} 行，低于98%完整性阈值`);
       }
-      return {...normalized, route, reportedRows: total, capturedAtMs: Date.now()};
+      return {
+        ...normalized,
+        route,
+        reportedRows: total,
+        coveragePct: total && total > 0 ? round((normalized.rows.length / total) * 100, 2) : 100,
+        capturedAtMs: Date.now(),
+      };
     } catch (error) {
       errors.push(`${route}: ${error.message}`);
     }
@@ -331,6 +371,8 @@ function publicStatus(snapshot, state, date = new Date()) {
       indices: [],
     }),
     active,
+    auction: active && phase.auction,
+    regularSession: active && phase.regularSession,
     marketPhase: sameTradeDate ? phase.phase : `${phase.phase}·等待当日行情`,
     cacheAgeMs,
     pollIntervalMs: LIVE_INTERVAL_MS,
@@ -419,7 +461,7 @@ function createLiveSectorFlowService(options = {}) {
         fetchLatencyMs: Math.max(0, finished.getTime() - startedMs),
         sourceLatencyMs: Math.max(0, finished.getTime() - quoteSourceTimestamp * 1000),
         source: "东方财富板块实时资金排名 + 腾讯主要指数同轮时间校验",
-        methodology: "行业与概念同轮并发获取，并以同轮主要指数行情校验交易日期和时点；只有两组完整且采集时差合格时才原子发布。不使用随机数，不按时间外推资金金额。",
+        methodology: "09:15集合竞价起，行业与概念同轮并发获取，并以同轮主要指数行情校验交易日期和时点；只有两组完整且采集时差合格时才原子发布。不使用随机数，不按时间外推资金金额。",
         groupTimestampSkewMs: groupSkewMs,
         groups,
         indices,
@@ -471,6 +513,8 @@ function createLiveSectorFlowService(options = {}) {
     return {
       ok: status.ok,
       active: status.active,
+      auction: status.auction,
+      regularSession: status.regularSession,
       marketPhase: status.marketPhase,
       tradeDate: status.tradeDate,
       sourceTime: status.sourceTime,
@@ -546,6 +590,7 @@ module.exports = {
   DEFAULT_TIMEOUT_MS,
   LIVE_INTERVAL_MS,
   createLiveSectorFlowService,
+  hasAcceptableBoardCoverage,
   marketMinuteFromParts,
   marketPhaseAt,
   normalizeBoardRows,

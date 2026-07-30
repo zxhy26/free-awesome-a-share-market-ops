@@ -22,9 +22,11 @@ function clampMinute(value) {
 function minuteToTime(value) {
   const minute = clampMinute(value);
   const total = minute <= 120 ? 570 + minute : 780 + (minute - 120);
-  const hour = Math.floor(total / 60);
-  const minutePart = total % 60;
-  return `${String(hour).padStart(2, "0")}:${String(minutePart).padStart(2, "0")}`;
+  const totalSeconds = Math.round(total * 60);
+  const hour = Math.floor(totalSeconds / 3600);
+  const minutePart = Math.floor((totalSeconds % 3600) / 60);
+  const secondPart = totalSeconds % 60;
+  return `${String(hour).padStart(2, "0")}:${String(minutePart).padStart(2, "0")}:${String(secondPart).padStart(2, "0")}`;
 }
 
 function boardCode(row) {

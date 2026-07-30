@@ -511,7 +511,9 @@ export function updateIndexCharts(charts, minute) {
   for (const chart of charts) {
     const points = visiblePoints(chart.data.points, minute);
     const last = points.at(-1) || {};
-    const price = finiteNumber(last.price);
+    const auctionQuote = minute <= 0.01 ? chart.data.liveAuctionQuote : null;
+    const displayPoint = auctionQuote || last;
+    const price = finiteNumber(displayPoint.price);
     const preClose = finiteNumber(chart.data.preClose);
     const change = price !== null && preClose !== null ? price - preClose : null;
     const pct = change !== null && preClose ? (change / preClose) * 100 : null;
@@ -531,9 +533,11 @@ export function updateIndexCharts(charts, minute) {
     chart.cursor.setAttribute("cy", geometry.y.toFixed(2));
     chart.cursor.style.color = `var(--${className === "loss" ? "loss" : "gain"})`;
     renderSectorAttributions(chart, minute, geometry);
-    const amount = finiteNumber(last.amount);
+    const amount = finiteNumber(displayPoint.amount);
     chart.amount.textContent = amount === null ? "成交额 --" : `成交额 ${(amount / 100000000).toFixed(1)}亿`;
-    chart.sample.textContent = chart.data.snapshotOnly
+    chart.sample.textContent = auctionQuote
+      ? `${auctionQuote.sourceTime || "--"} 集合竞价`
+      : chart.data.snapshotOnly
       ? `${marketMinuteToTime(finiteNumber(last.minute) ?? minute, true)} 仅快照`
       : marketMinuteToTime(finiteNumber(last.minute) ?? minute, true);
   }

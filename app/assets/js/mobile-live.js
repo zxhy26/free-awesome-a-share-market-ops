@@ -73,7 +73,7 @@
   function isTrading(parts) {
     const minute = parts.hour * 60 + parts.minute;
     return parts.day > 0 && parts.day < 6
-      && ((minute >= 570 && minute <= 690) || (minute >= 780 && minute <= 900));
+      && ((minute >= 555 && minute <= 690) || (minute >= 780 && minute <= 900));
   }
 
   function timestampFromCompactText(value) {
