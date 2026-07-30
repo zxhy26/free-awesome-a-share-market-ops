@@ -270,6 +270,24 @@ export async function getHealth() {
   return fetchJson(`${SERVICE_ORIGIN}/health`, {label: "本地同步服务", timeoutMs: 5000});
 }
 
+export async function loadIndexCatalog() {
+  return fetchJson(`${SERVICE_ORIGIN}/api/v1/index-catalog`, {
+    label: "主要指数目录",
+    timeoutMs: 5000,
+    allowSnapshot: false,
+  });
+}
+
+export async function loadIndexTrend(key, tradeDate = "") {
+  const params = new URLSearchParams({key});
+  if (tradeDate) params.set("tradeDate", tradeDate);
+  return fetchJson(`${SERVICE_ORIGIN}/api/v1/index-trend?${params}`, {
+    label: "指数真实分时",
+    timeoutMs: 20000,
+    allowSnapshot: false,
+  });
+}
+
 export async function getAppUpdateStatus() {
   return fetchJson(`${SERVICE_ORIGIN}/api/v1/app-update/status`, {
     label: "软件更新状态",

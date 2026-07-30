@@ -23,6 +23,7 @@
   --radius-sm: 4px;
   --radius-md: 6px;
   --font-ui: "Microsoft YaHei UI", "Microsoft YaHei", Arial, sans-serif;
+  --app-font-unit: 1px;
   --header-height: 62px;
 }
 

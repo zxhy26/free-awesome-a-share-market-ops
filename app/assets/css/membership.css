@@ -55,13 +55,13 @@
 }
 
 .membership-dialog h2 {
-  font-size: 20px;
+  font-size: calc(20 * var(--app-font-unit));
 }
 
 .membership-dialog header p {
   margin-top: 4px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13 * var(--app-font-unit));
 }
 
 .membership-content {
@@ -92,7 +92,7 @@
 
 .membership-status span {
   color: var(--text-soft);
-  font-size: 13px;
+  font-size: calc(13 * var(--app-font-unit));
 }
 
 .membership-expiry {
@@ -106,12 +106,12 @@
 .membership-expiry strong {
   margin: 0;
   color: var(--text);
-  font-size: 15px;
+  font-size: calc(15 * var(--app-font-unit));
 }
 
 .membership-expiry span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12 * var(--app-font-unit));
 }
 
 .membership-section {
@@ -121,7 +121,7 @@
 
 .membership-section h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: calc(15 * var(--app-font-unit));
 }
 
 .membership-plans {
@@ -157,7 +157,7 @@
 
 .membership-plan span {
   margin-top: 3px;
-  font-size: 13px;
+  font-size: calc(13 * var(--app-font-unit));
 }
 
 .membership-payment-grid {
@@ -181,7 +181,7 @@
 
 .membership-payment-provider {
   color: var(--text);
-  font-size: 16px;
+  font-size: calc(16 * var(--app-font-unit));
   line-height: 1.4;
   text-align: center;
 }
@@ -217,26 +217,26 @@
 .membership-qr-empty {
   padding: 10px;
   color: #5f6873;
-  font-size: 12px;
+  font-size: calc(12 * var(--app-font-unit));
   line-height: 1.6;
   text-align: center;
 }
 
 .membership-payment-summary p {
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13 * var(--app-font-unit));
   line-height: 1.6;
 }
 
 .membership-payment-amount {
   margin-bottom: 2px !important;
   color: var(--text) !important;
-  font-size: 15px !important;
+  font-size: calc(15 * var(--app-font-unit)) !important;
 }
 
 .membership-payment-amount b {
   color: var(--loss);
-  font-size: 22px;
+  font-size: calc(22 * var(--app-font-unit));
 }
 
 .membership-auto-payment {
@@ -275,7 +275,7 @@
 
 .membership-creator-card strong {
   color: var(--text);
-  font-size: 17px;
+  font-size: calc(17 * var(--app-font-unit));
   line-height: 1.55;
 }
 
@@ -304,7 +304,7 @@
   margin: 0;
   padding-left: 22px;
   color: var(--text-soft);
-  font-size: 13px;
+  font-size: calc(13 * var(--app-font-unit));
   line-height: 1.75;
 }
 
@@ -335,7 +335,7 @@
 .membership-message {
   min-height: 20px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13 * var(--app-font-unit));
 }
 
 .membership-message.is-error {

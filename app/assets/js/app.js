@@ -1,7 +1,9 @@
-import {checkAppUpdate, getAppUpdateStatus, getHealth, installAppUpdate, loadBoardIntradayTrend, loadCoreData, loadIndexContributionData, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260730-2";
+import {checkAppUpdate, getAppUpdateStatus, getHealth, installAppUpdate, loadBoardIntradayTrend, loadCoreData, loadIndexCatalog, loadIndexContributionData, loadIndexTrend, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260730-3";
 import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNumber, formatPercent, formatYi, signed, summarizeMoneyEffect, valueClass} from "./analysis.js?v=20260730-1";
-import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260730-1";
+import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260730-2";
 import {createSummaryDialog} from "./dialog.js";
+import {createDisplaySettings} from "./display-settings.js?v=20260730-1";
+import {createIndexWorkspace} from "./index-workspace.js?v=20260730-1";
 import {initializePwa} from "./pwa.js?v=20260719-2";
 import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260727-2";
 import {createCustomSectorWorkspace} from "./custom-sector-workspace.js?v=20260728-5";
@@ -28,6 +30,13 @@ const dom = {
   riskReason: document.querySelector("#riskReason"),
   headlineMetrics: document.querySelector("#headlineMetrics"),
   indexGrid: document.querySelector("#indexGrid"),
+  indexAdd: document.querySelector("#indexAdd"),
+  indexCount: document.querySelector("#indexCount"),
+  indexPicker: document.querySelector("#indexPicker"),
+  indexPickerClose: document.querySelector("#indexPickerClose"),
+  indexSearch: document.querySelector("#indexSearch"),
+  indexFilters: document.querySelector("#indexFilters"),
+  indexOptions: document.querySelector("#indexOptions"),
   contributionTabs: document.querySelector("#contributionTabs"),
   indexContribution: document.querySelector("#indexContribution"),
   customSectorAdd: document.querySelector("#customSectorAdd"),
@@ -66,6 +75,13 @@ const dom = {
   summaryDate: document.querySelector("#summaryDate"),
   summaryContent: document.querySelector("#summaryContent"),
   structureHelp: document.querySelector("#structureHelp"),
+  appViewport: document.querySelector("#appViewport"),
+  zoomOut: document.querySelector("#zoomOut"),
+  zoomIn: document.querySelector("#zoomIn"),
+  zoomRange: document.querySelector("#zoomRange"),
+  zoomValue: document.querySelector("#zoomValue"),
+  fontSizeButton: document.querySelector("#fontSizeButton"),
+  fontSizeMenu: document.querySelector("#fontSizeMenu"),
 };
 
 const state = {
@@ -80,7 +96,9 @@ const state = {
   flowRenderVersion: {industry: 0, concept: 0},
   contributionIndexKey: "",
   contributionTabsSignature: "",
+  indexWorkspace: null,
   customSectorWorkspace: null,
+  displaySettings: null,
   autoReloadTimer: 0,
   liveRefreshRunning: false,
   liveFlowTimer: 0,
@@ -438,6 +456,7 @@ function applyLiveIndexQuotes(snapshot) {
       sampledAt: snapshot.fetchedAt,
     }].sort((left, right) => (finiteNumber(left.minute) ?? 0) - (finiteNumber(right.minute) ?? 0));
   }
+  state.indexWorkspace?.applyLiveSnapshot(snapshot);
 }
 
 function updateLiveFlowStatus(snapshot, error = null) {
@@ -845,16 +864,28 @@ function renderSummary() {
   state.summaryText = sections.map((section) => section.innerText.trim()).join("\n\n") + "\n\n本软件仅用于市场数据整理和复盘分析，不构成任何投资建议。";
 }
 
-function renderAll() {
-  renderHeaderAndOverview();
+function indexAttributionRows() {
   const industryAttributionRows = state.data.sectors?.industry?.attributionRows || state.data.sectors?.industry?.rows || [];
   const conceptAttributionRows = state.data.sectors?.concept?.attributionRows || state.data.sectors?.concept?.rows || [];
-  const attributionRows = [
+  return [
     ...industryAttributionRows.map((row) => ({...row, sectorKind: "industry", sectorKindLabel: "行业"})),
     ...conceptAttributionRows.map((row) => ({...row, sectorKind: "concept", sectorKindLabel: "题材"})),
   ];
-  state.charts = createIndexCharts(dom.indexGrid, state.data.indices.items || [], attributionRows);
+}
+
+function renderSelectedIndexCharts() {
+  if (!state.data) return;
+  const indices = state.indexWorkspace?.getSelectedItems() || state.data.indices.items || [];
+  state.charts = createIndexCharts(dom.indexGrid, indices, indexAttributionRows(), {
+    onRemove: (key) => state.indexWorkspace?.remove(key),
+  });
   updateIndexCharts(state.charts, Number(dom.timeline.value));
+}
+
+function renderAll() {
+  renderHeaderAndOverview();
+  state.indexWorkspace?.setBaseIndices(state.data.indices.items || []);
+  renderSelectedIndexCharts();
   renderIndexContribution(Number(dom.timeline.value));
   renderFlow("industry", Number(dom.timeline.value));
   renderFlow("concept", Number(dom.timeline.value));
@@ -863,6 +894,7 @@ function renderAll() {
     concept: state.liveFlowGroups.concept || state.data.sectors?.concept,
   });
   state.customSectorWorkspace?.render(Number(dom.timeline.value));
+  state.indexWorkspace?.loadSelectedTimelines();
   renderStructure();
   renderMoneyMetrics();
   renderHistory();
@@ -1045,6 +1077,35 @@ function initializeAppUpdates() {
 function setupInteractions() {
   initializeTheme();
   initializePwa();
+  state.displaySettings = createDisplaySettings({
+    viewport: dom.appViewport,
+    zoomOut: dom.zoomOut,
+    zoomIn: dom.zoomIn,
+    zoomRange: dom.zoomRange,
+    zoomValue: dom.zoomValue,
+    fontButton: dom.fontSizeButton,
+    fontMenu: dom.fontSizeMenu,
+    onChange: () => {
+      if (state.charts.length) updateIndexCharts(state.charts, Number(dom.timeline.value));
+      state.customSectorWorkspace?.render(Number(dom.timeline.value));
+    },
+  });
+  state.indexWorkspace = createIndexWorkspace({
+    picker: dom.indexPicker,
+    pickerList: dom.indexOptions,
+    searchInput: dom.indexSearch,
+    filterControls: dom.indexFilters,
+    addButton: dom.indexAdd,
+    closeButton: dom.indexPickerClose,
+    count: dom.indexCount,
+    loadCatalog: loadIndexCatalog,
+    loadTimeline: loadIndexTrend,
+    showNotice,
+    onSelectionChange: () => renderSelectedIndexCharts(),
+    onLiveUpdate: () => {
+      if (state.charts.length) updateIndexCharts(state.charts, Number(dom.timeline.value));
+    },
+  });
   state.customSectorWorkspace = createCustomSectorWorkspace({
     grid: dom.customSectorGrid,
     picker: dom.customSectorPicker,

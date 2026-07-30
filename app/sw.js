@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v81-github-updater";
+const CACHE_VERSION = "a-share-review-v82-display-index-workspace";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [
@@ -30,6 +30,8 @@ const CORE_ASSETS = [
   "/app/assets/js/charts.js",
   "/app/assets/js/sector-flow-chart.js",
   "/app/assets/js/custom-sector-workspace.js",
+  "/app/assets/js/display-settings.js",
+  "/app/assets/js/index-workspace.js",
   "/app/assets/js/dialog.js",
   "/app/assets/js/pwa.js",
   "/app/assets/js/app.js",

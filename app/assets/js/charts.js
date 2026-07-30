@@ -469,14 +469,16 @@ function renderSectorAttributions(chart, minute, geometry) {
   chart.attributionLayer.replaceChildren(...nodes);
 }
 
-export function createIndexCharts(container, indices, industryRows = []) {
+export function createIndexCharts(container, indices, industryRows = [], options = {}) {
   const charts = [];
   const fragment = document.createDocumentFragment();
   for (const index of indices || []) {
     const article = document.createElement("article");
     article.className = "index-card";
+    article.dataset.indexKey = index.key || index.code || "";
+    article.dataset.timelineState = index.error ? "error" : index.loading ? "loading" : index.points?.length ? "ready" : "pending";
     article.innerHTML = `
-      <div class="index-card-header"><strong></strong><span></span></div>
+      <div class="index-card-header"><strong></strong><span></span><button class="index-card-remove" type="button" title="移除指数" aria-label="移除指数">×</button></div>
       <div class="index-values"><strong></strong><span class="points"></span><span class="pct"></span></div>
       <svg class="index-chart" viewBox="0 0 260 116" preserveAspectRatio="none" role="img">
         <title></title><line class="grid" x1="0" x2="260" y1="29" y2="29"></line><line class="baseline" x1="0" x2="260" y1="58" y2="58"></line><line class="grid" x1="0" x2="260" y1="87" y2="87"></line><path class="line"></path><g class="index-attributions"></g><circle class="cursor" r="2.8"></circle>
@@ -484,6 +486,10 @@ export function createIndexCharts(container, indices, industryRows = []) {
       <div class="index-card-footer"><span class="amount"></span><span class="sample"></span></div>`;
     article.querySelector(".index-card-header strong").textContent = index.name || "--";
     article.querySelector(".index-card-header span").textContent = index.tradeDate || "--";
+    const removeButton = article.querySelector(".index-card-remove");
+    removeButton.title = `移除${index.name || "指数"}`;
+    removeButton.setAttribute("aria-label", `移除${index.name || "指数"}`);
+    removeButton.addEventListener("click", () => options.onRemove?.(index.key || index.code));
     article.querySelector("title").textContent = `${index.name || "指数"}分时图`;
     fragment.append(article);
     const attributionCandidates = buildSectorAttributionCandidates(index, industryRows);
@@ -535,7 +541,9 @@ export function updateIndexCharts(charts, minute) {
     renderSectorAttributions(chart, minute, geometry);
     const amount = finiteNumber(displayPoint.amount);
     chart.amount.textContent = amount === null ? "成交额 --" : `成交额 ${(amount / 100000000).toFixed(1)}亿`;
-    chart.sample.textContent = auctionQuote
+    chart.sample.textContent = !chart.data.points?.length
+      ? (chart.data.error ? "真实分时重连中" : "真实分时加载中")
+      : auctionQuote
       ? `${auctionQuote.sourceTime || "--"} 集合竞价`
       : chart.data.snapshotOnly
       ? `${marketMinuteToTime(finiteNumber(last.minute) ?? minute, true)} 仅快照`

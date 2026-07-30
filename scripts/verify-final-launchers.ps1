@@ -9,7 +9,9 @@ param(
   [string]$BasicExe,
 
   [Parameter(Mandatory = $true)]
-  [string]$SelfExe
+  [string]$SelfExe,
+
+  [string]$CustomExe = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,10 +22,13 @@ if (-not $TestRoot.StartsWith($TestParent + [IO.Path]::DirectorySeparatorChar, [
 }
 
 $Targets = @(
-  @{ Name = "Member"; Exe = $MemberExe; Quant = $false; Admin = $false; PrivateKey = $false },
-  @{ Name = "Basic"; Exe = $BasicExe; Quant = $true; Admin = $false; PrivateKey = $false },
-  @{ Name = "Self"; Exe = $SelfExe; Quant = $true; Admin = $true; PrivateKey = $true }
+  @{ Name = "Member"; Exe = $MemberExe; Quant = $false; Admin = $false; PrivateKey = $false; Shortline = $false },
+  @{ Name = "Basic"; Exe = $BasicExe; Quant = $true; Admin = $false; PrivateKey = $false; Shortline = $false },
+  @{ Name = "Self"; Exe = $SelfExe; Quant = $true; Admin = $true; PrivateKey = $true; Shortline = $false }
 )
+if ($CustomExe) {
+  $Targets += @{ Name = "Custom"; Exe = $CustomExe; Quant = $true; Admin = $false; PrivateKey = $false; Shortline = $true }
+}
 
 foreach ($Target in $Targets) {
   if (-not (Test-Path -LiteralPath $Target.Exe -PathType Leaf)) {
@@ -64,6 +69,7 @@ try {
     $Index = Get-Content -LiteralPath $IndexFile.FullName -Raw -Encoding UTF8
     $HasQuant = $Index -match "quant\.html"
     $HasAdmin = $Index -match "member-admin\.html"
+    $HasShortline = $Index -match "shortline\.html"
     $HasPrivateKey = @(
       Get-ChildItem -LiteralPath (Join-Path $AppRoot "backend") -Recurse -File -Filter "*.pem" |
         Where-Object {
@@ -71,10 +77,18 @@ try {
         }
     ).Count -gt 0
     $HasLiveModule = Test-Path -LiteralPath (Join-Path $AppRoot "backend\live-sector-flow.js")
+    $HasIndexCatalog = Test-Path -LiteralPath (Join-Path $AppRoot "backend\index-catalog.js")
+    $HasIndexWorkspace = Test-Path -LiteralPath (Join-Path $AppRoot "assets\js\index-workspace.js")
+    $HasDisplaySettings = Test-Path -LiteralPath (Join-Path $AppRoot "assets\js\display-settings.js")
+    $HasDisplayControls = $Index -match 'id="zoomRange"' -and
+      $Index -match 'id="fontSizeButton"' -and
+      $Index -match 'id="indexPicker"'
     $BoundaryOk = $HasQuant -eq $Target.Quant -and
       $HasAdmin -eq $Target.Admin -and
-      $HasPrivateKey -eq $Target.PrivateKey
-    if (-not $HasLiveModule -or -not $BoundaryOk) {
+      $HasPrivateKey -eq $Target.PrivateKey -and
+      $HasShortline -eq $Target.Shortline
+    if (-not $HasLiveModule -or -not $HasIndexCatalog -or -not $HasIndexWorkspace -or
+      -not $HasDisplaySettings -or -not $HasDisplayControls -or -not $BoundaryOk) {
       throw "$($Target.Name) payload feature boundary is invalid."
     }
 
@@ -88,6 +102,10 @@ try {
       quant = $HasQuant
       admin = $HasAdmin
       privateKey = $HasPrivateKey
+      shortline = $HasShortline
+      indexCatalog = $HasIndexCatalog
+      indexWorkspace = $HasIndexWorkspace
+      displaySettings = $HasDisplaySettings
       boundaryOk = $BoundaryOk
       exeSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $Target.Exe).Hash
       sizeMB = [Math]::Round((Get-Item -LiteralPath $Target.Exe).Length / 1MB, 2)

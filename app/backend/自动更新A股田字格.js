@@ -9,6 +9,7 @@ const { exportOptimizedAppData } = require("./导出复盘应用数据");
 const { enhanceAppData } = require("./升级数据层");
 const { buildSnapshotOnlyIndex } = require("./market-data-contract");
 const { reconcileBoardFlowGroups } = require("./板块资金自动纠偏");
+const {INDEX_CATALOG, DEFAULT_INDEX_KEYS} = require("./index-catalog");
 
 const PORTABLE_ROOT = path.resolve(
   process.env.A_SHARE_REVIEW_PORTABLE_ROOT || path.join(__dirname, "..", "..", "..")
@@ -254,16 +255,10 @@ const POLICY_PLAN_FOUNDATION_NEWS = Object.freeze([
   },
 ]);
 
-const MAJOR_INDEXES = [
-  { key: "sh000001", name: "上证指数", code: "000001", secid: "1.000001", tencent: "sh000001" },
-  { key: "sz399001", name: "深证成指", code: "399001", secid: "0.399001", tencent: "sz399001" },
-  { key: "sz399006", name: "创业板指", code: "399006", secid: "0.399006", tencent: "sz399006" },
-  { key: "sh000688", name: "科创50", code: "000688", secid: "1.000688", tencent: "sh000688" },
-  { key: "sh000300", name: "沪深300", code: "000300", secid: "1.000300", tencent: "sh000300" },
-  { key: "sh000905", name: "中证500", code: "000905", secid: "1.000905", tencent: "sh000905" },
-  { key: "bj899050", name: "北证50", code: "899050", secid: "0.899050", tencent: "bj899050" },
-  { key: "usIXIC", name: "纳斯达克", code: "IXIC", secid: "", tencent: "usIXIC", session: "us" },
-];
+const MAJOR_INDEXES = DEFAULT_INDEX_KEYS
+  .map((key) => INDEX_CATALOG.find((item) => item.key === key))
+  .filter(Boolean)
+  .map((item) => ({...item, tencent: item.symbol}));
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });

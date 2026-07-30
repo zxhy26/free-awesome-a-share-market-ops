@@ -1,6 +1,7 @@
 "use strict";
 
 const {TextDecoder} = require("util");
+const {INDEX_CATALOG} = require("./index-catalog");
 
 const LIVE_INTERVAL_MS = 1000;
 const ACTIVE_REFRESH_AGE_MS = 700;
@@ -21,15 +22,11 @@ const GROUP_DEFINITIONS = Object.freeze({
     minimumRows: 400,
   }),
 });
-const INDEX_DEFINITIONS = Object.freeze([
-  Object.freeze({key: "sh000001", code: "000001", symbol: "sh000001", name: "上证指数"}),
-  Object.freeze({key: "sz399001", code: "399001", symbol: "sz399001", name: "深证成指"}),
-  Object.freeze({key: "sz399006", code: "399006", symbol: "sz399006", name: "创业板指"}),
-  Object.freeze({key: "sh000688", code: "000688", symbol: "sh000688", name: "科创50"}),
-  Object.freeze({key: "sh000300", code: "000300", symbol: "sh000300", name: "沪深300"}),
-  Object.freeze({key: "sh000905", code: "000905", symbol: "sh000905", name: "中证500"}),
-  Object.freeze({key: "bj899050", code: "899050", symbol: "bj899050", name: "北证50"}),
-]);
+const INDEX_DEFINITIONS = Object.freeze(
+  INDEX_CATALOG
+    .filter((item) => item.session !== "us")
+    .map(({key, code, symbol, name}) => Object.freeze({key, code, symbol, name})),
+);
 const SHANGHAI_FORMATTER = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Shanghai",
   year: "numeric",

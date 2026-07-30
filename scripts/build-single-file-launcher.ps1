@@ -5,7 +5,7 @@
   [Parameter(Mandatory = $true)]
   [string]$OutputPath,
 
-  [ValidateSet("Member", "Basic", "Self")]
+  [ValidateSet("Member", "Basic", "Self", "Custom")]
   [string]$Edition = "Member",
 
   [string]$LauncherSource = "",
@@ -70,6 +70,27 @@ switch ($Edition) {
       throw "基础版首页必须提供量化选股入口，且不得提供会员管理入口。"
     }
   }
+  "Custom" {
+    foreach ($RequiredPath in @(
+      $QuantPage,
+      $QuantScript,
+      (Join-Path $PayloadRoot "程序\应用\pages\shortline.html"),
+      (Join-Path $PayloadRoot "程序\应用\assets\js\shortline-page.js"),
+      (Join-Path $PayloadRoot "程序\应用\backend\shortline-service.js")
+    )) {
+      if (-not (Test-Path -LiteralPath $RequiredPath)) {
+        throw "定制版载荷缺少必要文件：$RequiredPath"
+      }
+    }
+    foreach ($ForbiddenPath in @($PrivateKey, $AdminPage, $AdminScript, $AdminStyle)) {
+      if (Test-Path -LiteralPath $ForbiddenPath) {
+        throw "定制版载荷不得包含激活码签发文件：$ForbiddenPath"
+      }
+    }
+    if (-not $IndexHasQuant -or $IndexHasAdmin -or $AppIndexContent -notmatch "shortline\.html") {
+      throw "定制版首页必须提供量化选股和短线入口，且不得提供会员管理入口。"
+    }
+  }
   default {
     foreach ($ForbiddenPath in @($PrivateKey, $AdminPage, $AdminScript, $AdminStyle, $QuantPage, $QuantScript)) {
       if (Test-Path -LiteralPath $ForbiddenPath) {
@@ -106,6 +127,7 @@ try {
   $Define = switch ($Edition) {
     "Basic" { "/define:BASIC_EDITION" }
     "Self" { "/define:SELF_EDITION" }
+    "Custom" { "/define:CUSTOM_EDITION" }
     default { $null }
   }
   $CompilerArguments = @(

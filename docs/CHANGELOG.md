@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.19.0 - 2026-07-30
+
+- Replaced the fixed eight-index dashboard with a persistent, searchable catalog of 19 Shanghai, Shenzhen, CSI, Beijing, and Nasdaq indices.
+- Kept the major-index area capped at eight charts and preserved the stable four-by-two desktop layout.
+- Added on-demand real minute timelines for newly selected indices and appended each domestic index from the same live quote snapshot used by the dashboard.
+- Added Word-style page zoom from 70% to 130% with a one-click 100% reset.
+- Added four persistent global font-size choices and made chart labels, controls, metrics, tables, dialogs, and membership text follow the selected size.
+- Added offline caching and regression coverage for the new display controls, index catalog, timeline parser, selection persistence, and API boundaries.
+
 ## 2.18.0 - 2026-07-30
 
 - Added an in-application GitHub update button to the distributed Member edition.

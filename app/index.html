@@ -8,12 +8,13 @@
   <link rel="icon" href="assets/icons/favicon-32.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="assets/css/variables.css">
-  <link rel="stylesheet" href="assets/css/layout.css?v=20260728-6">
-  <link rel="stylesheet" href="assets/css/components.css?v=20260730-8">
-  <link rel="stylesheet" href="assets/css/responsive.css?v=20260728-5">
-  <link rel="stylesheet" href="assets/css/membership.css?v=20260728-3">
+  <link rel="stylesheet" href="assets/css/layout.css?v=20260730-7">
+  <link rel="stylesheet" href="assets/css/components.css?v=20260730-9">
+  <link rel="stylesheet" href="assets/css/responsive.css?v=20260730-6">
+  <link rel="stylesheet" href="assets/css/membership.css?v=20260730-4">
 </head>
 <body>
+  <div class="app-viewport" id="appViewport">
   <header class="app-header">
     <div class="brand-block">
       <h1>A股复盘</h1>
@@ -41,6 +42,15 @@
       <button class="button app-update-button" id="appUpdateButton" type="button" title="从 GitHub 检查并安装最新版" hidden>
         <span aria-hidden="true">⇩</span><span id="appUpdateButtonLabel">检查更新</span>
       </button>
+      <div class="font-size-control">
+        <button class="icon-button font-size-button" id="fontSizeButton" type="button" title="字号设置" aria-label="字号设置" aria-expanded="false" aria-controls="fontSizeMenu">Aa</button>
+        <div class="font-size-menu" id="fontSizeMenu" role="menu" aria-label="全局字号" hidden>
+          <button type="button" role="menuitemradio" data-font-size="small"><span>小</span><small>90%</small></button>
+          <button type="button" role="menuitemradio" data-font-size="standard"><span>标准</span><small>100%</small></button>
+          <button type="button" role="menuitemradio" data-font-size="large"><span>大</span><small>110%</small></button>
+          <button type="button" role="menuitemradio" data-font-size="xlarge"><span>特大</span><small>120%</small></button>
+        </div>
+      </div>
       <button class="icon-button" id="reloadButton" type="button" title="刷新页面" aria-label="刷新页面">↻</button>
       <fieldset class="theme-segment" aria-label="主题模式">
         <legend class="visually-hidden">主题模式</legend>
@@ -75,16 +85,41 @@
       <div class="left-stack">
         <section class="work-panel index-panel" aria-labelledby="indicesTitle">
         <div class="panel-heading">
-          <div><h2 id="indicesTitle">主要指数分时</h2><p>指数、涨跌点数、成交额与持续行业资金标注同步</p></div>
-          <div class="playback-controls">
-            <button class="icon-button" id="playButton" type="button" aria-label="播放分时" title="播放分时">▶</button>
-            <select id="speedSelect" aria-label="播放速度">
-              <option value="1">1倍速</option>
-              <option value="5" selected>5倍速</option>
-              <option value="10">10倍速</option>
-            </select>
-            <strong id="timelineTime">15:00:00</strong>
+          <div><h2 id="indicesTitle">主要指数分时</h2><p>自选主要指数 · 最多八个 · 上四下四 · 真实分时与资金拐点标注同步</p></div>
+          <div class="index-panel-actions">
+            <button class="button custom-sector-add index-add" id="indexAdd" type="button" aria-expanded="false" aria-controls="indexPicker">
+              <span aria-hidden="true">＋</span>
+              <span>添加指数</span>
+              <small id="indexCount">8/8</small>
+            </button>
+            <div class="playback-controls">
+              <button class="icon-button" id="playButton" type="button" aria-label="播放分时" title="播放分时">▶</button>
+              <select id="speedSelect" aria-label="播放速度">
+                <option value="1">1倍速</option>
+                <option value="5" selected>5倍速</option>
+                <option value="10">10倍速</option>
+              </select>
+              <strong id="timelineTime">15:00:00</strong>
+            </div>
           </div>
+        </div>
+        <div class="custom-sector-picker index-picker" id="indexPicker" hidden>
+          <div class="custom-sector-picker-toolbar index-picker-toolbar">
+            <label class="custom-sector-search">
+              <span class="visually-hidden">搜索指数</span>
+              <input id="indexSearch" type="search" placeholder="输入指数名称或代码" autocomplete="off">
+            </label>
+            <div class="custom-sector-filters index-filters" id="indexFilters" role="group" aria-label="指数类型">
+              <button type="button" data-index-filter="all" aria-pressed="true">全部</button>
+              <button type="button" data-index-filter="shanghai" aria-pressed="false">沪市</button>
+              <button type="button" data-index-filter="shenzhen" aria-pressed="false">深市</button>
+              <button type="button" data-index-filter="csi" aria-pressed="false">中证</button>
+              <button type="button" data-index-filter="beijing" aria-pressed="false">北证</button>
+              <button type="button" data-index-filter="overseas" aria-pressed="false">海外</button>
+            </div>
+            <button class="icon-button" id="indexPickerClose" type="button" title="关闭指数选择" aria-label="关闭指数选择">×</button>
+          </div>
+          <div class="custom-sector-options index-options" id="indexOptions" aria-live="polite"></div>
         </div>
         <div id="indexGrid" class="index-grid" aria-live="polite"></div>
         <div class="timeline-wrap">
@@ -226,8 +261,16 @@
   <div class="update-toast" id="updateToast" hidden>
     <span>发现新版本。</span><button type="button" id="applyUpdate">刷新后更新</button>
   </div>
+  </div>
+
+  <div class="zoom-control" id="zoomControl" aria-label="页面缩放">
+    <button class="zoom-step" id="zoomOut" type="button" title="缩小页面" aria-label="缩小页面">−</button>
+    <input id="zoomRange" type="range" min="70" max="130" step="5" value="100" aria-label="页面缩放比例">
+    <button class="zoom-step" id="zoomIn" type="button" title="放大页面" aria-label="放大页面">＋</button>
+    <button class="zoom-value" id="zoomValue" type="button" title="恢复为100%" aria-label="恢复为100%">100%</button>
+  </div>
 
   <script type="module" src="assets/js/membership.js?v=20260728-3"></script>
-  <script type="module" src="assets/js/app.js?v=20260730-2"></script>
+  <script type="module" src="assets/js/app.js?v=20260730-3"></script>
 </body>
 </html>
