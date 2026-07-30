@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "product": "大a后勤部",
+  "edition": "member",
+  "version": "2.18.0",
+  "publishedAt": "2026-07-30T02:50:39.0595318Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.18.0/Da-A-Hou-Qin-Bu-v2.18.0.exe",
+  "sha256": "6DF8EFCDBA9C2D443B400A69D6870126099C27330E78CAB539854706CE8B147F",
+  "size": 40095744,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.18.0",
+  "notes": [
+    "新增软件内 GitHub 检查更新和立即更新按钮。",
+    "下载完成后自动校验文件大小与 SHA-256，通过后才替换并重启。",
+    "首次升级会迁移旧版历史，后续升级继续保留本机历史回放数据。",
+    "行情从 09:15:00 开始实时同步，所有分时继续显示到秒级。"
+  ]
+}

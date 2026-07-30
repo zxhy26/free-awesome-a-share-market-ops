@@ -23,27 +23,29 @@ using System.Windows.Forms;
 #endif
 [assembly: AssemblyCompany("Free & Awesome A-Share Market Ops")]
 [assembly: AssemblyCopyright("Copyright 2026")]
-[assembly: AssemblyVersion("2.17.9.0")]
-[assembly: AssemblyFileVersion("2.17.9.0")]
+[assembly: AssemblyVersion("2.18.0.0")]
+[assembly: AssemblyFileVersion("2.18.0.0")]
 
 internal static class Program
 {
 #if BASIC_EDITION
     private const string EditionName = "基础版";
     private const string EditionCode = "basic";
-    private const string RuntimeTag = "版本_20260730-2.17.9-基础版-0915实时";
-    private const string MutexName = "Local\\AshareReviewLauncher_Basic_21709";
+    private const string RuntimeTag = "版本_20260730-2.18.0-基础版-0915实时";
+    private const string MutexName = "Local\\AshareReviewLauncher_Basic_21800";
 #elif SELF_EDITION
     private const string EditionName = "自用版";
     private const string EditionCode = "self";
-    private const string RuntimeTag = "版本_20260730-2.17.9-自用版-0915实时";
-    private const string MutexName = "Local\\AshareReviewLauncher_Self_21709";
+    private const string RuntimeTag = "版本_20260730-2.18.0-自用版-0915实时";
+    private const string MutexName = "Local\\AshareReviewLauncher_Self_21800";
 #else
     private const string EditionName = "会员版";
     private const string EditionCode = "member";
-    private const string RuntimeTag = "版本_20260730-2.17.9-会员版-0915实时";
-    private const string MutexName = "Local\\AshareReviewLauncher_Member_21709";
+    private const string RuntimeTag = "版本_自动更新-会员版";
+    private const string MutexName = "Local\\AshareReviewLauncher_Member_21800";
 #endif
+    private const string LauncherVersion = "2.18.0";
+    private const string UpdateManifestUrl = "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/member.json";
     private const string PayloadResource = "AshareReviewPayload";
     private const string HashResource = "AshareReviewPayloadHash";
     private const string InnerExecutable = "A股复盘Windows版.exe";
@@ -71,6 +73,7 @@ internal static class Program
                 EnsurePayload(runtimeRoot, expectedHash);
                 string innerPath = Path.Combine(runtimeRoot, InnerExecutable);
                 if (!File.Exists(innerPath)) throw new FileNotFoundException("复盘程序入口缺失。", innerPath);
+                WriteLauncherMetadata(runtimeRoot, expectedHash, 0);
 
                 if (testOnly)
                 {
@@ -83,7 +86,9 @@ internal static class Program
                 startInfo.WorkingDirectory = runtimeRoot;
                 startInfo.UseShellExecute = true;
                 Environment.SetEnvironmentVariable("A_SHARE_REVIEW_EDITION", EditionCode);
-                Process.Start(startInfo);
+                Environment.SetEnvironmentVariable("A_SHARE_REVIEW_LAUNCHER_VERSION", LauncherVersion);
+                Process innerProcess = Process.Start(startInfo);
+                WriteLauncherMetadata(runtimeRoot, expectedHash, innerProcess == null ? 0 : innerProcess.Id);
             }
             catch (Exception error)
             {
@@ -130,6 +135,27 @@ internal static class Program
         }
     }
 
+    private static void WriteLauncherMetadata(string runtimeRoot, string payloadHash, int appPid)
+    {
+        string metadataPath = Path.Combine(runtimeRoot, ".launcher.json");
+        string temporaryPath = metadataPath + "." + Process.GetCurrentProcess().Id.ToString() + ".tmp";
+        string json = "{"
+            + "\"schemaVersion\":1,"
+            + "\"product\":\"大a后勤部\","
+            + "\"edition\":\"" + JsonEscape(EditionCode) + "\","
+            + "\"version\":\"" + JsonEscape(LauncherVersion) + "\","
+            + "\"launcherPath\":\"" + JsonEscape(Assembly.GetExecutingAssembly().Location) + "\","
+            + "\"runtimeRoot\":\"" + JsonEscape(runtimeRoot) + "\","
+            + "\"payloadSha256\":\"" + JsonEscape(payloadHash) + "\","
+            + "\"manifestUrl\":\"" + JsonEscape(UpdateManifestUrl) + "\","
+            + "\"appPid\":" + appPid.ToString() + ","
+            + "\"writtenAt\":\"" + DateTime.UtcNow.ToString("o") + "\""
+            + "}";
+        File.WriteAllText(temporaryPath, json, new UTF8Encoding(false));
+        if (File.Exists(metadataPath)) File.Delete(metadataPath);
+        File.Move(temporaryPath, metadataPath);
+    }
+
     private static void EnsurePayload(string runtimeRoot, string expectedHash)
     {
         string markerPath = Path.Combine(runtimeRoot, ".payload.sha256");
@@ -157,6 +183,14 @@ internal static class Program
             }
             File.WriteAllText(Path.Combine(temporaryRoot, ".payload.sha256"), expectedHash, Encoding.ASCII);
 
+            string preservedRoot = Directory.Exists(runtimeRoot)
+                ? runtimeRoot
+                : FindLegacyRuntimeRoot(parent, runtimeRoot);
+            if (!string.IsNullOrEmpty(preservedRoot))
+            {
+                MergePreservedDirectory(preservedRoot, temporaryRoot, "\u6570\u636e\u5386\u53f2");
+            }
+
             if (Directory.Exists(runtimeRoot))
             {
                 string safeParent = Path.GetFullPath(parent).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
@@ -173,6 +207,53 @@ internal static class Program
         {
             TryDeleteFile(temporaryZip);
             TryDeleteDirectory(temporaryRoot);
+        }
+    }
+
+    private static string FindLegacyRuntimeRoot(string parent, string currentRoot)
+    {
+        try
+        {
+            string current = Path.GetFullPath(currentRoot).TrimEnd(Path.DirectorySeparatorChar);
+            string best = "";
+            DateTime bestWriteTime = DateTime.MinValue;
+            foreach (string candidate in Directory.GetDirectories(parent, "\u7248\u672c_*", SearchOption.TopDirectoryOnly))
+            {
+                string fullCandidate = Path.GetFullPath(candidate).TrimEnd(Path.DirectorySeparatorChar);
+                if (string.Equals(fullCandidate, current, StringComparison.OrdinalIgnoreCase)) continue;
+                if (!Directory.Exists(Path.Combine(candidate, "\u6570\u636e\u5386\u53f2"))) continue;
+                DateTime writeTime = Directory.GetLastWriteTimeUtc(candidate);
+                if (writeTime <= bestWriteTime) continue;
+                best = candidate;
+                bestWriteTime = writeTime;
+            }
+            return best;
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    private static void MergePreservedDirectory(string oldRoot, string newRoot, string relativePath)
+    {
+        string sourceRoot = Path.Combine(oldRoot, relativePath);
+        if (!Directory.Exists(sourceRoot)) return;
+        string destinationRoot = Path.Combine(newRoot, relativePath);
+        Directory.CreateDirectory(destinationRoot);
+
+        foreach (string sourceDirectory in Directory.GetDirectories(sourceRoot, "*", SearchOption.AllDirectories))
+        {
+            string relativeDirectory = sourceDirectory.Substring(sourceRoot.Length).TrimStart(Path.DirectorySeparatorChar);
+            Directory.CreateDirectory(Path.Combine(destinationRoot, relativeDirectory));
+        }
+        foreach (string sourceFile in Directory.GetFiles(sourceRoot, "*", SearchOption.AllDirectories))
+        {
+            string relativeFile = sourceFile.Substring(sourceRoot.Length).TrimStart(Path.DirectorySeparatorChar);
+            string destinationFile = Path.Combine(destinationRoot, relativeFile);
+            string destinationDirectory = Path.GetDirectoryName(destinationFile);
+            if (!string.IsNullOrEmpty(destinationDirectory)) Directory.CreateDirectory(destinationDirectory);
+            File.Copy(sourceFile, destinationFile, true);
         }
     }
 

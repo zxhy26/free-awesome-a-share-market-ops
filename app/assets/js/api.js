@@ -270,6 +270,31 @@ export async function getHealth() {
   return fetchJson(`${SERVICE_ORIGIN}/health`, {label: "本地同步服务", timeoutMs: 5000});
 }
 
+export async function getAppUpdateStatus() {
+  return fetchJson(`${SERVICE_ORIGIN}/api/v1/app-update/status`, {
+    label: "软件更新状态",
+    timeoutMs: 5000,
+    allowSnapshot: false,
+  });
+}
+
+export async function checkAppUpdate(force = false) {
+  return fetchJson(`${SERVICE_ORIGIN}/api/v1/app-update/check?force=${force ? "1" : "0"}`, {
+    label: "GitHub 软件更新",
+    timeoutMs: 20000,
+    allowSnapshot: false,
+  });
+}
+
+export async function installAppUpdate() {
+  return fetchJson(`${SERVICE_ORIGIN}/api/v1/app-update/install`, {
+    label: "GitHub 软件更新安装",
+    timeoutMs: 15000,
+    method: "POST",
+    allowSnapshot: false,
+  });
+}
+
 export async function loadLiveSectorFlows() {
   return fetchJson(`${SERVICE_ORIGIN}/api/v1/live/sector-flows`, {
     label: "逐秒板块资金",

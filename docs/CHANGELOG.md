@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.18.0 - 2026-07-30
+
+- Added an in-application GitHub update button to the distributed Member edition.
+- Added automatic update checks at startup and every 30 minutes, while keeping installation user-initiated.
+- Downloaded releases are restricted to the configured GitHub repository, size checked, SHA-256 verified, and confirmed as Windows executables before replacement.
+- Added a hidden replacement helper that closes the current runtime, replaces the original launcher, restarts the application, and retains a rollback copy until startup is verified.
+- Added launcher metadata so a renamed or relocated `大a后勤部.exe` updates its actual current path instead of relying on a machine-specific location.
+- Preserved local review history during stable updates and migrated it from the latest legacy Member runtime on the first updater-enabled launch.
+- Added regression coverage for semantic versions, hostile download URLs, corrupt payload rejection, the hidden installer, and the frontend update contract.
+
+## 2.17.9 - 2026-07-30
+
+- Started live market monitoring at 09:15 for the call auction and kept auction samples out of the regular 240-minute session history.
+- Displayed all intraday timestamps at second precision.
+- Added the portable full-A symbol universe and accepted the provider's 500-of-504 concept-board response cap without discarding the entire live snapshot.
+
 ## 2.17.8 - 2026-07-29
 
 - Required every Windows stock and sector action to verify both the requested target and the daily-K page before reporting success.

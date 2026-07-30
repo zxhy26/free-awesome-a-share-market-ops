@@ -1,4 +1,4 @@
-import {getHealth, loadBoardIntradayTrend, loadCoreData, loadIndexContributionData, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260729-8";
+import {checkAppUpdate, getAppUpdateStatus, getHealth, installAppUpdate, loadBoardIntradayTrend, loadCoreData, loadIndexContributionData, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260730-2";
 import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNumber, formatPercent, formatYi, signed, summarizeMoneyEffect, valueClass} from "./analysis.js?v=20260730-1";
 import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260730-1";
 import {createSummaryDialog} from "./dialog.js";
@@ -14,7 +14,10 @@ const dom = {
   lastSync: document.querySelector("#lastSync"),
   syncAge: document.querySelector("#syncAge"),
   liveFlowStatus: document.querySelector("#liveFlowStatus"),
+  appVersion: document.querySelector("#appVersion"),
   syncButton: document.querySelector("#syncButton"),
+  appUpdateButton: document.querySelector("#appUpdateButton"),
+  appUpdateButtonLabel: document.querySelector("#appUpdateButtonLabel"),
   reloadButton: document.querySelector("#reloadButton"),
   noticeBar: document.querySelector("#noticeBar"),
   dataAlert: document.querySelector("#dataAlert"),
@@ -87,6 +90,9 @@ const state = {
   membershipActive: false,
   contributionLoading: false,
   summaryText: "",
+  appUpdateStatus: null,
+  appUpdatePollTimer: 0,
+  appUpdateCheckTimer: 0,
 };
 
 const flowScaleCache = new WeakMap();
@@ -928,6 +934,114 @@ async function syncMarket() {
   }
 }
 
+function renderAppUpdateStatus(status = {}) {
+  state.appUpdateStatus = status;
+  const supported = status.supported === true;
+  dom.appUpdateButton.hidden = !supported;
+  dom.appVersion.textContent = status.currentVersion ? `版本 ${status.currentVersion}` : "版本 --";
+  if (!supported) return;
+
+  const running = ["checking", "downloading", "preparing", "restarting"].includes(status.phase);
+  dom.appUpdateButton.disabled = running || status.launcherReady === false;
+  dom.appUpdateButton.classList.toggle("update-available", status.updateAvailable === true);
+  dom.appUpdateButton.classList.toggle("update-running", running);
+  dom.appUpdateButton.dataset.phase = status.phase || "idle";
+  dom.appUpdateButton.title = status.message || "从 GitHub 检查并安装最新版";
+
+  if (status.phase === "checking") {
+    dom.appUpdateButtonLabel.textContent = "检查中";
+  } else if (status.phase === "downloading") {
+    dom.appUpdateButtonLabel.textContent = `下载 ${Math.max(0, Number(status.progress) || 0)}%`;
+  } else if (status.phase === "preparing") {
+    dom.appUpdateButtonLabel.textContent = "校验完成";
+  } else if (status.phase === "restarting") {
+    dom.appUpdateButtonLabel.textContent = "正在重启";
+  } else if (status.updateAvailable) {
+    dom.appUpdateButtonLabel.textContent = `更新至 ${status.latestVersion}`;
+  } else if (status.phase === "error") {
+    dom.appUpdateButtonLabel.textContent = "重试更新";
+  } else {
+    dom.appUpdateButtonLabel.textContent = "检查更新";
+  }
+}
+
+async function checkSoftwareUpdate({manual = false} = {}) {
+  try {
+    const status = await checkAppUpdate(manual);
+    renderAppUpdateStatus(status);
+    if (status.updateAvailable) {
+      showNotice(`GitHub 已发布 ${status.latestVersion}，点击“更新至 ${status.latestVersion}”即可自动升级。`, "", true);
+    } else if (manual) {
+      showNotice(status.message || "当前已是 GitHub 最新版。", "success");
+    }
+    return status;
+  } catch (error) {
+    if (manual) showNotice(error.message || "GitHub 更新检查失败。", "error", true);
+    logTechnicalError(error, "GitHub 更新检查");
+    try {
+      const status = await getAppUpdateStatus();
+      renderAppUpdateStatus(status);
+      return status;
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+function clearAppUpdatePolling() {
+  clearTimeout(state.appUpdatePollTimer);
+  state.appUpdatePollTimer = 0;
+}
+
+async function pollAppUpdateStatus() {
+  clearAppUpdatePolling();
+  try {
+    const status = await getAppUpdateStatus();
+    renderAppUpdateStatus(status);
+    if (status.phase === "error") {
+      showNotice(status.message || "软件更新失败。", "error", true);
+      return;
+    }
+    if (status.phase === "restarting") {
+      showNotice("新版已经下载并通过校验，软件将自动关闭并重新打开。", "success", true);
+      return;
+    }
+    if (["downloading", "preparing", "checking", "available"].includes(status.phase)) {
+      state.appUpdatePollTimer = window.setTimeout(pollAppUpdateStatus, 650);
+    }
+  } catch (error) {
+    logTechnicalError(error, "软件更新进度");
+    state.appUpdatePollTimer = window.setTimeout(pollAppUpdateStatus, 1000);
+  }
+}
+
+async function handleAppUpdate() {
+  const status = state.appUpdateStatus;
+  if (!status?.updateAvailable) {
+    await checkSoftwareUpdate({manual: true});
+    return;
+  }
+  dom.appUpdateButton.disabled = true;
+  try {
+    await installAppUpdate();
+    showNotice("正在从 GitHub 下载并校验新版，完成后软件会自动重启。", "", true);
+    state.appUpdatePollTimer = window.setTimeout(pollAppUpdateStatus, 250);
+  } catch (error) {
+    showNotice(error.message || "软件更新启动失败。", "error", true);
+    logTechnicalError(error, "软件更新安装");
+    dom.appUpdateButton.disabled = false;
+  }
+}
+
+function initializeAppUpdates() {
+  getAppUpdateStatus()
+    .then(renderAppUpdateStatus)
+    .catch((error) => logTechnicalError(error, "软件版本状态"));
+  window.setTimeout(() => checkSoftwareUpdate(), 3500);
+  clearInterval(state.appUpdateCheckTimer);
+  state.appUpdateCheckTimer = window.setInterval(() => checkSoftwareUpdate(), 30 * 60 * 1000);
+}
+
 function setupInteractions() {
   initializeTheme();
   initializePwa();
@@ -963,6 +1077,7 @@ function setupInteractions() {
   state.flowCharts.concept.outflow = createSectorFlowChart(dom.conceptOutflowChart);
   dom.reloadButton.addEventListener("click", () => location.reload());
   dom.syncButton.addEventListener("click", syncMarket);
+  dom.appUpdateButton.addEventListener("click", handleAppUpdate);
   dom.contributionTabs?.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-contribution-index]");
     if (!button) return;
@@ -1147,6 +1262,7 @@ function scheduleLiveFlowPolling(delayMs = null) {
 
 async function initialize() {
   setupInteractions();
+  initializeAppUpdates();
   try {
     applyCoreData(await loadCoreData(), {forceFollow: true});
     initializePlayback();

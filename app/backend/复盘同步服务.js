@@ -10,10 +10,11 @@ const { createLiveSectorFlowService } = require("./live-sector-flow");
 const { createBoardMinuteFlowService } = require("./board-minute-flow");
 const { createBoardIntradayService } = require("./board-intraday");
 const { refreshIndexContribution } = require("./index-contribution-online");
+const { createAppUpdateService } = require("./app-update");
 
 const PORT = Number(process.env.A_SHARE_REVIEW_PORT) || 18765;
 const HOST = process.env.A_SHARE_REVIEW_HOST || "127.0.0.1";
-const SERVICE_VERSION = "3.15.0";
+const SERVICE_VERSION = "3.16.0";
 const ALLOW_REMOTE = process.env.A_SHARE_REVIEW_ALLOW_REMOTE === "1";
 const TEST_MODE = process.env.A_SHARE_REVIEW_TEST_MODE === "1";
 const DISABLE_SCHEDULES = process.env.A_SHARE_REVIEW_DISABLE_SCHEDULES === "1";
@@ -36,6 +37,13 @@ const NEXT_WEEK_EVENTS_SCRIPT = path.join(WORK_DIR, "next-week-events-updater.js
 const DERIVATIVES_SCRIPT = path.join(WORK_DIR, "更新机构衍生品.ps1");
 const STOCK_APP_SCRIPT = path.join(WORK_DIR, "打开通达信日K.ps1");
 const APP_EDITION = resolveAppEdition();
+const appUpdate = createAppUpdateService({
+  edition: APP_EDITION,
+  appDir: APP_DIR,
+  runtimeRoot: PORTABLE_ROOT || path.resolve(APP_DIR, "..", ".."),
+  workDir: WORK_DIR,
+  log,
+});
 const membership = createMembershipService({
   edition: APP_EDITION,
   appDir: APP_DIR,
@@ -1146,8 +1154,29 @@ const server = http.createServer(async (req, res) => {
       appData: appDataStatus(),
       flowData: flowDataStatus(),
       historyCount: listHistoryDates().length,
-      endpoints: ["/api/v1/market/snapshot", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/sector-trend?code=BK0000", "/api/v1/sector-flow?code=BK0000", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "POST /api/v1/sync", "POST /api/v1/index-contribution/refresh", "POST /stock-open", "POST /derivatives-refresh", "POST /next-week-events-refresh"],
+      endpoints: ["/api/v1/market/snapshot", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/sector-trend?code=BK0000", "/api/v1/sector-flow?code=BK0000", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "/api/v1/app-update/status", "/api/v1/app-update/check", "POST /api/v1/app-update/install", "POST /api/v1/sync", "POST /api/v1/index-contribution/refresh", "POST /stock-open", "POST /derivatives-refresh", "POST /next-week-events-refresh"],
     });
+    return;
+  }
+
+  if (url.pathname === "/api/v1/app-update/status" && req.method === "GET") {
+    sendJson(res, 200, appUpdate.getStatus());
+    return;
+  }
+
+  if (url.pathname === "/api/v1/app-update/check" && req.method === "GET") {
+    const result = await appUpdate.checkForUpdates({force: url.searchParams.get("force") === "1"});
+    sendJson(res, result.ok ? 200 : 502, result);
+    return;
+  }
+
+  if (url.pathname === "/api/v1/app-update/install") {
+    if (req.method !== "POST") {
+      methodNotAllowed(res);
+      return;
+    }
+    const result = appUpdate.startInstall();
+    sendJson(res, result.ok ? 202 : 409, result);
     return;
   }
 
@@ -1302,6 +1331,7 @@ const server = http.createServer(async (req, res) => {
       derivatives: derivativesStatus(),
       indexContributionRunning,
       indexContribution: indexContributionStatus(),
+      appUpdate: appUpdate.getStatus(),
     });
     return;
   }
@@ -1348,6 +1378,7 @@ const server = http.createServer(async (req, res) => {
       derivatives: derivativesStatus(),
       indexContributionRunning,
       indexContribution: indexContributionStatus(),
+      appUpdate: appUpdate.getStatus(),
     });
     return;
   }
