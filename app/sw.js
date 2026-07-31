@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v82-display-index-workspace";
+const CACHE_VERSION = "a-share-review-v83-dynamic-index-layout";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [

@@ -32,9 +32,20 @@ test("main index workspace is user-selectable, persistent, and capped at eight",
   assert.match(charts, /options\.onRemove\?\.\(index\.key \|\| index\.code\)/);
 });
 
-test("desktop index workspace remains a stable four by two grid", () => {
-  assert.match(layout, /\.index-grid[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(layout, /\.index-grid[\s\S]*grid-template-rows:\s*repeat\(2,\s*minmax\(216px,\s*1fr\)\)/);
+test("index workspace automatically maps one through eight selections to balanced grids", () => {
+  assert.match(workspace, /normalized === 1[^\n]+columns:\s*1,\s*rows:\s*1/);
+  assert.match(workspace, /normalized === 2[^\n]+columns:\s*2,\s*rows:\s*1/);
+  assert.match(workspace, /normalized === 3[^\n]+columns:\s*3,\s*rows:\s*1/);
+  assert.match(workspace, /normalized === 4[^\n]+columns:\s*2,\s*rows:\s*2/);
+  assert.match(workspace, /normalized <= 6[^\n]+columns:\s*3,\s*rows:\s*2/);
+  assert.match(workspace, /columns:\s*4,\s*rows:\s*2/);
+  assert.match(app, /dataset\.indexCount = String\(layout\.count\)/);
+  assert.match(app, /dataset\.indexColumns = String\(layout\.columns\)/);
+  assert.match(app, /dataset\.indexRows = String\(layout\.rows\)/);
+  assert.match(layout, /data-index-columns="2"[^\n]+repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(layout, /data-index-columns="3"[^\n]+repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(layout, /data-index-columns="4"[^\n]+repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(responsive, /data-index-columns[\s\S]*grid-auto-rows:\s*216px/);
   assert.match(responsive, /\.index-options/);
 });
 
@@ -60,5 +71,5 @@ test("index APIs and new modules are available offline without membership gating
   assert.ok(catalogIndex > membershipIndex);
   assert.match(serviceWorker, /display-settings\.js/);
   assert.match(serviceWorker, /index-workspace\.js/);
-  assert.match(serviceWorker, /a-share-review-v82-display-index-workspace/);
+  assert.match(serviceWorker, /a-share-review-v83-dynamic-index-layout/);
 });

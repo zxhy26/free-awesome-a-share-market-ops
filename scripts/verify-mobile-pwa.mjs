@@ -261,6 +261,42 @@ function validateEdition(edition) {
       !apiSource.includes("internalMarketDetail"),
     `${label}: 日K按钮未改为当前设备交易软件`,
   );
+  const mobileApiSource = fs.readFileSync(
+    path.join(root, "assets", "js", "mobile-api-shim.js"),
+    "utf8",
+  );
+  const mobileLiveSource = fs.readFileSync(
+    path.join(root, "assets", "js", "mobile-live.js"),
+    "utf8",
+  );
+  const mobileCssSource = fs.readFileSync(
+    path.join(root, "assets", "css", "mobile.css"),
+    "utf8",
+  );
+  assert(
+    mobileApiSource.includes("/api/v1/index-catalog") &&
+      mobileApiSource.includes("/api/v1/index-trend") &&
+      mobileLiveSource.includes("loadIndexCatalog") &&
+      mobileLiveSource.includes("loadIndexTrend"),
+    `${label}: 主要指数自选和真实分时接口不完整`,
+  );
+  assert(
+    mobileLiveSource.includes("sh000852") &&
+      mobileLiveSource.includes("usIXIC"),
+    `${label}: 19项主要指数目录未完整打包`,
+  );
+  assert(
+    /\.mobile-pwa\s+#appViewport[\s\S]*?zoom:\s*1\s*!important/.test(mobileCssSource) &&
+      /\.mobile-pwa\s+\.zoom-control[\s\S]*?display:\s*none\s*!important/.test(mobileCssSource),
+    `${label}: 手机端没有锁定安全缩放布局`,
+  );
+
+  assert(
+    /\.mobile-pwa\s+\.index-attributions\s+\.index-attribution:nth-child\(n\s*\+\s*4\)[\s\S]*?display:\s*none/.test(
+      mobileCssSource,
+    ),
+    `${label}: mobile index annotations are not capped for narrow screens`,
+  );
 
   const historyIndex = readJson(path.join(root, "data", "history-index.json"));
   if (historyIndex) {
@@ -276,6 +312,21 @@ function validateEdition(edition) {
         readJson(historyPath);
       }
     }
+  }
+
+  const liveFallback = readJson(path.join(root, "data", "live-sector-flows.json"));
+  const baseIndices = readJson(path.join(root, "data", "indices.json"));
+  if (liveFallback && baseIndices) {
+    const domesticMinutes = (baseIndices.items || [])
+      .filter((item) => item?.session !== "us" && item?.key !== "usIXIC"
+        && item?.code !== "IXIC" && item?.name !== "纳斯达克")
+      .flatMap((item) => (item?.points || []).map((point) => Number(point?.minute)))
+      .filter(Number.isFinite);
+    const expectedMinute = domesticMinutes.length ? Math.max(...domesticMinutes) : 240;
+    assert(
+      Number(liveFallback.marketMinute) === expectedMinute,
+      `${label}: 离线快照时点被海外指数或未来时点污染`,
+    );
   }
 
   const stockDirectory = readJson(

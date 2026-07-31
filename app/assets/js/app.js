@@ -3,7 +3,7 @@ import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNum
 import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260730-2";
 import {createSummaryDialog} from "./dialog.js";
 import {createDisplaySettings} from "./display-settings.js?v=20260730-1";
-import {createIndexWorkspace} from "./index-workspace.js?v=20260730-1";
+import {createIndexWorkspace, resolveIndexGridLayout} from "./index-workspace.js?v=20260731-1";
 import {initializePwa} from "./pwa.js?v=20260719-2";
 import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260727-2";
 import {createCustomSectorWorkspace} from "./custom-sector-workspace.js?v=20260728-5";
@@ -876,6 +876,10 @@ function indexAttributionRows() {
 function renderSelectedIndexCharts() {
   if (!state.data) return;
   const indices = state.indexWorkspace?.getSelectedItems() || state.data.indices.items || [];
+  const layout = resolveIndexGridLayout(indices.length);
+  dom.indexGrid.dataset.indexCount = String(layout.count);
+  dom.indexGrid.dataset.indexColumns = String(layout.columns);
+  dom.indexGrid.dataset.indexRows = String(layout.rows);
   state.charts = createIndexCharts(dom.indexGrid, indices, indexAttributionRows(), {
     onRemove: (key) => state.indexWorkspace?.remove(key),
   });

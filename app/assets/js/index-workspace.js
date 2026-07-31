@@ -12,6 +12,19 @@ const DEFAULT_INDEX_KEYS = [
   "usIXIC",
 ];
 
+function resolveIndexGridLayout(count) {
+  const normalized = Math.max(
+    MIN_SELECTED_INDICES,
+    Math.min(MAX_SELECTED_INDICES, Math.trunc(Number(count) || MIN_SELECTED_INDICES)),
+  );
+  if (normalized === 1) return {count: normalized, columns: 1, rows: 1};
+  if (normalized === 2) return {count: normalized, columns: 2, rows: 1};
+  if (normalized === 3) return {count: normalized, columns: 3, rows: 1};
+  if (normalized === 4) return {count: normalized, columns: 2, rows: 2};
+  if (normalized <= 6) return {count: normalized, columns: 3, rows: 2};
+  return {count: normalized, columns: 4, rows: 2};
+}
+
 function finite(value) {
   if (value === null || value === undefined || value === "") return null;
   const number = Number(value);
@@ -432,4 +445,5 @@ export {
   MAX_SELECTED_INDICES,
   STORAGE_KEY,
   createIndexWorkspace,
+  resolveIndexGridLayout,
 };

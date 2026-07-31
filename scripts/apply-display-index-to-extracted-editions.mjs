@@ -82,7 +82,7 @@ function buildServiceWorker(mode) {
   let source = fs.readFileSync(path.join(sourceApp, "sw.js"), "utf8");
   source = source.replace(
     /const CACHE_VERSION = "[^"]+";/,
-    `const CACHE_VERSION = "a-share-review-v82-display-index-workspace-${mode}";`,
+    `const CACHE_VERSION = "a-share-review-v83-dynamic-index-layout-${mode}";`,
   );
   const extras = [];
   if (["basic", "self", "custom"].includes(mode)) {

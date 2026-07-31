@@ -402,6 +402,19 @@
     const historyMatch = path.match(/\/api\/v1\/history\/(\d{4}-\d{2}-\d{2})$/);
     if (historyMatch) return staticJson(`data/history/${historyMatch[1]}.json`);
 
+    if (path.endsWith("/api/v1/index-catalog")) {
+      return jsonResponse(globalThis.AShareMobileLive.loadIndexCatalog());
+    }
+    if (path.endsWith("/api/v1/index-trend")) {
+      try {
+        return jsonResponse(await globalThis.AShareMobileLive.loadIndexTrend(
+          requestUrl.searchParams.get("key"),
+          requestUrl.searchParams.get("tradeDate"),
+        ));
+      } catch (error) {
+        return jsonResponse({ok: false, message: error.message || "指数分时暂不可用"}, 502);
+      }
+    }
     if (path.endsWith("/api/v1/live/sector-flows") || path.endsWith("/api/v1/live/sector-flows/refresh")) {
       try {
         const result = await globalThis.AShareMobileLive.loadLiveSectorFlows({
@@ -428,6 +441,18 @@
     }
     if (path.endsWith("/api/v1/stocks/analyze")) {
       return jsonResponse(await analyzeStock(requestUrl));
+    }
+    if (path.endsWith("/api/v1/app-update/status") || path.endsWith("/api/v1/app-update/check")) {
+      return jsonResponse({
+        ok: true,
+        supported: false,
+        currentVersion: "手机版",
+        phase: "idle",
+        message: "手机版由浏览器自动更新页面资源。",
+      });
+    }
+    if (path.endsWith("/api/v1/app-update/install")) {
+      return jsonResponse({ok: false, supported: false, message: "手机版由浏览器自动更新页面资源。"}, 409);
     }
 
     if (path.endsWith("/status") || path.endsWith("/api/v1/status")) {

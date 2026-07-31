@@ -49,9 +49,12 @@ test("index turning-point labels use both industry and concept candidates and pe
   assert.match(chartsSource, /确认后持续保留/);
 });
 
-test("desktop index layout is four by two and the right flow column fills the left stack height", () => {
-  assert.match(layoutSource, /\.index-grid[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(layoutSource, /\.index-grid[\s\S]*grid-template-rows:\s*repeat\(2,\s*minmax\(216px,\s*1fr\)\)/);
+test("desktop index layout supports automatic one-row and two-row grids while the flow column fills its stack", () => {
+  assert.match(layoutSource, /data-index-columns="2"[^\n]+repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(layoutSource, /data-index-columns="3"[^\n]+repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(layoutSource, /data-index-columns="4"[^\n]+repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(layoutSource, /data-index-rows="1"[\s\S]*grid-template-rows:\s*minmax\(216px,\s*1fr\)/);
+  assert.match(layoutSource, /data-index-rows="2"[\s\S]*repeat\(2,\s*minmax\(216px,\s*1fr\)\)/);
   assert.match(layoutSource, /\.sector-stack[\s\S]*height:\s*100%/);
   assert.match(layoutSource, /\.sector-stack[\s\S]*contain:\s*size/);
 });

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.19.1 - 2026-07-31
+
+- Made the main index workspace reflow automatically from one through eight selected indices.
+- Arranged two indices side by side, four as a two-by-two grid, six as three-by-two, and eight as four-by-two.
+- Removed empty reserved rows when fewer indices are selected and retained a narrow-screen layout capped at two readable columns.
+- Added regression coverage for each layout mapping and refreshed desktop and mobile offline caches.
+
 ## 2.19.0 - 2026-07-30
 
 - Replaced the fixed eight-index dashboard with a persistent, searchable catalog of 19 Shanghai, Shenzhen, CSI, Beijing, and Nasdaq indices.

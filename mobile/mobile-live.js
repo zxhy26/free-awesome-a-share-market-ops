@@ -1,15 +1,39 @@
 (function installMobileLiveData() {
   const JSONP_TIMEOUT_MS = 12000;
   const EASTMONEY_TOKEN = "bd1d9ddb04089700cf9c27f6f7426281";
+  const nativeFetch = globalThis.fetch.bind(globalThis);
   const INDEX_DEFINITIONS = [
-    {key: "sh000001", code: "000001", symbol: "sh000001", name: "上证指数"},
-    {key: "sz399001", code: "399001", symbol: "sz399001", name: "深证成指"},
-    {key: "sz399006", code: "399006", symbol: "sz399006", name: "创业板指"},
-    {key: "sh000688", code: "000688", symbol: "sh000688", name: "科创50"},
-    {key: "sh000300", code: "000300", symbol: "sh000300", name: "沪深300"},
-    {key: "sh000905", code: "000905", symbol: "sh000905", name: "中证500"},
-    {key: "bj899050", code: "899050", symbol: "bj899050", name: "北证50"},
+    {key: "sh000001", name: "上证指数", code: "000001", symbol: "sh000001", group: "shanghai"},
+    {key: "sh000016", name: "上证50", code: "000016", symbol: "sh000016", group: "shanghai"},
+    {key: "sh000010", name: "上证180", code: "000010", symbol: "sh000010", group: "shanghai"},
+    {key: "sh000688", name: "科创50", code: "000688", symbol: "sh000688", group: "shanghai"},
+    {key: "sh000698", name: "科创100", code: "000698", symbol: "sh000698", group: "shanghai"},
+    {key: "sz399001", name: "深证成指", code: "399001", symbol: "sz399001", group: "shenzhen"},
+    {key: "sz399330", name: "深证100", code: "399330", symbol: "sz399330", group: "shenzhen"},
+    {key: "sz399006", name: "创业板指", code: "399006", symbol: "sz399006", group: "shenzhen"},
+    {key: "sz399673", name: "创业板50", code: "399673", symbol: "sz399673", group: "shenzhen"},
+    {key: "sz399303", name: "国证2000", code: "399303", symbol: "sz399303", group: "shenzhen"},
+    {key: "sh000300", name: "沪深300", code: "000300", symbol: "sh000300", group: "csi"},
+    {key: "sh000903", name: "中证A100", code: "000903", symbol: "sh000903", group: "csi"},
+    {key: "sh000905", name: "中证500", code: "000905", symbol: "sh000905", group: "csi"},
+    {key: "sh000906", name: "中证800", code: "000906", symbol: "sh000906", group: "csi"},
+    {key: "sh000852", name: "中证1000", code: "000852", symbol: "sh000852", group: "csi"},
+    {key: "sh000985", name: "中证全指", code: "000985", symbol: "sh000985", group: "csi"},
+    {key: "sh000510", name: "中证A500", code: "000510", symbol: "sh000510", group: "csi"},
+    {key: "bj899050", name: "北证50", code: "899050", symbol: "bj899050", group: "beijing"},
+    {key: "usIXIC", name: "纳斯达克", code: "IXIC", symbol: "usIXIC", group: "overseas", session: "us"},
   ];
+  const DEFAULT_INDEX_KEYS = [
+    "sh000001",
+    "sz399001",
+    "sz399006",
+    "sh000688",
+    "sh000300",
+    "sh000905",
+    "bj899050",
+    "usIXIC",
+  ];
+  const INDEX_BY_KEY = new Map(INDEX_DEFINITIONS.map((item) => [item.key.toLowerCase(), item]));
 
   function finite(value) {
     const number = Number(value);
@@ -60,6 +84,23 @@
     return Math.min(240, 120 + minuteOfDay - 780);
   }
 
+  function regularMarketMinute(time) {
+    const match = String(time || "").match(/^(\d{2}):(\d{2})/);
+    if (!match) return null;
+    const total = Number(match[1]) * 60 + Number(match[2]);
+    if (total < 570 || total > 900 || (total > 690 && total < 780)) return null;
+    return total <= 690 ? total - 570 : 120 + total - 780;
+  }
+
+  function indexMinute(time, definition) {
+    if (definition.session !== "us") return regularMarketMinute(time);
+    const match = String(time || "").match(/^(\d{2}):(\d{2})/);
+    if (!match) return null;
+    const elapsed = Number(match[1]) * 60 + Number(match[2]) - 570;
+    if (elapsed < 0 || elapsed > 390) return null;
+    return round((elapsed / 390) * 240, 4);
+  }
+
   function marketPhase(parts) {
     if (parts.day === 0 || parts.day === 6) return "周末休市";
     const minute = parts.hour * 60 + parts.minute;
@@ -84,6 +125,56 @@
       + `T${digits.slice(8, 10)}:${digits.slice(10, 12)}:${digits.slice(12, 14) || "00"}+08:00`,
     );
     return Number.isFinite(timestamp) ? Math.floor(timestamp / 1000) : null;
+  }
+
+  function parseTencentIndexPayload(payload, definition) {
+    const block = payload?.data?.[definition.symbol]?.data || {};
+    const rows = Array.isArray(block.data) ? block.data : [];
+    const quote = payload?.data?.[definition.symbol]?.qt?.[definition.symbol] || [];
+    const rawDate = String(block.date || "");
+    const quoteDate = String(quote[30] || "");
+    const tradeDate = /^\d{8}$/.test(rawDate)
+      ? `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`
+      : quoteDate.slice(0, 10);
+    const firstRow = String(rows[0] || "").trim().split(/\s+/);
+    const preClose = finite(quote[4]) ?? finite(firstRow[1]);
+    if (!rows.length || !/^\d{4}-\d{2}-\d{2}$/.test(tradeDate) || preClose === null || preClose <= 0) {
+      throw new Error(`${definition.name}分时没有返回有效数据`);
+    }
+    const byMinute = new Map();
+    for (const row of rows) {
+      const fields = String(row || "").trim().split(/\s+/);
+      const compactTime = String(fields[0] || "");
+      if (!/^\d{4}$/.test(compactTime)) continue;
+      const shortTime = `${compactTime.slice(0, 2)}:${compactTime.slice(2, 4)}`;
+      const minute = indexMinute(shortTime, definition);
+      const price = finite(fields[1]);
+      if (minute === null || price === null || price <= 0) continue;
+      byMinute.set(minute, {
+        dateTime: `${tradeDate} ${shortTime}`,
+        tradeDate,
+        time: `${shortTime}:00`,
+        minute,
+        price: round(price),
+        volume: finite(fields[2]) ?? 0,
+        amount: finite(fields[3]),
+        source: "tencent-index-minute",
+      });
+    }
+    const points = [...byMinute.values()].sort((left, right) => left.minute - right.minute);
+    if (!points.length) throw new Error(`${definition.name}分时没有交易时段样本`);
+    return {
+      key: definition.key,
+      name: definition.name,
+      code: definition.code,
+      group: definition.group,
+      session: definition.session || "cn",
+      preClose: round(preClose),
+      tradeDate,
+      points,
+      latestMinute: points.at(-1).minute,
+      latestPrice: points.at(-1).price,
+    };
   }
 
   function jsonp(rawUrl, timeoutMs = JSONP_TIMEOUT_MS) {
@@ -190,10 +281,11 @@
   }
 
   async function loadIndexQuotes() {
-    const symbols = INDEX_DEFINITIONS.map((item) => item.symbol).join(",");
+    const domesticDefinitions = INDEX_DEFINITIONS.filter((item) => item.session !== "us");
+    const symbols = domesticDefinitions.map((item) => item.symbol).join(",");
     await loadExternalScript(`https://qt.gtimg.cn/q=${encodeURIComponent(symbols)}&_=${Date.now()}`);
     const rows = [];
-    for (const definition of INDEX_DEFINITIONS) {
+    for (const definition of domesticDefinitions) {
       const raw = String(globalThis[`v_${definition.symbol}`] || "");
       const fields = raw.split("~");
       const price = finite(fields[3]);
@@ -203,6 +295,7 @@
       const parts = shanghaiParts(new Date(sourceTimestamp * 1000));
       rows.push({
         ...definition,
+        session: definition.session || "cn",
         price,
         preClose,
         change: finite(fields[31]) ?? round(price - preClose),
@@ -218,6 +311,54 @@
       }
     }
     return rows;
+  }
+
+  function loadIndexCatalog() {
+    return {
+      ok: true,
+      maxSelected: 8,
+      defaultSelected: [...DEFAULT_INDEX_KEYS],
+      items: INDEX_DEFINITIONS.map(({key, name, code, group, session = "cn"}) => ({
+        key,
+        name,
+        code,
+        group,
+        session,
+        selectedByDefault: DEFAULT_INDEX_KEYS.includes(key),
+      })),
+    };
+  }
+
+  async function loadIndexTrend(key, requestedTradeDate = "") {
+    const definition = INDEX_BY_KEY.get(String(key || "").trim().toLowerCase());
+    if (!definition) throw new Error("指数选项无效");
+    const endpoint = definition.session === "us" ? "usMinute" : "minute";
+    const url = new URL(`https://web.ifzq.gtimg.cn/appstock/${"app"}/${endpoint}/query`);
+    url.searchParams.set("code", definition.symbol);
+    url.searchParams.set("_", String(Date.now()));
+    const response = await nativeFetch(url, {
+      cache: "no-store",
+      headers: {Accept: "application/json,text/plain,*/*"},
+    });
+    if (!response.ok) throw new Error(`${definition.name}分时读取失败（${response.status}）`);
+    const timeline = parseTencentIndexPayload(await response.json(), definition);
+    const dateMismatch = Boolean(
+      requestedTradeDate
+      && timeline.tradeDate !== requestedTradeDate
+      && definition.session !== "us"
+    );
+    return {
+      ok: true,
+      ...timeline,
+      source: "腾讯指数真实分时",
+      methodology: "按所选指数读取真实分钟分时，并由同一轮逐秒指数报价追加当前真实点；不生成模拟轨迹。",
+      fetchedAt: new Date().toISOString(),
+      cached: false,
+      dateMismatch,
+      warning: dateMismatch
+        ? `指数行情源最新交易日为${timeline.tradeDate}，主面板基础数据为${requestedTradeDate}；已优先展示最新真实分时。`
+        : "",
+    };
   }
 
   async function loadLiveSectorFlows(options = {}) {
@@ -447,5 +588,7 @@
     loadBoardTrend,
     loadStockQuote,
     loadDailyK,
+    loadIndexCatalog,
+    loadIndexTrend,
   };
 })();

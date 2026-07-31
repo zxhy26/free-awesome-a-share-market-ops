@@ -37,6 +37,15 @@ html.mobile-pwa:has(.dialog-backdrop:not([hidden])) body {
   min-width: 0;
 }
 
+.mobile-pwa #appViewport {
+  width: 100% !important;
+  zoom: 1 !important;
+}
+
+.mobile-pwa .zoom-control {
+  display: none !important;
+}
+
 .mobile-pwa button,
 .mobile-pwa a.button,
 .mobile-pwa input,
@@ -155,7 +164,12 @@ html.mobile-pwa:has(.dialog-backdrop:not([hidden])) body {
   .mobile-pwa .index-grid {
     min-height: 0;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(4, 190px);
+    grid-template-rows: none;
+    grid-auto-rows: 190px;
+  }
+
+  .mobile-pwa .index-grid[data-index-count="1"] {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .mobile-pwa .index-card {
@@ -168,12 +182,23 @@ html.mobile-pwa:has(.dialog-backdrop:not([hidden])) body {
     border-right: 0 !important;
   }
 
-  .mobile-pwa .index-card:nth-last-child(-n+2) {
+  .mobile-pwa .index-grid[data-index-count="1"] .index-card,
+  .mobile-pwa .index-grid[data-index-count="3"] .index-card:last-child,
+  .mobile-pwa .index-grid[data-index-count="5"] .index-card:last-child,
+  .mobile-pwa .index-grid[data-index-count="7"] .index-card:last-child,
+  .mobile-pwa .index-grid[data-index-count="2"] .index-card:nth-last-child(-n+2),
+  .mobile-pwa .index-grid[data-index-count="4"] .index-card:nth-last-child(-n+2),
+  .mobile-pwa .index-grid[data-index-count="6"] .index-card:nth-last-child(-n+2),
+  .mobile-pwa .index-grid[data-index-count="8"] .index-card:nth-last-child(-n+2) {
     border-bottom: 0 !important;
   }
 
   .mobile-pwa .index-card svg {
     min-width: 0;
+  }
+
+  .mobile-pwa .index-attributions .index-attribution:nth-child(n + 4) {
+    display: none;
   }
 
   .mobile-pwa .timeline-wrap {
@@ -303,7 +328,8 @@ html.mobile-pwa:has(.dialog-backdrop:not([hidden])) body {
   }
 
   .mobile-pwa .index-grid {
-    grid-template-rows: repeat(4, 182px);
+    grid-template-rows: none;
+    grid-auto-rows: 182px;
   }
 
   .mobile-pwa .headline-metrics,

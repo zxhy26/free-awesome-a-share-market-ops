@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "product": "大a后勤部",
   "edition": "member",
-  "version": "2.19.0",
-  "publishedAt": "2026-07-30T05:01:55.5666187Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.19.0/Da-A-Hou-Qin-Bu-v2.19.0.exe",
-  "sha256": "840626C1B8D64810748D6DAF9DAB3F2C6B9CF70C2E6DB0505B2F7A300408E2C3",
-  "size": 40086016,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.19.0",
+  "version": "2.19.1",
+  "publishedAt": "2026-07-31T12:55:20.7973936Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.19.1/Da-A-Hou-Qin-Bu-v2.19.1.exe",
+  "sha256": "97C974423870160F9070813B28E76733A7E15FB85F984B165515A28FC6C12A32",
+  "size": 40146432,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.19.1",
   "notes": [
-    "主要指数改为可搜索自选，覆盖19个主要指数，最多保留8个并按上四下四排列。",
-    "新增70%到130%的页面缩放和四档全局字号，设置会在本机自动记忆。",
-    "新添加指数按需读取最新真实分钟分时，并继续使用同轮逐秒真实报价追加当前点。",
-    "升级继续保留本机历史回放、会员授权和个人显示设置。"
+    "主要指数会根据已选数量自动排版：2个左右排列、4个田字格、6个上三下三、8个上四下四。",
+    "选择较少指数时不再保留空白行，窄屏自动限制列数以保证文字和分时图清晰。",
+    "指数选择、页面缩放、字号和主题设置继续在当前设备保留。",
+    "升级继续保留本机历史回放、会员授权和用户数据。"
   ]
 }
