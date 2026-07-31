@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "product": "大a后勤部",
   "edition": "member",
-  "version": "2.19.2",
-  "publishedAt": "2026-07-31T15:25:42.5348706Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.19.2/Da-A-Hou-Qin-Bu-v2.19.2.exe",
-  "sha256": "F3C34329D094CA3F839F59C448462DC97371C01CC30D8246389BAA92E4692A21",
-  "size": 40739328,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.19.2",
+  "version": "2.19.3",
+  "publishedAt": "2026-07-31T17:21:43.3945009Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.19.3/Da-A-Hou-Qin-Bu-v2.19.3.exe",
+  "sha256": "338F387ABA559F73A2309DE21C727272511259EB18EE4E6F5B904EA7ADBE4A88",
+  "size": 41302528,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.19.3",
   "notes": [
-    "指数分时文字标注改为读取财联社盘面直播公开事件，不再由软件本地生成。",
-    "标注保留财联社原始时间、名称与涨跌方向，只定位到同期指数分时线并按原始方向着色。",
-    "财联社接口暂不可用时仅保留同交易日已缓存记录，没有真实记录则不显示标注。",
-    "升级继续保留本机历史回放、会员授权和用户数据。"
+    "指数分时仅显示财联社每日行业和题材板块事件，个股事件在数据入口与页面渲染两层排除。",
+    "标注保留财联社原始时间、板块名称与涨跌方向，只定位到同期指数分时线并按方向着色。",
+    "指数选择、自选板块、全局字号和页面缩放会在退出后保留，并随软件升级迁移。",
+    "财联社接口暂不可用时仅保留同交易日已缓存的板块记录，没有真实记录则不显示标注。"
   ]
 }

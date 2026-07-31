@@ -643,16 +643,16 @@ function buildHealth(data, archiveCount = 0) {
         name: "指数文字标注",
         status: indexAnnotations.status === "ok" ? "ok" : indexAnnotations.status === "retained" ? "warning" : "pending",
         detail: indexAnnotations.status === "ok"
-          ? `财联社盘面直播原始事件${Number(indexAnnotations.itemCount) || 0}条`
+          ? `财联社行业/题材板块事件${Number(indexAnnotations.itemCount) || 0}条（已排除个股）`
           : indexAnnotations.status === "retained"
-            ? `财联社接口暂时异常，保留同交易日原始事件${Number(indexAnnotations.itemCount) || 0}条`
-            : "财联社盘面直播暂无可显示事件，不使用本地生成标注",
+            ? `财联社接口暂时异常，保留同交易日板块事件${Number(indexAnnotations.itemCount) || 0}条（已排除个股）`
+            : "财联社盘面直播暂无可显示的行业/题材板块事件，不使用个股或本地生成标注",
       },
     ],
     warnings: [
       ...(indexItems.length < 8 ? [`主要指数仅${indexItems.length}/8个`] : []),
       ...(snapshotOnlyItems.length ? [`${snapshotOnlyItems.map((item) => item.name).join("、")}当前只有真实快照点，未补画分钟轨迹`] : []),
-      ...(indexAnnotations.status === "retained" ? ["财联社盘面直播本轮读取失败，当前沿用同交易日上一份原始标注"] : []),
+      ...(indexAnnotations.status === "retained" ? ["财联社盘面直播本轮读取失败，当前沿用同交易日上一份行业/题材板块标注"] : []),
     ],
   }));
 

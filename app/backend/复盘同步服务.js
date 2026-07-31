@@ -12,10 +12,11 @@ const { createBoardIntradayService } = require("./board-intraday");
 const { createIndexIntradayService } = require("./index-intraday");
 const { refreshIndexContribution } = require("./index-contribution-online");
 const { createAppUpdateService } = require("./app-update");
+const { createUserPreferencesService } = require("./用户设置");
 
 const PORT = Number(process.env.A_SHARE_REVIEW_PORT) || 18765;
 const HOST = process.env.A_SHARE_REVIEW_HOST || "127.0.0.1";
-const SERVICE_VERSION = "3.17.0";
+const SERVICE_VERSION = "3.18.0";
 const ALLOW_REMOTE = process.env.A_SHARE_REVIEW_ALLOW_REMOTE === "1";
 const TEST_MODE = process.env.A_SHARE_REVIEW_TEST_MODE === "1";
 const DISABLE_SCHEDULES = process.env.A_SHARE_REVIEW_DISABLE_SCHEDULES === "1";
@@ -25,6 +26,8 @@ const PORTABLE_ROOT = process.env.A_SHARE_REVIEW_PORTABLE_ROOT
   : "";
 const APP_DIR = resolveAppDir();
 const DATA_DIR = path.join(APP_DIR, "data");
+const USER_PREFERENCES_PATH = process.env.A_SHARE_REVIEW_PREFERENCES_PATH
+  || (PORTABLE_ROOT ? path.join(PORTABLE_ROOT, "数据历史", "用户设置.json") : path.join(DATA_DIR, "user-preferences.json"));
 const STRUCTURED_HISTORY_DIR = process.env.A_SHARE_REVIEW_HISTORY_DIR
   || (PORTABLE_ROOT ? path.join(PORTABLE_ROOT, "数据历史", "结构化复盘历史") : "D:\\ai素材\\A股自动更新\\结构化复盘历史");
 const LEGACY_HISTORY_DIR = process.env.A_SHARE_REVIEW_LEGACY_HISTORY_DIR
@@ -45,6 +48,7 @@ const appUpdate = createAppUpdateService({
   workDir: WORK_DIR,
   log,
 });
+const userPreferences = createUserPreferencesService({filePath: USER_PREFERENCES_PATH});
 const membership = createMembershipService({
   edition: APP_EDITION,
   appDir: APP_DIR,
@@ -1158,10 +1162,12 @@ const server = http.createServer(async (req, res) => {
       appData: appDataStatus(),
       flowData: flowDataStatus(),
       historyCount: listHistoryDates().length,
-      endpoints: ["/api/v1/market/snapshot", "/api/v1/index-catalog", "/api/v1/index-trend?key=sh000001", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/sector-trend?code=BK0000", "/api/v1/sector-flow?code=BK0000", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "/api/v1/app-update/status", "/api/v1/app-update/check", "POST /api/v1/app-update/install", "POST /api/v1/sync", "POST /api/v1/index-contribution/refresh", "POST /stock-open", "POST /derivatives-refresh", "POST /next-week-events-refresh"],
+      endpoints: ["/api/v1/market/snapshot", "/api/v1/preferences", "POST /api/v1/preferences", "/api/v1/index-catalog", "/api/v1/index-trend?key=sh000001", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/sector-trend?code=BK0000", "/api/v1/sector-flow?code=BK0000", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "/api/v1/app-update/status", "/api/v1/app-update/check", "POST /api/v1/app-update/install", "POST /api/v1/sync", "POST /api/v1/index-contribution/refresh", "POST /stock-open", "POST /derivatives-refresh", "POST /next-week-events-refresh"],
     });
     return;
   }
+
+  if (await userPreferences.handleRequest(req, res, url)) return;
 
   if (url.pathname === "/api/v1/app-update/status" && req.method === "GET") {
     sendJson(res, 200, appUpdate.getStatus());

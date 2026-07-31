@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.19.3 - 2026-08-01
+
+- Restricted CLS intraday annotations to official plate events and excluded all stock-detail anchors at both ingestion and rendering boundaries.
+- Added durable desktop preferences for selected indices, selected industry/concept boards, global font size, and page zoom.
+- Migrated existing browser preferences into the preserved desktop settings file and flushes changes when the app is hidden or closed.
+
 ## 2.19.2 - 2026-07-31
 
 - Replaced locally inferred index turning-point labels with original event names, timestamps, and directions from the public CLS market-live feed.

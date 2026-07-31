@@ -29,6 +29,18 @@ function marketMinuteFromClsTime(value) {
   return null;
 }
 
+function clsAnchorKind(row) {
+  const schema = String(row?.schema || row?.sourceSchema || "").trim().toLowerCase();
+  const symbolCode = String(row?.symbol_code || row?.symbolCode || "").trim().toLowerCase();
+  if (schema.includes("stock_detail") || /^(?:sh|sz|bj)\d{6}$/.test(symbolCode)) return "stock";
+  if (schema.includes("plate_detail") || /^cls\d+$/.test(symbolCode)) return "plate";
+  return "unknown";
+}
+
+function isClsPlateAnchor(row) {
+  return clsAnchorKind(row) === "plate";
+}
+
 function normalizeClsAnchorPayload(payload, options = {}) {
   if (Number(payload?.errno) !== 0 || !Array.isArray(payload?.data)) {
     throw new Error(`财联社盘面直播返回异常：${payload?.msg || payload?.errno || "缺少事件列表"}`);
@@ -37,7 +49,15 @@ function normalizeClsAnchorPayload(payload, options = {}) {
   const syncedAt = String(options.syncedAt || "");
   const seen = new Set();
   const items = [];
+  let excludedStockCount = 0;
+  let excludedUnknownCount = 0;
   for (const row of payload.data) {
+    const anchorKind = clsAnchorKind(row);
+    if (anchorKind !== "plate") {
+      if (anchorKind === "stock") excludedStockCount += 1;
+      else excludedUnknownCount += 1;
+      continue;
+    }
     const sourceTime = String(row?.c_time || "").trim();
     if (!sourceTime || (tradeDate && normalizeTradeDate(sourceTime) !== tradeDate)) continue;
     const minute = marketMinuteFromClsTime(sourceTime);
@@ -47,6 +67,7 @@ function normalizeClsAnchorPayload(payload, options = {}) {
     const sourceDirection = row?.float === "up" ? "up" : row?.float === "down" ? "down" : "neutral";
     const articleId = /^\d+$/.test(String(row?.article_id || "")) ? String(row.article_id) : "";
     const symbolCode = String(row?.symbol_code || "").trim();
+    const sourceSchema = String(row?.schema || "").trim();
     const identity = articleId || `${sourceTime}|${symbolCode}|${label}`;
     if (seen.has(identity)) continue;
     seen.add(identity);
@@ -57,6 +78,8 @@ function normalizeClsAnchorPayload(payload, options = {}) {
       label,
       sourceDirection,
       symbolCode,
+      sourceType: "plate",
+      sourceSchema,
       articleId,
       articleUrl: articleId ? `https://www.cls.cn/detail/${articleId}` : "",
       source: CLS_INDEX_ANNOTATION_SOURCE,
@@ -71,6 +94,8 @@ function normalizeClsAnchorPayload(payload, options = {}) {
     sourcePage: CLS_INDEX_ANNOTATION_PAGE,
     status: "ok",
     originalCount: payload.data.length,
+    excludedStockCount,
+    excludedUnknownCount,
     itemCount: items.length,
     items,
   };
@@ -85,6 +110,7 @@ function fallbackClsAnnotationFeed(cachedFeed, options = {}) {
     && normalizeTradeDate(cachedFeed.tradeDate) === tradeDate
     && Array.isArray(cachedFeed.items)
   ) {
+    const retainedItems = cachedFeed.items.filter(isClsPlateAnchor);
     return {
       ...cachedFeed,
       tradeDate,
@@ -92,7 +118,8 @@ function fallbackClsAnnotationFeed(cachedFeed, options = {}) {
       source: CLS_INDEX_ANNOTATION_SOURCE,
       sourcePage: CLS_INDEX_ANNOTATION_PAGE,
       status: "retained",
-      itemCount: cachedFeed.items.length,
+      itemCount: retainedItems.length,
+      items: retainedItems,
       lastError: error,
     };
   }
@@ -115,6 +142,7 @@ module.exports = {
   CLS_INDEX_ANNOTATION_PAGE,
   CLS_INDEX_ANNOTATION_SOURCE,
   fallbackClsAnnotationFeed,
+  isClsPlateAnchor,
   marketMinuteFromClsTime,
   normalizeClsAnchorPayload,
 };

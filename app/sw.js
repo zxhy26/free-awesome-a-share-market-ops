@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v84-cls-index-annotations";
+const CACHE_VERSION = "a-share-review-v85-cls-plates-persistent-settings";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [
@@ -32,6 +32,7 @@ const CORE_ASSETS = [
   "/app/assets/js/custom-sector-workspace.js",
   "/app/assets/js/display-settings.js",
   "/app/assets/js/index-workspace.js",
+  "/app/assets/js/persistent-settings.js",
   "/app/assets/js/dialog.js",
   "/app/assets/js/pwa.js",
   "/app/assets/js/app.js",

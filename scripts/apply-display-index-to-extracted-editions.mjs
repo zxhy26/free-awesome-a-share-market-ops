@@ -82,7 +82,7 @@ function buildServiceWorker(mode) {
   let source = fs.readFileSync(path.join(sourceApp, "sw.js"), "utf8");
   source = source.replace(
     /const CACHE_VERSION = "[^"]+";/,
-    `const CACHE_VERSION = "a-share-review-v84-cls-index-annotations-${mode}";`,
+    `const CACHE_VERSION = "a-share-review-v85-cls-plates-persistent-settings-${mode}";`,
   );
   const extras = [];
   if (["basic", "self", "custom"].includes(mode)) {
@@ -125,6 +125,12 @@ function patchCustomService(servicePath) {
   source = insertBefore(
     source,
     'const { createBoardIntradayService } = require("./board-intraday");',
+    'const { createUserPreferencesService } = require("./用户设置");\n',
+    "用户设置模块",
+  );
+  source = insertBefore(
+    source,
+    'const { createBoardIntradayService } = require("./board-intraday");',
     'const { createBoardMinuteFlowService } = require("./board-minute-flow");\n',
     "板块资金模块",
   );
@@ -144,7 +150,7 @@ function patchCustomService(servicePath) {
   );
   source = source.replace(
     /const SERVICE_VERSION = "[^"]+";/,
-    'const SERVICE_VERSION = "3.17.1-shortline-v1";',
+    'const SERVICE_VERSION = "3.18.1-shortline-v1";',
   );
 
   source = insertBefore(
@@ -159,6 +165,16 @@ function patchCustomService(servicePath) {
 });
 `,
     "软件更新实例",
+  );
+  source = insertBefore(
+    source,
+    "const membership = createMembershipService({",
+    `const userPreferences = createUserPreferencesService({
+  filePath: process.env.A_SHARE_REVIEW_PREFERENCES_PATH
+    || (PORTABLE_ROOT ? path.join(PORTABLE_ROOT, "数据历史", "用户设置.json") : path.join(DATA_DIR, "user-preferences.json")),
+});
+`,
+    "用户设置实例",
   );
   source = insertBefore(
     source,
@@ -229,6 +245,13 @@ function patchCustomService(servicePath) {
 
 `;
   source = insertBefore(source, liveRoute, routeBlock, "指数 API");
+
+  source = insertBefore(
+    source,
+    '  if (url.pathname === "/api/v1/app-update/status" && req.method === "GET") {',
+    '  if (await userPreferences.handleRequest(req, res, url)) return;\n\n',
+    "用户设置 API",
+  );
 
   const stockRoute = '  if (url.pathname === "/api/v1/stocks/search" && req.method === "GET") {';
   const boardRoutes = `  if (url.pathname === "/api/v1/sector-flow" && req.method === "GET") {

@@ -9,6 +9,7 @@ const indexHtml = read("app", "index.html");
 const appSource = read("app", "assets", "js", "app.js");
 const workspaceSource = read("app", "assets", "js", "custom-sector-workspace.js");
 const chartsSource = read("app", "assets", "js", "charts.js");
+const clsInjectionSource = read("scripts", "inject-cls-index-annotations.mjs");
 const layoutSource = read("app", "assets", "css", "layout.css");
 const membershipSource = read("app", "backend", "会员授权服务.js");
 const serviceSource = read("app", "backend", "复盘同步服务.js");
@@ -39,12 +40,16 @@ test("custom sector workspace persists at most six real industry or concept inde
   assert.match(membershipSource, /\/api\/v1\/sector-trend/);
 });
 
-test("index labels render only original CLS market-live annotations", () => {
-  assert.match(indexHtml, /财联社盘面直播原始标注/);
+test("index labels render only original CLS industry and theme plate annotations", () => {
+  assert.match(indexHtml, /财联社行业\/题材板块标注/);
   assert.match(appSource, /state\.data\.indices\?\.annotations/);
   assert.match(chartsSource, /buildClsIndexAnnotationEvents\(index, annotationFeed\)/);
+  assert.match(chartsSource, /sourceType === "plate"/);
+  assert.match(chartsSource, /stock_detail/);
   assert.match(chartsSource, /const labelText = item\.label/);
   assert.match(chartsSource, /来源：财联社盘面直播/);
+  assert.match(clsInjectionSource, /排除所有个股事件/);
+  assert.match(clsInjectionSource, /已排除\$\{feed\.excludedStockCount \|\| 0\}条个股/);
   const createIndexChartsSource = chartsSource.slice(chartsSource.indexOf("export function createIndexCharts"));
   assert.doesNotMatch(createIndexChartsSource, /buildSectorAttributionCandidates|buildPersistentSectorAttributions/);
 });

@@ -7,7 +7,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
 const mobileTemplateDir = path.join(repoRoot, "mobile");
 const packageInfo = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
-const mobileReleaseRevision = "cls-index-annotations-1";
+const mobileReleaseRevision = "cls-plate-prefs-1";
 
 function parseArguments(argv) {
   const values = {};

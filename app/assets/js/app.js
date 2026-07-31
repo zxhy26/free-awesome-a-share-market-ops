@@ -9,6 +9,7 @@ import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260727-2";
 import {createCustomSectorWorkspace} from "./custom-sector-workspace.js?v=20260728-5";
 import {initializeTheme} from "./theme.js";
 import {inTradingWindow, shouldAppendRegularSessionSample} from "./market-session.js?v=20260730-1";
+import {createPersistentSettingsStorage} from "./persistent-settings.js?v=20260801-1";
 
 const dom = {
   tradeDate: document.querySelector("#tradeDate"),
@@ -99,6 +100,7 @@ const state = {
   indexWorkspace: null,
   customSectorWorkspace: null,
   displaySettings: null,
+  preferenceStorage: null,
   autoReloadTimer: 0,
   liveRefreshRunning: false,
   liveFlowTimer: 0,
@@ -1077,7 +1079,8 @@ function initializeAppUpdates() {
   state.appUpdateCheckTimer = window.setInterval(() => checkSoftwareUpdate(), 30 * 60 * 1000);
 }
 
-function setupInteractions() {
+function setupInteractions(preferenceStorage) {
+  const storage = preferenceStorage?.storage || globalThis.localStorage;
   initializeTheme();
   initializePwa();
   state.displaySettings = createDisplaySettings({
@@ -1088,6 +1091,7 @@ function setupInteractions() {
     zoomValue: dom.zoomValue,
     fontButton: dom.fontSizeButton,
     fontMenu: dom.fontSizeMenu,
+    storage,
     onChange: () => {
       if (state.charts.length) updateIndexCharts(state.charts, Number(dom.timeline.value));
       state.customSectorWorkspace?.render(Number(dom.timeline.value));
@@ -1104,6 +1108,7 @@ function setupInteractions() {
     loadCatalog: loadIndexCatalog,
     loadTimeline: loadIndexTrend,
     showNotice,
+    storage,
     onSelectionChange: () => renderSelectedIndexCharts(),
     onLiveUpdate: () => {
       if (state.charts.length) updateIndexCharts(state.charts, Number(dom.timeline.value));
@@ -1120,6 +1125,7 @@ function setupInteractions() {
     count: dom.customSectorCount,
     loadTimeline: loadBoardIntradayTrend,
     showNotice,
+    storage,
     openDayK: async (selection) => {
       try {
         const result = await openTdxStock({
@@ -1325,7 +1331,8 @@ function scheduleLiveFlowPolling(delayMs = null) {
 }
 
 async function initialize() {
-  setupInteractions();
+  state.preferenceStorage = await createPersistentSettingsStorage();
+  setupInteractions(state.preferenceStorage);
   initializeAppUpdates();
   try {
     applyCoreData(await loadCoreData(), {forceFollow: true});
@@ -1356,6 +1363,7 @@ window.addEventListener("a-share-membership-change", (event) => {
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
+    state.preferenceStorage?.flush({keepalive: true});
     scheduleAutoReload();
     clearLiveFlowPolling();
   } else {
@@ -1369,6 +1377,7 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 window.addEventListener("pagehide", () => {
+  state.preferenceStorage?.flush({beacon: true, keepalive: true});
   clearTimeout(state.autoReloadTimer);
   clearLiveFlowPolling();
 }, {once: true});

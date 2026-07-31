@@ -24,11 +24,12 @@ function writeJson(filePath, value) {
 }
 
 function updateSourceNote(value) {
-  const clsNote = "指数分时文字标注仅采用财联社盘面直播公开事件接口返回的原始时间、名称与涨跌方向，前台只把原始事件定位到同期指数线并按原始方向显示红绿；接口异常时仅保留同交易日上一份财联社记录，没有记录则不显示，不使用资金拐点、板块强弱或本地规则生成替代标注。";
+  const clsNote = "指数分时文字标注仅采用财联社盘面直播公开事件接口返回的行业与题材板块事件，排除所有个股事件；前台只把原始板块事件定位到同期指数线并按原始方向显示红绿；接口异常时仅保留同交易日上一份财联社板块记录，没有记录则不显示，不使用个股、资金拐点、板块强弱或本地规则生成替代标注。";
   let note = String(value || "")
     .replace(/指数线标签只在.*?不等同于成分股精确权重贡献；/g, "")
     .replace(/指数分时线标注只保留.*?绿色为累计净流出。?/g, "")
-    .replace(/指数分时文字只展示财联社盘面直播返回的原始名称、时间和涨跌方向，不再自行生成拐点归因。?/g, "");
+    .replace(/指数分时文字标注仅采用财联社盘面直播[^。]*。?/g, "")
+    .replace(/指数分时文字只展示财联社盘面直播[^。]*。?/g, "");
   if (!note.includes("指数分时文字标注仅采用财联社盘面直播")) note += clsNote;
   return note;
 }
@@ -38,7 +39,7 @@ async function fetchAnnotations(tradeDate) {
   for (const endpoint of CLS_INDEX_ANNOTATION_ENDPOINTS) {
     try {
       const response = await fetch(`${endpoint}?cdate=${encodeURIComponent(tradeDate)}`, {
-        headers: {Accept: "application/json", Referer: "https://www.cls.cn/finance", "User-Agent": "Mozilla/5.0 AShareReview/2.19.2"},
+        headers: {Accept: "application/json", Referer: "https://www.cls.cn/finance", "User-Agent": "Mozilla/5.0 AShareReview/2.19.3"},
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return normalizeClsAnchorPayload(await response.json(), {
@@ -66,7 +67,7 @@ function updateHealth(dataDir, feed) {
   };
   module.checks = [
     ...(module.checks || []).filter((item) => item.name !== "指数文字标注"),
-    {name: "指数文字标注", status: "ok", detail: `财联社盘面直播原始事件${feed.itemCount}条`},
+    {name: "指数文字标注", status: "ok", detail: `财联社行业/题材板块事件${feed.itemCount}条（已排除${feed.excludedStockCount || 0}条个股）`},
   ];
   writeJson(healthPath, health);
 }

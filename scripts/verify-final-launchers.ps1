@@ -80,6 +80,18 @@ try {
     $HasIndexCatalog = Test-Path -LiteralPath (Join-Path $AppRoot "backend\index-catalog.js")
     $HasIndexWorkspace = Test-Path -LiteralPath (Join-Path $AppRoot "assets\js\index-workspace.js")
     $HasDisplaySettings = Test-Path -LiteralPath (Join-Path $AppRoot "assets\js\display-settings.js")
+    $HasPersistentSettings = Test-Path -LiteralPath (Join-Path $AppRoot "assets\js\persistent-settings.js")
+    $BackendScriptContents = @(
+      Get-ChildItem -LiteralPath (Join-Path $AppRoot "backend") -File -Filter "*.js" |
+        ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8 }
+    )
+    $HasUserPreferencesFile = @(
+      $BackendScriptContents | Where-Object { $_ -match "createUserPreferencesService" }
+    ).Count -gt 0
+    $HasUserPreferencesRoute = @(
+      $BackendScriptContents | Where-Object { $_ -match "userPreferences\.handleRequest" }
+    ).Count -gt 0
+    $HasUserPreferences = $HasUserPreferencesFile -and $HasUserPreferencesRoute
     $HasDisplayControls = $Index -match 'id="zoomRange"' -and
       $Index -match 'id="fontSizeButton"' -and
       $Index -match 'id="indexPicker"'
@@ -88,8 +100,21 @@ try {
       $HasPrivateKey -eq $Target.PrivateKey -and
       $HasShortline -eq $Target.Shortline
     if (-not $HasLiveModule -or -not $HasIndexCatalog -or -not $HasIndexWorkspace -or
-      -not $HasDisplaySettings -or -not $HasDisplayControls -or -not $BoundaryOk) {
-      throw "$($Target.Name) payload feature boundary is invalid."
+      -not $HasDisplaySettings -or -not $HasPersistentSettings -or -not $HasUserPreferences -or
+      -not $HasDisplayControls -or -not $BoundaryOk) {
+      $FeatureState = [ordered]@{
+        liveModule = $HasLiveModule
+        indexCatalog = $HasIndexCatalog
+        indexWorkspace = $HasIndexWorkspace
+        displaySettings = $HasDisplaySettings
+        persistentSettings = $HasPersistentSettings
+        userPreferences = $HasUserPreferences
+        userPreferencesFile = $HasUserPreferencesFile
+        userPreferencesRoute = $HasUserPreferencesRoute
+        displayControls = $HasDisplayControls
+        boundaryOk = $BoundaryOk
+      } | ConvertTo-Json -Compress
+      throw "$($Target.Name) payload feature boundary is invalid: $FeatureState"
     }
 
     $Results += [pscustomobject]@{
@@ -106,6 +131,8 @@ try {
       indexCatalog = $HasIndexCatalog
       indexWorkspace = $HasIndexWorkspace
       displaySettings = $HasDisplaySettings
+      persistentSettings = $HasPersistentSettings
+      userPreferences = $HasUserPreferences
       boundaryOk = $BoundaryOk
       exeSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $Target.Exe).Hash
       sizeMB = [Math]::Round((Get-Item -LiteralPath $Target.Exe).Length / 1MB, 2)

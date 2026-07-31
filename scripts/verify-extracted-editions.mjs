@@ -64,11 +64,14 @@ for (const edition of EDITIONS) {
   assert(index.includes('id="indexCount">8/8'), `${edition.mode} 缺少指数上限状态`);
   assert(fs.existsSync(path.join(appRoot, "assets", "js", "display-settings.js")), `${edition.mode} 缺少显示设置模块`);
   assert(fs.existsSync(path.join(appRoot, "assets", "js", "index-workspace.js")), `${edition.mode} 缺少指数工作区模块`);
+  assert(fs.existsSync(path.join(appRoot, "assets", "js", "persistent-settings.js")), `${edition.mode} 缺少持久设置模块`);
+  assert(fs.existsSync(path.join(backend, "用户设置.js")), `${edition.mode} 缺少用户设置服务`);
   assert(fs.existsSync(path.join(backend, "index-catalog.js")), `${edition.mode} 缺少指数目录服务`);
   assert(fs.existsSync(path.join(backend, "index-intraday.js")), `${edition.mode} 缺少指数分时服务`);
   assert(service.includes('"/api/v1/index-catalog"'), `${edition.mode} 缺少指数目录 API`);
   assert(service.includes('"/api/v1/index-trend"'), `${edition.mode} 缺少指数分时 API`);
   assert(service.includes('"/api/v1/app-update/status"'), `${edition.mode} 缺少软件更新状态 API`);
+  assert(service.includes("userPreferences.handleRequest"), `${edition.mode} 缺少用户设置 API`);
 
   const hasQuant = index.includes("quant.html");
   const hasAdmin = index.includes("member-admin.html");
@@ -86,10 +89,10 @@ for (const edition of EDITIONS) {
   if (edition.mode === "custom") {
     assert(service.includes("createShortlineService"), "定制版短线服务丢失");
     assert(service.includes("handleShortlineRequest"), "定制版短线路由丢失");
-    assert(service.includes("3.17.1-shortline-v1"), "定制版服务版本未升级");
+    assert(service.includes("3.18.1-shortline-v1"), "定制版服务版本未升级");
   }
   assert(
-    serviceWorker.includes(`a-share-review-v84-cls-index-annotations-${edition.mode}`),
+    serviceWorker.includes(`a-share-review-v85-cls-plates-persistent-settings-${edition.mode}`),
     `${edition.mode} 离线缓存版本未隔离`,
   );
 

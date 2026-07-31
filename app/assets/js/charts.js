@@ -385,6 +385,13 @@ export function buildClsIndexAnnotationEvents(index, annotationFeed) {
   if (!isAshareIndex(index) || !Array.isArray(annotationFeed?.items)) return [];
   if (annotationFeed.tradeDate && index?.tradeDate && annotationFeed.tradeDate !== index.tradeDate) return [];
   return annotationFeed.items.map((item) => {
+    const sourceSchema = String(item?.sourceSchema || "").toLowerCase();
+    const symbolCode = String(item?.symbolCode || "").toLowerCase();
+    const isPlate = item?.sourceType === "plate"
+      || sourceSchema.includes("plate_detail")
+      || /^cls\d+$/.test(symbolCode);
+    const isStock = sourceSchema.includes("stock_detail") || /^(?:sh|sz|bj)\d{6}$/.test(symbolCode);
+    if (!isPlate || isStock) return null;
     const minute = finiteNumber(item?.minute);
     const label = String(item?.label || "").trim();
     if (minute === null || !label) return null;
