@@ -616,6 +616,7 @@ function buildHealth(data, archiveCount = 0) {
   const indexItems = data.indices?.items || [];
   const ashareItems = indexItems.filter((item) => item.session !== "us");
   const snapshotOnlyItems = ashareItems.filter((item) => item.snapshotOnly === true);
+  const indexAnnotations = data.indices?.annotations || {};
   const indexCoverage = ashareItems.length ? ashareItems.reduce((sum, item) => {
     const uniqueMinutes = new Set((item.points || []).map((point) => finite(point.minute)).filter((value) => value !== null && value <= currentMinute));
     return sum + clamp((uniqueMinutes.size / Math.max(1, currentMinute)) * 100);
@@ -624,12 +625,34 @@ function buildHealth(data, archiveCount = 0) {
   modules.push(moduleResult("indices", "主要指数", (indexCoverage * .75) + clamp(indexItems.length / 8 * 100) * .25, {
     tradeDate: data.indices?.tradeDate,
     syncedAt: data.indices?.syncedAt,
-    sources: indexItems.flatMap((item) => [item.source, ...(item.crossCheck?.sources || [])]),
-    sample: {indexCount: indexItems.length, latestMinute: currentMinute, latestTime: minuteText(currentMinute), crossChecked},
-    checks: ashareItems.map((item) => ({name: item.name, status: item.crossCheck?.status || "pending", detail: compactDetail(item.crossCheck?.detail || "等待下一轮双源核对")})),
+    sources: [
+      ...indexItems.flatMap((item) => [item.source, ...(item.crossCheck?.sources || [])]),
+      indexAnnotations.source,
+    ],
+    sample: {
+      indexCount: indexItems.length,
+      latestMinute: currentMinute,
+      latestTime: minuteText(currentMinute),
+      crossChecked,
+      annotationCount: Number(indexAnnotations.itemCount) || 0,
+      annotationStatus: indexAnnotations.status || "unavailable",
+    },
+    checks: [
+      ...ashareItems.map((item) => ({name: item.name, status: item.crossCheck?.status || "pending", detail: compactDetail(item.crossCheck?.detail || "等待下一轮双源核对")})),
+      {
+        name: "指数文字标注",
+        status: indexAnnotations.status === "ok" ? "ok" : indexAnnotations.status === "retained" ? "warning" : "pending",
+        detail: indexAnnotations.status === "ok"
+          ? `财联社盘面直播原始事件${Number(indexAnnotations.itemCount) || 0}条`
+          : indexAnnotations.status === "retained"
+            ? `财联社接口暂时异常，保留同交易日原始事件${Number(indexAnnotations.itemCount) || 0}条`
+            : "财联社盘面直播暂无可显示事件，不使用本地生成标注",
+      },
+    ],
     warnings: [
       ...(indexItems.length < 8 ? [`主要指数仅${indexItems.length}/8个`] : []),
       ...(snapshotOnlyItems.length ? [`${snapshotOnlyItems.map((item) => item.name).join("、")}当前只有真实快照点，未补画分钟轨迹`] : []),
+      ...(indexAnnotations.status === "retained" ? ["财联社盘面直播本轮读取失败，当前沿用同交易日上一份原始标注"] : []),
     ],
   }));
 

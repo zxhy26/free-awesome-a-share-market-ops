@@ -71,5 +71,5 @@ test("index APIs and new modules are available offline without membership gating
   assert.ok(catalogIndex > membershipIndex);
   assert.match(serviceWorker, /display-settings\.js/);
   assert.match(serviceWorker, /index-workspace\.js/);
-  assert.match(serviceWorker, /a-share-review-v83-dynamic-index-layout/);
+  assert.match(serviceWorker, /a-share-review-v84-cls-index-annotations/);
 });

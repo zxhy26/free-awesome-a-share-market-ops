@@ -1,6 +1,6 @@
 import {checkAppUpdate, getAppUpdateStatus, getHealth, installAppUpdate, loadBoardIntradayTrend, loadCoreData, loadIndexCatalog, loadIndexContributionData, loadIndexTrend, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260730-3";
 import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNumber, formatPercent, formatYi, signed, summarizeMoneyEffect, valueClass} from "./analysis.js?v=20260730-1";
-import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260730-2";
+import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260731-3";
 import {createSummaryDialog} from "./dialog.js";
 import {createDisplaySettings} from "./display-settings.js?v=20260730-1";
 import {createIndexWorkspace, resolveIndexGridLayout} from "./index-workspace.js?v=20260731-1";
@@ -864,13 +864,12 @@ function renderSummary() {
   state.summaryText = sections.map((section) => section.innerText.trim()).join("\n\n") + "\n\n本软件仅用于市场数据整理和复盘分析，不构成任何投资建议。";
 }
 
-function indexAttributionRows() {
-  const industryAttributionRows = state.data.sectors?.industry?.attributionRows || state.data.sectors?.industry?.rows || [];
-  const conceptAttributionRows = state.data.sectors?.concept?.attributionRows || state.data.sectors?.concept?.rows || [];
-  return [
-    ...industryAttributionRows.map((row) => ({...row, sectorKind: "industry", sectorKindLabel: "行业"})),
-    ...conceptAttributionRows.map((row) => ({...row, sectorKind: "concept", sectorKindLabel: "题材"})),
-  ];
+function indexAnnotationFeed() {
+  return state.data.indices?.annotations || {
+    source: "财联社盘面直播",
+    status: "unavailable",
+    items: [],
+  };
 }
 
 function renderSelectedIndexCharts() {
@@ -880,7 +879,7 @@ function renderSelectedIndexCharts() {
   dom.indexGrid.dataset.indexCount = String(layout.count);
   dom.indexGrid.dataset.indexColumns = String(layout.columns);
   dom.indexGrid.dataset.indexRows = String(layout.rows);
-  state.charts = createIndexCharts(dom.indexGrid, indices, indexAttributionRows(), {
+  state.charts = createIndexCharts(dom.indexGrid, indices, indexAnnotationFeed(), {
     onRemove: (key) => state.indexWorkspace?.remove(key),
   });
   updateIndexCharts(state.charts, Number(dom.timeline.value));

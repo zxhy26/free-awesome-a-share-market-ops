@@ -89,7 +89,7 @@ for (const edition of EDITIONS) {
     assert(service.includes("3.17.1-shortline-v1"), "定制版服务版本未升级");
   }
   assert(
-    serviceWorker.includes(`a-share-review-v83-dynamic-index-layout-${edition.mode}`),
+    serviceWorker.includes(`a-share-review-v84-cls-index-annotations-${edition.mode}`),
     `${edition.mode} 离线缓存版本未隔离`,
   );
 

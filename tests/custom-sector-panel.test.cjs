@@ -39,14 +39,14 @@ test("custom sector workspace persists at most six real industry or concept inde
   assert.match(membershipSource, /\/api\/v1\/sector-trend/);
 });
 
-test("index turning-point labels use both industry and concept candidates and persist after confirmation", () => {
-  assert.match(appSource, /sectorKind:\s*"industry"/);
-  assert.match(appSource, /sectorKind:\s*"concept"/);
-  assert.match(chartsSource, /\["industry",\s*"concept"\]/);
-  assert.doesNotMatch(chartsSource, /item\.sectorKind === "concept" \? "题" : "行"/);
-  assert.match(chartsSource, /`\$\{item\.sectorName\} \$\{formatFlowDelta\(item\.flowAmount\)\}`/);
-  assert.match(chartsSource, /GENERIC_CONCEPT_PATTERN/);
-  assert.match(chartsSource, /确认后持续保留/);
+test("index labels render only original CLS market-live annotations", () => {
+  assert.match(indexHtml, /财联社盘面直播原始标注/);
+  assert.match(appSource, /state\.data\.indices\?\.annotations/);
+  assert.match(chartsSource, /buildClsIndexAnnotationEvents\(index, annotationFeed\)/);
+  assert.match(chartsSource, /const labelText = item\.label/);
+  assert.match(chartsSource, /来源：财联社盘面直播/);
+  const createIndexChartsSource = chartsSource.slice(chartsSource.indexOf("export function createIndexCharts"));
+  assert.doesNotMatch(createIndexChartsSource, /buildSectorAttributionCandidates|buildPersistentSectorAttributions/);
 });
 
 test("desktop index layout supports automatic one-row and two-row grids while the flow column fills its stack", () => {

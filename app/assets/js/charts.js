@@ -370,6 +370,45 @@ export function selectSectorAttributions(events, minute) {
   return (events || []).filter((item) => (item.revealMinute ?? item.minute) <= visibleMinute);
 }
 
+function indexPointAtOrBefore(index, minute) {
+  let selected = null;
+  for (let pointIndex = 0; pointIndex < (index?.points || []).length; pointIndex += 1) {
+    const point = index.points[pointIndex];
+    const sampleMinute = pointMinute(point, pointIndex);
+    if (sampleMinute > minute) break;
+    if (finiteNumber(point?.price) !== null) selected = {...point, minute: sampleMinute};
+  }
+  return selected;
+}
+
+export function buildClsIndexAnnotationEvents(index, annotationFeed) {
+  if (!isAshareIndex(index) || !Array.isArray(annotationFeed?.items)) return [];
+  if (annotationFeed.tradeDate && index?.tradeDate && annotationFeed.tradeDate !== index.tradeDate) return [];
+  return annotationFeed.items.map((item) => {
+    const minute = finiteNumber(item?.minute);
+    const label = String(item?.label || "").trim();
+    if (minute === null || !label) return null;
+    const point = indexPointAtOrBefore(index, minute);
+    const price = finiteNumber(point?.price);
+    if (price === null || minute - Number(point.minute) > 3) return null;
+    const sourceDirection = item?.sourceDirection === "up" ? "up" : item?.sourceDirection === "down" ? "down" : "neutral";
+    return {
+      ...item,
+      minute,
+      revealMinute: minute,
+      price,
+      label,
+      sourceDirection,
+      flowDirection: sourceDirection === "up" ? 1 : sourceDirection === "down" ? -1 : 0,
+    };
+  }).filter(Boolean).sort((left, right) => left.minute - right.minute);
+}
+
+export function selectClsIndexAnnotations(events, minute) {
+  const visibleMinute = Number(minute) || 0;
+  return (events || []).filter((item) => item.minute <= visibleMinute);
+}
+
 function formatFlowDelta(value) {
   const amount = Number(value) || 0;
   const absolute = Math.abs(amount);
@@ -399,25 +438,24 @@ function measureAttributionLabel(layer, labelText) {
   };
 }
 
-function renderSectorAttributions(chart, minute, geometry) {
-  const selected = selectSectorAttributions(chart.attributionEvents, minute)
-    .sort((left, right) => Number(right.strength || 0) - Number(left.strength || 0));
+function renderClsIndexAnnotations(chart, minute, geometry) {
+  const selected = selectClsIndexAnnotations(chart.attributionEvents, minute)
+    .sort((left, right) => left.minute - right.minute);
   const nodes = [];
   const labels = [];
   for (const item of selected) {
     const group = document.createElementNS(SVG_NS, "g");
-    group.classList.add("index-attribution", item.flowDirection > 0 ? "gain-mark" : "loss-mark");
-    group.dataset.pivotType = item.pivotType;
-    group.dataset.pivotMinute = String(item.minute);
-    group.dataset.revealMinute = String(item.revealMinute);
+    const toneClass = item.sourceDirection === "up" ? "gain-mark" : item.sourceDirection === "down" ? "loss-mark" : "neutral-mark";
+    group.classList.add("index-attribution", "cls-index-annotation", toneClass);
+    group.dataset.source = "财联社盘面直播";
+    group.dataset.sourceTime = String(item.sourceTime || "");
+    group.dataset.articleId = String(item.articleId || "");
     const title = document.createElementNS(SVG_NS, "title");
-    const sectorMove = item.sectorChangePct === null ? "" : `，板块同期${signed(item.sectorChangePct, 2, "%")}`;
-    const pivotLabel = item.pivotType === "low" ? "低点" : "高点";
-    const confirmationLabel = item.direction > 0 ? "回升" : "回落";
-    title.textContent = `${marketMinuteToTime(item.minute)} 指数形成${pivotLabel}，${marketMinuteToTime(item.revealMinute)} ${confirmationLabel}${signed(item.reversalPct, 2, "%")}后确认；${item.sectorKindLabel || "行业"}“${item.sectorName}”截至确认时累计净流入${formatFlowDelta(item.flowAmount)}，拐点确认窗口资金变化${formatFlowDelta(item.flowDelta)}${sectorMove}。归因置信度${item.confidenceLabel || "观察"}（${item.confidence ?? "--"}分）；标记落在实际拐点，确认后持续保留。`;
+    const directionText = item.sourceDirection === "up" ? "上涨" : item.sourceDirection === "down" ? "下跌" : "未标方向";
+    title.textContent = `来源：财联社盘面直播｜${item.sourceTime || marketMinuteToTime(item.minute, true)}｜${item.label}｜${directionText}`;
     const x = geometry.xForMinute(item.minute);
     const y = geometry.yForPrice(item.price);
-    const labelText = `${item.sectorName} ${formatFlowDelta(item.flowAmount)}`;
+    const labelText = item.label;
     const labelMetrics = measureAttributionLabel(chart.attributionLayer, labelText);
     const estimatedWidth = labelMetrics.width;
     const labelHalfHeight = labelMetrics.height / 2;
@@ -426,7 +464,7 @@ function renderSectorAttributions(chart, minute, geometry) {
     const ascendingLanes = [];
     const laneStep = labelMetrics.height + 1;
     for (let lane = labelHalfHeight + 2; lane <= CHART_HEIGHT - labelHalfHeight - 2; lane += laneStep) ascendingLanes.push(lane);
-    const laneCandidates = item.flowDirection > 0 ? ascendingLanes : [...ascendingLanes].reverse();
+    const laneCandidates = item.sourceDirection === "down" ? [...ascendingLanes].reverse() : ascendingLanes;
     let placement = null;
     for (const lane of laneCandidates) {
       for (const anchorEnd of anchorCandidates) {
@@ -469,7 +507,7 @@ function renderSectorAttributions(chart, minute, geometry) {
   chart.attributionLayer.replaceChildren(...nodes);
 }
 
-export function createIndexCharts(container, indices, industryRows = [], options = {}) {
+export function createIndexCharts(container, indices, annotationFeed = {}, options = {}) {
   const charts = [];
   const fragment = document.createDocumentFragment();
   for (const index of indices || []) {
@@ -492,7 +530,6 @@ export function createIndexCharts(container, indices, industryRows = [], options
     removeButton.addEventListener("click", () => options.onRemove?.(index.key || index.code));
     article.querySelector("title").textContent = `${index.name || "指数"}分时图`;
     fragment.append(article);
-    const attributionCandidates = buildSectorAttributionCandidates(index, industryRows);
     charts.push({
       data: index,
       article,
@@ -505,8 +542,9 @@ export function createIndexCharts(container, indices, industryRows = [], options
       baseline: article.querySelector(".baseline"),
       cursor: article.querySelector(".cursor"),
       attributionLayer: article.querySelector(".index-attributions"),
-      attributionCandidates,
-      attributionEvents: buildPersistentSectorAttributions(attributionCandidates),
+      attributionEvents: buildClsIndexAnnotationEvents(index, annotationFeed),
+      annotationSource: annotationFeed?.source || "财联社盘面直播",
+      annotationStatus: annotationFeed?.status || "unavailable",
     });
   }
   container.replaceChildren(fragment);
@@ -538,7 +576,7 @@ export function updateIndexCharts(charts, minute) {
     chart.cursor.setAttribute("cx", geometry.x.toFixed(2));
     chart.cursor.setAttribute("cy", geometry.y.toFixed(2));
     chart.cursor.style.color = `var(--${className === "loss" ? "loss" : "gain"})`;
-    renderSectorAttributions(chart, minute, geometry);
+    renderClsIndexAnnotations(chart, minute, geometry);
     const amount = finiteNumber(displayPoint.amount);
     chart.amount.textContent = amount === null ? "成交额 --" : `成交额 ${(amount / 100000000).toFixed(1)}亿`;
     chart.sample.textContent = !chart.data.points?.length

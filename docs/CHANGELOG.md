@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.19.2 - 2026-07-31
+
+- Replaced locally inferred index turning-point labels with original event names, timestamps, and directions from the public CLS market-live feed.
+- Positioned CLS events on each domestic index timeline without generating causal explanations, confidence scores, or sector-flow attribution text.
+- Retained only same-trading-day CLS events during a temporary source outage; otherwise the chart shows no annotation substitute.
+- Added second-precision session mapping, source-state metadata, and regression coverage for the CLS annotation contract.
+
 ## 2.19.1 - 2026-07-31
 
 - Made the main index workspace reflow automatically from one through eight selected indices.

@@ -420,6 +420,15 @@ function exportOptimizedAppData(options) {
     version: 3,
     tradeDate: marketData.index?.tradeDate || marketData.market?.tradeDate || "",
     syncedAt: marketData.syncedAt || "",
+    annotations: marketData.indexAnnotations || {
+      version: 1,
+      tradeDate: marketData.index?.tradeDate || marketData.market?.tradeDate || "",
+      syncedAt: marketData.syncedAt || "",
+      source: "财联社盘面直播",
+      status: "unavailable",
+      itemCount: 0,
+      items: [],
+    },
     items: Array.isArray(marketData.indices) && marketData.indices.length ? marketData.indices : [marketData.index].filter(Boolean),
   });
   writeJson(path.join(dataDir, "sectors.json"), {

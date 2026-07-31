@@ -10,6 +10,11 @@ const { enhanceAppData } = require("./升级数据层");
 const { buildSnapshotOnlyIndex } = require("./market-data-contract");
 const { reconcileBoardFlowGroups } = require("./板块资金自动纠偏");
 const {INDEX_CATALOG, DEFAULT_INDEX_KEYS} = require("./index-catalog");
+const {
+  CLS_INDEX_ANNOTATION_ENDPOINTS,
+  fallbackClsAnnotationFeed,
+  normalizeClsAnchorPayload,
+} = require("./财联社指数标注");
 
 const PORTABLE_ROOT = path.resolve(
   process.env.A_SHARE_REVIEW_PORTABLE_ROOT || path.join(__dirname, "..", "..", "..")
@@ -1625,6 +1630,39 @@ async function fetchJsonAsyncFromUrls(urls, label, timeoutMs = 15000) {
     }
   }
   throw new Error(`${label} 接口连续失败：${errors.slice(-3).join("；")}`);
+}
+
+function readCachedClsIndexAnnotations() {
+  const indicesPath = path.join(CONFIG.optimizedAppDir, "data", "indices.json");
+  try {
+    if (fs.existsSync(indicesPath)) {
+      const annotations = JSON.parse(fs.readFileSync(indicesPath, "utf8"))?.annotations;
+      if (annotations && Array.isArray(annotations.items)) return annotations;
+    }
+  } catch (_) {
+    // Continue to the embedded market-data fallback.
+  }
+  return readCachedMarketData()?.indexAnnotations || null;
+}
+
+async function fetchClsIndexAnnotations(tradeDate, syncedAt) {
+  const urls = CLS_INDEX_ANNOTATION_ENDPOINTS.map((baseUrl) => `${baseUrl}?cdate=${encodeURIComponent(tradeDate)}`);
+  try {
+    const payload = await fetchJsonAsyncFromUrls(urls, "财联社盘面直播指数标注", 10000);
+    const feed = normalizeClsAnchorPayload(payload, {tradeDate, syncedAt});
+    log(`财联社盘面直播标注：读取 ${feed.itemCount} 条原始盘面事件。`);
+    return feed;
+  } catch (error) {
+    const feed = fallbackClsAnnotationFeed(readCachedClsIndexAnnotations(), {
+      tradeDate,
+      syncedAt,
+      error: error.message,
+    });
+    log(feed.status === "retained"
+      ? `财联社盘面直播暂不可用，保留同交易日 ${feed.itemCount} 条原始标注：${error.message}`
+      : `财联社盘面直播暂不可用，本轮不显示指数文字标注：${error.message}`);
+    return feed;
+  }
 }
 
 async function fetchJsonAsyncFromFastestUrl(urls, label, timeoutMs = 8000) {
@@ -5079,7 +5117,7 @@ function buildMarketData(index, industry, concept, market, syncedAt = nowText(),
     syncedAt,
     sourceNote:
       `数据来源：东方财富公开行情接口和板块资金备用接口；同步时间 ${syncedAt}。` +
-      "主要指数、二级行业、概念板块为同一轮刷新结果；主要指数优先使用真实分钟分时，分钟接口不可用时只展示同日当前真实快照点，不使用昨日快照合成走势；板块资金展示净流入前 10 与净流出前 10，行业和概念板块优先使用东方财富官方分钟资金序列，并以同轮实时排名末值逐项复核；分钟接口暂不可用时保留此前已验证轨迹并追加当前排名真实点，发现差异会自动修正当前真实采样点并重新排序，不改写此前分钟历史；指数线标签只在真实分时形成经反向波动确认的关键高低拐点时生成，标记落在实际拐点、确认后才显示，并从同期二级行业与具体题材概念中选择累计净额方向与反转一致且资金行为最强的板块；每张图最多 10 个标签、同一板块最多 2 个，红色只表示该板块确认时累计净流入，绿色只表示累计净流出，标签金额为确认时累计值；标签按出现时间持续保留，只作资金行为归因，不等同于成分股精确权重贡献；自选板块分时最多保存 6 个行业或题材概念，直接使用后台分钟采样缓存与逐秒真实排名，不生成模拟点；相邻真实样本只做线性显示，不反向填充未知数据；09:15:00集合竞价起实时更新，午休停在11:30:00，13:00:00恢复，收盘停在15:00:00。前台保留通达信880板块代码，并同时携带原始板块名称供当前设备的其他股票软件检索；市场强度统计包含涨停/跌停专题、沪深成交额、昨日涨停延续性和昨日炸板修复力度。",
+      "主要指数、二级行业、概念板块为同一轮刷新结果；主要指数优先使用真实分钟分时，分钟接口不可用时只展示同日当前真实快照点，不使用昨日快照合成走势；板块资金展示净流入前 10 与净流出前 10，行业和概念板块优先使用东方财富官方分钟资金序列，并以同轮实时排名末值逐项复核；分钟接口暂不可用时保留此前已验证轨迹并追加当前排名真实点，发现差异会自动修正当前真实采样点并重新排序，不改写此前分钟历史；指数分时文字标注仅采用财联社盘面直播公开事件接口返回的原始时间、名称与涨跌方向，前台只把原始事件定位到同期指数线并按原始方向显示红绿；接口异常时仅保留同交易日上一份财联社记录，没有记录则不显示，不使用资金拐点、板块强弱或本地规则生成替代标注；自选板块分时最多保存 6 个行业或题材概念，直接使用后台分钟采样缓存与逐秒真实排名，不生成模拟点；相邻真实样本只做线性显示，不反向填充未知数据；09:15:00集合竞价起实时更新，午休停在11:30:00，13:00:00恢复，收盘停在15:00:00。前台保留通达信880板块代码，并同时携带原始板块名称供当前设备的其他股票软件检索；市场强度统计包含涨停/跌停专题、沪深成交额、昨日涨停延续性和昨日炸板修复力度。",
   };
 }
 
@@ -6794,16 +6832,21 @@ async function generateOnce() {
   concept.flowSampleMinute = sampleMinute;
   const indices = fetchMajorIndices(index, { preferTencent: intradayMode }).map((item) => ({ ...item, fetchedAt: syncedAt }));
   requireFreshData(index, industry, concept, expectedDate, { intraday: intradayMode });
-  const market = applyTurnoverFallback(await safeMarketStats(index.tradeDate, { intraday: intradayMode }), index, indices);
+  const [marketStats, indexAnnotations] = await Promise.all([
+    safeMarketStats(index.tradeDate, { intraday: intradayMode }),
+    fetchClsIndexAnnotations(index.tradeDate, syncedAt),
+  ]);
+  const market = applyTurnoverFallback(marketStats, index, indices);
   if (market && !market.fetchedAt) market.fetchedAt = syncedAt;
   const baseMarketData = buildMarketData(index, industry, concept, market, syncedAt, indices);
+  baseMarketData.indexAnnotations = indexAnnotations;
   baseMarketData.validation = validateMarketData(baseMarketData);
   assertPublishableMarketData(baseMarketData.validation);
   const preparedHistory = updateMarketHistory(baseMarketData, { persist: false, returnCache: true });
   const marketData = preparedHistory.marketData;
   marketData.validation = validateMarketData(marketData);
   assertPublishableMarketData(marketData.validation);
-  marketData.sourceNote += "板块资金动态图优先使用经排名末值校验的官方分钟序列，接口暂时异常时保留上一份已验证序列并继续追加真实排名样本；动画只在相邻真实样本之间线性显示，不会把后采样值反向伪填到早期分钟。指数分时线标注只保留经反向波动确认的关键高低拐点，标记落在拐点并在确认后显示；红色为确认时累计净流入、绿色为累计净流出。";
+  marketData.sourceNote += "板块资金动态图优先使用经排名末值校验的官方分钟序列，接口暂时异常时保留上一份已验证序列并继续追加真实排名样本；动画只在相邻真实样本之间线性显示，不会把后采样值反向伪填到早期分钟。指数分时文字只展示财联社盘面直播返回的原始名称、时间和涨跌方向，不再自行生成拐点归因。";
   let quantData = null;
   if (!skipQuant && !intradayMode) {
     try {
@@ -6900,8 +6943,8 @@ function runQuantSelfTest() {
     throw new Error("板块分钟资金自检失败：跨版本真实序列未合并，或覆盖了当前末值");
   }
   const attributionSourceNote = buildMarketData({}, {}, {}, {}, "自检").sourceNote;
-  if (!attributionSourceNote.includes("官方分钟资金序列") || !attributionSourceNote.includes("自动修正当前真实采样点") || !attributionSourceNote.includes("不改写此前分钟历史") || !attributionSourceNote.includes("关键高低拐点") || !attributionSourceNote.includes("确认后才显示") || !attributionSourceNote.includes("红色只表示该板块确认时累计净流入") || !attributionSourceNote.includes("绿色只表示累计净流出")) {
-    throw new Error("指数归因自检失败：拐点确认或板块标签颜色口径不完整");
+  if (!attributionSourceNote.includes("官方分钟资金序列") || !attributionSourceNote.includes("自动修正当前真实采样点") || !attributionSourceNote.includes("不改写此前分钟历史") || !attributionSourceNote.includes("财联社盘面直播公开事件接口") || !attributionSourceNote.includes("没有记录则不显示") || !attributionSourceNote.includes("不使用资金拐点、板块强弱或本地规则生成替代标注")) {
+    throw new Error("指数标注自检失败：财联社原始事件或禁止自生成的口径不完整");
   }
   const baseMetrics = {
     last: { open: 10.02, high: 10.35, low: 9.85, close: 10.1, volume: 1000 },
@@ -7164,7 +7207,7 @@ function runQuantSelfTest() {
   if (countMatches(/timeRange\.addEventListener\("input"/g) !== 1) throw new Error("前端自检失败：时间轴监听不是唯一实例");
   if (countMatches(/syncMarketButton\.addEventListener/g) !== 1) throw new Error("前端自检失败：同步按钮监听不是唯一实例");
   if (countMatches(/function scheduleAutoReload/g) !== 1) throw new Error("前端自检失败：自动刷新函数不是唯一实例");
-  console.log("自检通过：指数双源与拐点资金归因、政策新闻事件链、涨跌停板块排序、A股股票池、五种通达信战法与历史回测矩阵、统一市场判断、结构化历史、数据一致性、请求锁与唯一计时器");
+  console.log("自检通过：指数双源与财联社原始盘面标注、政策新闻事件链、涨跌停板块排序、A股股票池、五种通达信战法与历史回测矩阵、统一市场判断、结构化历史、数据一致性、请求锁与唯一计时器");
 }
 
 async function runQuantSmoke() {
