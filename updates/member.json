@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "product": "大a后勤部",
+  "product": "大A后勤部",
   "edition": "member",
-  "version": "2.19.4",
-  "publishedAt": "2026-08-01T05:11:27.3359862Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.19.4/Da-A-Hou-Qin-Bu-v2.19.4.exe",
-  "sha256": "A3A8EB23B2209F4EA6AA3F1D740B0E220DF7E1D632B40A88A2BF8DDF37B7B058",
-  "size": 42738688,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.19.4",
+  "version": "2.19.5",
+  "publishedAt": "2026-08-01T10:40:16.4016851Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.19.5/Da-A-Hou-Qin-Bu-v2.19.5.exe",
+  "sha256": "F0AF08AC4D5262939B804EFA9E59007F0B6E1F2F225477ECF0AD43FAF8ADCCCF",
+  "size": 42739712,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.19.5",
   "notes": [
-    "近期历史扩展为15个交易日，并补回2026-07-28缺失归档。",
-    "同一交易日存在多个本地真实档案时，自动保留指数、行业、概念及股票明细采样更完整的一份。",
-    "新增历史质量保护，避免盘中低采样快照覆盖已保存的完整收盘数据。",
-    "2026-07-14与2026-07-22原始板块分钟样本未完整留存，页面明确标记限制且不使用模拟数据补写。"
+    "日K跳转只选择当前设备使用频率最高的一款股票软件。",
+    "使用 Windows 应用启动和切换记录排序，不再依次打开多个候选软件。",
+    "所有桌面版本采用同一设备自适应规则，不再固定某个交易软件。",
+    "若首选软件未完成目标日K定位，本次会明确提示并停止，不会继续启动其他软件。"
   ]
 }

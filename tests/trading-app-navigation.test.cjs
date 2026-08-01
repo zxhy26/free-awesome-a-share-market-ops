@@ -28,8 +28,7 @@ test("desktop quote actions use the current-device trading application service",
   const service = readApp(path.join("backend", "复盘同步服务.js"));
   assert.match(service, /\["\/stock-open", "\/tdx-stock", "\/tdx-sector"\]/);
   assert.match(service, /args\.push\("-Market", market, "-Name", name, "-NoWebFallback"\)/);
-  assert.match(service, /APP_EDITION === "self"/);
-  assert.match(service, /"-PreferredApp", "tongdaxin", "-StrictPreferred"/);
+  assert.doesNotMatch(service, /"-PreferredApp", "tongdaxin", "-StrictPreferred"/);
   assert.doesNotMatch(service, /api\/v1\/market-detail|createMarketDetailDataService/);
 });
 
@@ -58,9 +57,13 @@ test("Windows adapter discovers installed market applications without a webpage 
   assert.match(adapter, /板块标题误命中拦截自检失败/);
   assert.match(adapter, /webFallback=\$false/);
   assert.match(adapter, /function Find-StockApps/);
-  assert.match(adapter, /if\(\$StrictPreferred\)\{return \$preferred\}/);
-  assert.match(adapter, /foreach\(\$candidate in \$candidates\)/);
-  assert.match(adapter, /候选股票软件跳转未通过/);
+  assert.match(adapter, /FeatureUsage\\\$category/);
+  assert.match(adapter, /function Candidate-Usage/);
+  assert.match(adapter, /function Sort-CandidatesByUsage/);
+  assert.match(adapter, /selectedCandidateCount=1/);
+  assert.match(adapter, /不会继续启动其他候选/);
+  assert.doesNotMatch(adapter, /foreach\(\$candidate in \$candidates\)/);
+  assert.doesNotMatch(adapter, /已自动尝试本机 \$\(\$candidates\.Count\) 个交易软件候选/);
   assert.doesNotMatch(adapter, /quote\.eastmoney\.com|so\.eastmoney\.com|Open-Web|Web-Url/);
 });
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.19.5 - 2026-08-01
+
+- Changed Windows daily-K navigation to select exactly one locally installed trading application.
+- Ranked detected applications by Windows launch and switching usage records, with running state and prior success used only as tie-breakers or fallbacks.
+- Removed the personal-edition Tongdaxin lock so every desktop edition follows the current device's own usage preference.
+- Stopped sequential fallback launches after a navigation failure, preventing one click from opening multiple trading applications.
+
 ## 2.19.4 - 2026-08-01
 
 - Rebuilt the latest 15 trading-day archives from the richest verified snapshots retained across prior local releases.

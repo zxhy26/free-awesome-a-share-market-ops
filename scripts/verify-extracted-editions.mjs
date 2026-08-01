@@ -93,6 +93,11 @@ for (const edition of EDITIONS) {
   const service = fs.readFileSync(path.join(appRoot, "backend", "复盘同步服务.js"), "utf8");
   const serviceWorker = fs.readFileSync(path.join(appRoot, "sw.js"), "utf8");
   const backend = path.join(appRoot, "backend");
+  const tradingAdapter = fs.readFileSync(path.join(backend, "打开通达信日K.ps1"), "utf8");
+
+  assert(tradingAdapter.includes("FeatureUsage\\$category"), `${edition.mode} 缺少本机交易软件使用频率读取`);
+  assert(tradingAdapter.includes("selectedCandidateCount=1"), `${edition.mode} 未锁定唯一交易软件候选`);
+  assert(!tradingAdapter.includes("foreach($candidate in $candidates)"), `${edition.mode} 仍会顺序启动多个交易软件`);
 
   assert(index.includes('id="appViewport"'), `${edition.mode} 缺少页面缩放容器`);
   assert(index.includes('id="zoomRange"'), `${edition.mode} 缺少页面缩放控件`);
@@ -126,10 +131,10 @@ for (const edition of EDITIONS) {
   if (edition.mode === "custom") {
     assert(service.includes("createShortlineService"), "定制版短线服务丢失");
     assert(service.includes("handleShortlineRequest"), "定制版短线路由丢失");
-    assert(service.includes("3.19.1-shortline-v1"), "定制版服务版本未升级");
+    assert(service.includes("3.20.1-shortline-v1"), "定制版服务版本未升级");
   }
   assert(
-    serviceWorker.includes(`a-share-review-v86-history-quality-repair-${edition.mode}`),
+    serviceWorker.includes(`a-share-review-v87-single-trading-app-${edition.mode}`),
     `${edition.mode} 离线缓存版本未隔离`,
   );
 
