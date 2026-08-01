@@ -10,6 +10,7 @@ const { enhanceAppData } = require("./升级数据层");
 const { buildSnapshotOnlyIndex } = require("./market-data-contract");
 const { reconcileBoardFlowGroups } = require("./板块资金自动纠偏");
 const {INDEX_CATALOG, DEFAULT_INDEX_KEYS} = require("./index-catalog");
+const {compareLegacyArchives} = require("./history-quality");
 const {
   CLS_INDEX_ANNOTATION_ENDPOINTS,
   fallbackClsAnnotationFeed,
@@ -6801,6 +6802,17 @@ function archiveCompleteMarketData(marketData) {
   const tradeDate = marketData?.market?.tradeDate || marketData?.index?.tradeDate || "";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(tradeDate) || marketData?.validation?.status !== "ok") return;
   const archivePath = path.join(CONFIG.dailyArchiveDir, `${tradeDate}_完整复盘数据.json`);
+  if (fs.existsSync(archivePath)) {
+    try {
+      const existing = JSON.parse(fs.readFileSync(archivePath, "utf8"));
+      if (compareLegacyArchives(existing, marketData, tradeDate) > 0) {
+        log(`保留 ${tradeDate} 已有较完整归档，本轮低采样快照不覆盖历史数据。`);
+        return;
+      }
+    } catch (error) {
+      log(`已有归档读取失败，将用本轮已校验数据修复：${error.message}`);
+    }
+  }
   writeUtf8File(archivePath, JSON.stringify(sanitizeLegacyStructureFields(marketData)));
   log(`已归档完整交易日数据：${archivePath}`);
 }

@@ -48,6 +48,43 @@ function verifyCachedAssets(appRoot, serviceWorker) {
   return assets.length;
 }
 
+function readJson(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}
+
+function verifyHistory(runtimeRoot, mode) {
+  const historyRoot = path.join(runtimeRoot, "数据历史");
+  const structuredRoot = path.join(historyRoot, "结构化复盘历史");
+  const dailyRoot = path.join(historyRoot, "每日完整数据");
+  assert(fs.existsSync(structuredRoot), `${mode} 缺少结构化历史目录`);
+  assert(fs.existsSync(dailyRoot), `${mode} 缺少每日完整数据目录`);
+  const dates = fs.readdirSync(structuredRoot, {withFileTypes: true})
+    .filter((entry) => entry.isDirectory() && /^\d{4}-\d{2}-\d{2}$/u.test(entry.name))
+    .map((entry) => entry.name)
+    .sort();
+  assert(dates.length >= 15, `${mode} 近期结构化历史少于15个交易日`);
+  const required = ["market.json", "indices.json", "sectors.json", "stocks.json", "analysis.json", "health.json", "manifest.json"];
+  let limitedDates = 0;
+  for (const date of dates) {
+    const root = path.join(structuredRoot, date);
+    for (const filename of required) assert(fs.existsSync(path.join(root, filename)), `${mode} ${date} 缺少 ${filename}`);
+    const indices = readJson(path.join(root, "indices.json"));
+    const sectors = readJson(path.join(root, "sectors.json"));
+    const manifest = readJson(path.join(root, "manifest.json"));
+    assert(indices.tradeDate === date, `${mode} ${date} 指数交易日不一致`);
+    assert(sectors.tradeDate === date, `${mode} ${date} 板块交易日不一致`);
+    assert(Array.isArray(indices.items) && indices.items.length >= 8, `${mode} ${date} 主要指数不完整`);
+    assert((sectors.industry?.rows || []).length >= 20, `${mode} ${date} 行业榜不完整`);
+    assert((sectors.concept?.rows || []).length >= 20, `${mode} ${date} 概念榜不完整`);
+    if ((manifest.limitations || []).length) limitedDates += 1;
+  }
+  const dailyDates = fs.readdirSync(dailyRoot)
+    .map((name) => name.match(/^(\d{4}-\d{2}-\d{2})_完整复盘数据\.json$/u)?.[1])
+    .filter(Boolean);
+  assert(dailyDates.length >= 15, `${mode} 每日完整数据少于15个交易日`);
+  return {dates: dates.length, dailyDates: dailyDates.length, limitedDates};
+}
+
 const results = [];
 for (const edition of EDITIONS) {
   const extraction = JSON.parse(fs.readFileSync(path.join(stageRoot, edition.result), "utf8"));
@@ -89,13 +126,14 @@ for (const edition of EDITIONS) {
   if (edition.mode === "custom") {
     assert(service.includes("createShortlineService"), "定制版短线服务丢失");
     assert(service.includes("handleShortlineRequest"), "定制版短线路由丢失");
-    assert(service.includes("3.18.1-shortline-v1"), "定制版服务版本未升级");
+    assert(service.includes("3.19.1-shortline-v1"), "定制版服务版本未升级");
   }
   assert(
-    serviceWorker.includes(`a-share-review-v85-cls-plates-persistent-settings-${edition.mode}`),
+    serviceWorker.includes(`a-share-review-v86-history-quality-repair-${edition.mode}`),
     `${edition.mode} 离线缓存版本未隔离`,
   );
 
+  const history = verifyHistory(extraction.runtimeRoot, edition.mode);
   results.push({
     mode: edition.mode,
     appRoot,
@@ -105,6 +143,7 @@ for (const edition of EDITIONS) {
     admin: hasAdmin,
     privateKey: hasPrivateKey,
     shortline: hasShortline,
+    history,
   });
 }
 

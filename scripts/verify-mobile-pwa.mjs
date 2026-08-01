@@ -300,7 +300,7 @@ function validateEdition(edition) {
 
   const historyIndex = readJson(path.join(root, "data", "history-index.json"));
   if (historyIndex) {
-    assert(historyIndex.count >= 10, `${label}: 历史交易日数量不得少于 10`);
+    assert(historyIndex.count >= 15, `${label}: 历史交易日数量不得少于 15`);
     assert(
       historyIndex.dates?.length === historyIndex.count,
       `${label}: 历史索引数量不一致`,

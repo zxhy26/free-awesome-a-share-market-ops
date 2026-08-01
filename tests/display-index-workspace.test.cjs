@@ -72,5 +72,5 @@ test("index APIs and new modules are available offline without membership gating
   assert.match(serviceWorker, /display-settings\.js/);
   assert.match(serviceWorker, /index-workspace\.js/);
   assert.match(serviceWorker, /persistent-settings\.js/);
-  assert.match(serviceWorker, /a-share-review-v85-cls-plates-persistent-settings/);
+  assert.match(serviceWorker, /a-share-review-v86-history-quality-repair/);
 });

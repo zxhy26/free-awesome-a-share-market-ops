@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.19.4 - 2026-08-01
+
+- Rebuilt the latest 15 trading-day archives from the richest verified snapshots retained across prior local releases.
+- Restored missing or lower-sample archives for July 24, 27, 28, 30, and 31 without generating synthetic historical points.
+- Added module-level archive quality comparison so a later low-sample refresh cannot overwrite a more complete same-day snapshot.
+- Marked unrecoverable historical minute-flow gaps explicitly instead of presenting interpolated or fabricated data as captured history.
+
 ## 2.19.3 - 2026-08-01
 
 - Restricted CLS intraday annotations to official plate events and excluded all stock-detail anchors at both ingestion and rendering boundaries.

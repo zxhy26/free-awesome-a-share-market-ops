@@ -82,7 +82,7 @@ function buildServiceWorker(mode) {
   let source = fs.readFileSync(path.join(sourceApp, "sw.js"), "utf8");
   source = source.replace(
     /const CACHE_VERSION = "[^"]+";/,
-    `const CACHE_VERSION = "a-share-review-v85-cls-plates-persistent-settings-${mode}";`,
+    `const CACHE_VERSION = "a-share-review-v86-history-quality-repair-${mode}";`,
   );
   const extras = [];
   if (["basic", "self", "custom"].includes(mode)) {
@@ -150,7 +150,7 @@ function patchCustomService(servicePath) {
   );
   source = source.replace(
     /const SERVICE_VERSION = "[^"]+";/,
-    'const SERVICE_VERSION = "3.18.1-shortline-v1";',
+    'const SERVICE_VERSION = "3.19.1-shortline-v1";',
   );
 
   source = insertBefore(

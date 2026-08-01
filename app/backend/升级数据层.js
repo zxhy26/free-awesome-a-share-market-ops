@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const {selectBetterDataset} = require("./history-quality");
 
 const DATASET_FILES = Object.freeze({
   market: "market.json",
@@ -800,10 +801,22 @@ function writeStructuredArchive(data, health, options) {
   if (validation.status === "error") return null;
   const targetDir = path.join(options.archiveDir, tradeDate);
   fs.mkdirSync(targetDir, {recursive: true});
+  const preservedModules = [];
+  const moduleQuality = {};
   for (const [key, filename] of Object.entries(DATASET_FILES)) {
-    if (data[key]) atomicWrite(path.join(targetDir, filename), data[key]);
+    if (!data[key]) continue;
+    const targetPath = path.join(targetDir, filename);
+    const existing = readJson(targetPath, null);
+    const selected = selectBetterDataset(key, data[key], existing);
+    if (selected.source === "existing") preservedModules.push(key);
+    moduleQuality[key] = selected.quality;
+    atomicWrite(targetPath, selected.value);
   }
-  atomicWrite(path.join(targetDir, "health.json"), health);
+  const healthPath = path.join(targetDir, "health.json");
+  const selectedHealth = selectBetterDataset("health", health, readJson(healthPath, null));
+  if (selectedHealth.source === "existing") preservedModules.push("health");
+  moduleQuality.health = selectedHealth.quality;
+  atomicWrite(healthPath, selectedHealth.value);
   atomicWrite(path.join(targetDir, "manifest.json"), {
     version: 1,
     tradeDate,
@@ -811,6 +824,9 @@ function writeStructuredArchive(data, health, options) {
     files: [...Object.values(DATASET_FILES), "health.json"],
     latestMinute: health.session.latestMinute,
     status: health.overall.status,
+    qualityPolicy: "同交易日逐模块择优，低采样快照不得覆盖较完整归档",
+    preservedModules,
+    moduleQuality,
   });
   return targetDir;
 }

@@ -66,6 +66,45 @@ try {
       throw "$($Target.Name) payload app root was not found."
     }
     $AppRoot = $IndexFile.Directory.FullName
+    $RuntimeDirectories = @(Get-ChildItem -LiteralPath $Result.runtimeRoot -Directory -Recurse)
+    $StructuredHistoryRoot = $RuntimeDirectories |
+      Where-Object {
+        (Test-Path -LiteralPath (Join-Path $_.FullName "index.json")) -and
+          @(
+            Get-ChildItem -LiteralPath $_.FullName -Directory -ErrorAction SilentlyContinue |
+              Where-Object { $_.Name -match '^\d{4}-\d{2}-\d{2}$' }
+          ).Count -ge 15
+      } |
+      Select-Object -First 1
+    $DailyHistoryRoot = $RuntimeDirectories |
+      Where-Object {
+        @(
+          Get-ChildItem -LiteralPath $_.FullName -File -Filter "*.json" -ErrorAction SilentlyContinue |
+            Where-Object { $_.BaseName -match '^\d{4}-\d{2}-\d{2}_' }
+        ).Count -ge 15
+      } |
+      Select-Object -First 1
+    if (-not $StructuredHistoryRoot -or -not $DailyHistoryRoot) {
+      throw "$($Target.Name) payload history root was not found."
+    }
+    $HistoryDates = @(
+      Get-ChildItem -LiteralPath $StructuredHistoryRoot.FullName -Directory |
+        Where-Object { $_.Name -match '^\d{4}-\d{2}-\d{2}$' }
+    )
+    $DailyDates = @(
+      Get-ChildItem -LiteralPath $DailyHistoryRoot.FullName -File -Filter "*.json" |
+        Where-Object { $_.BaseName -match '^\d{4}-\d{2}-\d{2}_' }
+    )
+    if ($HistoryDates.Count -lt 15 -or $DailyDates.Count -lt 15) {
+      throw "$($Target.Name) payload recent history is incomplete: structured=$($HistoryDates.Count), daily=$($DailyDates.Count)."
+    }
+    foreach ($HistoryDate in $HistoryDates) {
+      foreach ($RequiredHistoryFile in @("market.json", "indices.json", "sectors.json", "stocks.json", "analysis.json", "health.json", "manifest.json")) {
+        if (-not (Test-Path -LiteralPath (Join-Path $HistoryDate.FullName $RequiredHistoryFile))) {
+          throw "$($Target.Name) payload history $($HistoryDate.Name) is missing $RequiredHistoryFile."
+        }
+      }
+    }
     $Index = Get-Content -LiteralPath $IndexFile.FullName -Raw -Encoding UTF8
     $HasQuant = $Index -match "quant\.html"
     $HasAdmin = $Index -match "member-admin\.html"
@@ -134,6 +173,8 @@ try {
       persistentSettings = $HasPersistentSettings
       userPreferences = $HasUserPreferences
       boundaryOk = $BoundaryOk
+      historyDates = $HistoryDates.Count
+      dailyDates = $DailyDates.Count
       exeSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $Target.Exe).Hash
       sizeMB = [Math]::Round((Get-Item -LiteralPath $Target.Exe).Length / 1MB, 2)
       signature = (Get-AuthenticodeSignature -LiteralPath $Target.Exe).Status.ToString()
