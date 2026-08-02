@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "product": "大A后勤部",
   "edition": "member",
-  "version": "2.20.0",
-  "publishedAt": "2026-08-02T02:32:54.9999785Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.20.0/Da-A-Hou-Qin-Bu-v2.20.0.exe",
-  "sha256": "7BC4F052678D20439A53E0DCA5B61275CEE9FEEEC782AC44EA71A7CA6E256A53",
-  "size": 42741248,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.20.0",
+  "version": "2.20.1",
+  "publishedAt": "2026-08-02T03:27:11.8451746Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.20.1/Da-A-Hou-Qin-Bu-v2.20.1.exe",
+  "sha256": "2B732B71DFEA0B9F61078033152B5FB74CF584580CEC16BA9F44C37F8D97494C",
+  "size": 42743808,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.20.1",
   "notes": [
-    "大A后勤部右上角新增免费试用3天按钮。",
-    "领取后立即解锁会员内容，并显示准确的试用到期时间。",
-    "每台设备只能领取一次；按钮领取后永久失效，到期后不会重新出现。",
-    "正式会员授权优先于试用状态，已有有效会员不会显示试用入口。"
+    "更新后统一使用标准文件名，不再沿用旧版本别名。",
+    "新版本启动成功后自动删除同版本旧 EXE 和隐藏 previous 备份。",
+    "清理严格限定当前产品，不会删除基础版、自用版或定制版。",
+    "更新替换或启动失败时仍保留回滚保护，成功后文件夹只留下最新版。"
   ]
 }

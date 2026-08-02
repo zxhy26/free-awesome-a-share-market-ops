@@ -88,7 +88,7 @@ function buildServiceWorker(mode) {
   let source = fs.readFileSync(path.join(sourceApp, "sw.js"), "utf8");
   source = source.replace(
     /const CACHE_VERSION = "[^"]+";/,
-    `const CACHE_VERSION = "a-share-review-v88-membership-trial-${mode}";`,
+    `const CACHE_VERSION = "a-share-review-v89-update-cleanup-${mode}";`,
   );
   const extras = [];
   if (["basic", "self", "custom"].includes(mode)) {
@@ -156,8 +156,14 @@ function patchCustomService(servicePath) {
   );
   source = source.replace(
     /const SERVICE_VERSION = "[^"]+";/,
-    'const SERVICE_VERSION = "3.21.1-shortline-v1";',
+    'const SERVICE_VERSION = "3.22.1-shortline-v1";',
   );
+  if (!source.includes("appUpdate.scheduleLauncherCleanup()")) {
+    source = source.replace(
+      /(server\.listen\(PORT, HOST, \(\) => \{\r?\n)/,
+      "$1  appUpdate.scheduleLauncherCleanup();\n",
+    );
+  }
 
   source = insertBefore(
     source,

@@ -38,4 +38,15 @@ test("local service publishes the complete update API without membership protect
   const routeIndex = service.indexOf('url.pathname === "/api/v1/app-update/status"');
   assert.ok(routeIndex > membershipIndex);
   assert.doesNotMatch(service.slice(membershipIndex, routeIndex), /app-update.*protectedApiFeature/);
+  assert.match(service, /appUpdate\.scheduleLauncherCleanup\(\)/);
+});
+
+test("desktop launcher metadata carries canonical edition cleanup identity", () => {
+  const launcher = read("windows-launcher/single-file-launcher.cs");
+  assert.match(launcher, /A_SHARE_REVIEW_RELEASE_EDITION/);
+  assert.match(launcher, /canonicalLauncherName/);
+  assert.match(launcher, /CanonicalLauncherName = "大a后勤部\.exe"/);
+  assert.match(launcher, /CanonicalLauncherName = "复盘软件基础版\.exe"/);
+  assert.match(launcher, /CanonicalLauncherName = "复盘软件自用版\.exe"/);
+  assert.match(launcher, /CanonicalLauncherName = "复盘软件定制版-短线模型V1\.0\.exe"/);
 });

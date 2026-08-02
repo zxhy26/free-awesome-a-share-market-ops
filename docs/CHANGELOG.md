@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.20.1 - 2026-08-02
+
+- Standardized the launcher filename for every desktop edition and migrate legacy aliases on startup.
+- Removed same-edition `.previous.exe`, versioned download, and obsolete alias files after the replacement hash and process launch checks succeed.
+- Kept rollback only on a failed replacement or failed launcher start; a completed update no longer retains a hidden old executable.
+- Preserved strict edition boundaries so cleanup for one product never deletes another desktop edition.
+
 ## 2.20.0 - 2026-08-02
 
 - Added a one-time three-day membership trial button to the top-right desktop toolbar of the Member edition.

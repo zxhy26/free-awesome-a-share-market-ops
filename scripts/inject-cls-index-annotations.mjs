@@ -39,7 +39,7 @@ async function fetchAnnotations(tradeDate) {
   for (const endpoint of CLS_INDEX_ANNOTATION_ENDPOINTS) {
     try {
       const response = await fetch(`${endpoint}?cdate=${encodeURIComponent(tradeDate)}`, {
-        headers: {Accept: "application/json", Referer: "https://www.cls.cn/finance", "User-Agent": "Mozilla/5.0 AShareReview/2.20.0"},
+        headers: {Accept: "application/json", Referer: "https://www.cls.cn/finance", "User-Agent": "Mozilla/5.0 AShareReview/2.20.1"},
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return normalizeClsAnchorPayload(await response.json(), {

@@ -113,6 +113,7 @@ for (const edition of EDITIONS) {
   assert(service.includes('"/api/v1/index-catalog"'), `${edition.mode} 缺少指数目录 API`);
   assert(service.includes('"/api/v1/index-trend"'), `${edition.mode} 缺少指数分时 API`);
   assert(service.includes('"/api/v1/app-update/status"'), `${edition.mode} 缺少软件更新状态 API`);
+  assert(service.includes("scheduleLauncherCleanup"), `${edition.mode} 缺少旧版本启动文件自动清理`);
   assert(service.includes("userPreferences.handleRequest"), `${edition.mode} 缺少用户设置 API`);
 
   const hasQuant = index.includes("quant.html");
@@ -137,10 +138,10 @@ for (const edition of EDITIONS) {
   if (edition.mode === "custom") {
     assert(service.includes("createShortlineService"), "定制版短线服务丢失");
     assert(service.includes("handleShortlineRequest"), "定制版短线路由丢失");
-    assert(service.includes("3.21.1-shortline-v1"), "定制版服务版本未升级");
+    assert(service.includes("3.22.1-shortline-v1"), "定制版服务版本未升级");
   }
   assert(
-    serviceWorker.includes(`a-share-review-v88-membership-trial-${edition.mode}`),
+    serviceWorker.includes(`a-share-review-v89-update-cleanup-${edition.mode}`),
     `${edition.mode} 离线缓存版本未隔离`,
   );
 

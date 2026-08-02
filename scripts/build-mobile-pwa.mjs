@@ -7,7 +7,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
 const mobileTemplateDir = path.join(repoRoot, "mobile");
 const packageInfo = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
-const mobileReleaseRevision = "desktop-trial-scope-1";
+const mobileReleaseRevision = "canonical-update-cleanup-1";
 
 function parseArguments(argv) {
   const values = {};

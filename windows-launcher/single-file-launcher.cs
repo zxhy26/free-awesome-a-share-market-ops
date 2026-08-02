@@ -27,33 +27,41 @@ using System.Windows.Forms;
 #endif
 [assembly: AssemblyCompany("Free & Awesome A-Share Market Ops")]
 [assembly: AssemblyCopyright("Copyright 2026")]
-[assembly: AssemblyVersion("2.20.0.0")]
-[assembly: AssemblyFileVersion("2.20.0.0")]
+[assembly: AssemblyVersion("2.20.1.0")]
+[assembly: AssemblyFileVersion("2.20.1.0")]
 
 internal static class Program
 {
 #if BASIC_EDITION
     private const string EditionName = "基础版";
     private const string EditionCode = "basic";
-    private const string RuntimeTag = "版本_20260802-2.20.0-基础版-试用边界";
-    private const string MutexName = "Local\\AshareReviewLauncher_Basic_22000";
+    private const string ReleaseEditionCode = "basic";
+    private const string CanonicalLauncherName = "复盘软件基础版.exe";
+    private const string RuntimeTag = "版本_20260802-2.20.1-基础版-旧版清理";
+    private const string MutexName = "Local\\AshareReviewLauncher_Basic_22010";
 #elif SELF_EDITION
     private const string EditionName = "自用版";
     private const string EditionCode = "self";
-    private const string RuntimeTag = "版本_20260802-2.20.0-自用版-试用边界";
-    private const string MutexName = "Local\\AshareReviewLauncher_Self_22000";
+    private const string ReleaseEditionCode = "self";
+    private const string CanonicalLauncherName = "复盘软件自用版.exe";
+    private const string RuntimeTag = "版本_20260802-2.20.1-自用版-旧版清理";
+    private const string MutexName = "Local\\AshareReviewLauncher_Self_22010";
 #elif CUSTOM_EDITION
     private const string EditionName = "定制版";
     private const string EditionCode = "basic";
-    private const string RuntimeTag = "版本_20260802-2.20.0-定制版-试用边界";
-    private const string MutexName = "Local\\AshareReviewLauncher_Custom_22000";
+    private const string ReleaseEditionCode = "custom";
+    private const string CanonicalLauncherName = "复盘软件定制版-短线模型V1.0.exe";
+    private const string RuntimeTag = "版本_20260802-2.20.1-定制版-旧版清理";
+    private const string MutexName = "Local\\AshareReviewLauncher_Custom_22010";
 #else
     private const string EditionName = "会员版";
     private const string EditionCode = "member";
+    private const string ReleaseEditionCode = "member";
+    private const string CanonicalLauncherName = "大a后勤部.exe";
     private const string RuntimeTag = "版本_自动更新-会员版";
-    private const string MutexName = "Local\\AshareReviewLauncher_Member_22000";
+    private const string MutexName = "Local\\AshareReviewLauncher_Member_22010";
 #endif
-    private const string LauncherVersion = "2.20.0";
+    private const string LauncherVersion = "2.20.1";
     private const string UpdateManifestUrl = "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/member.json";
     private const string PayloadResource = "AshareReviewPayload";
     private const string HashResource = "AshareReviewPayloadHash";
@@ -95,6 +103,7 @@ internal static class Program
                 startInfo.WorkingDirectory = runtimeRoot;
                 startInfo.UseShellExecute = true;
                 Environment.SetEnvironmentVariable("A_SHARE_REVIEW_EDITION", EditionCode);
+                Environment.SetEnvironmentVariable("A_SHARE_REVIEW_RELEASE_EDITION", ReleaseEditionCode);
                 Environment.SetEnvironmentVariable("A_SHARE_REVIEW_LAUNCHER_VERSION", LauncherVersion);
                 Process innerProcess = Process.Start(startInfo);
                 WriteLauncherMetadata(runtimeRoot, expectedHash, innerProcess == null ? 0 : innerProcess.Id);
@@ -152,8 +161,10 @@ internal static class Program
             + "\"schemaVersion\":1,"
             + "\"product\":\"大a后勤部\","
             + "\"edition\":\"" + JsonEscape(EditionCode) + "\","
+            + "\"releaseEdition\":\"" + JsonEscape(ReleaseEditionCode) + "\","
             + "\"version\":\"" + JsonEscape(LauncherVersion) + "\","
             + "\"launcherPath\":\"" + JsonEscape(Assembly.GetExecutingAssembly().Location) + "\","
+            + "\"canonicalLauncherName\":\"" + JsonEscape(CanonicalLauncherName) + "\","
             + "\"runtimeRoot\":\"" + JsonEscape(runtimeRoot) + "\","
             + "\"payloadSha256\":\"" + JsonEscape(payloadHash) + "\","
             + "\"manifestUrl\":\"" + JsonEscape(UpdateManifestUrl) + "\","

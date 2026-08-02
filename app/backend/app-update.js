@@ -17,6 +17,78 @@ const ALLOWED_DOWNLOAD_HOSTS = new Set([
   "release-assets.githubusercontent.com",
   "github-releases.githubusercontent.com",
 ]);
+const RELEASE_PROFILES = Object.freeze({
+  member: Object.freeze({
+    canonicalName: "大a后勤部.exe",
+    artifactPrefixes: Object.freeze(["大a后勤部", "Da-A-Hou-Qin-Bu-v"]),
+  }),
+  basic: Object.freeze({
+    canonicalName: "复盘软件基础版.exe",
+    artifactPrefixes: Object.freeze(["复盘软件基础版"]),
+  }),
+  self: Object.freeze({
+    canonicalName: "复盘软件自用版.exe",
+    artifactPrefixes: Object.freeze(["复盘软件自用版"]),
+  }),
+  custom: Object.freeze({
+    canonicalName: "复盘软件定制版-短线模型V1.0.exe",
+    artifactPrefixes: Object.freeze(["复盘软件定制版"]),
+  }),
+});
+
+function resolveReleaseEdition(value, launcherPath = "") {
+  const filename = path.basename(String(launcherPath || "")).toLowerCase();
+  if (filename.startsWith("大a后勤部") || filename.startsWith("da-a-hou-qin-bu-v")) return "member";
+  if (filename.startsWith("复盘软件自用版")) return "self";
+  if (filename.startsWith("复盘软件定制版")) return "custom";
+  if (filename.startsWith("复盘软件基础版")) return "basic";
+  const normalized = String(value || "").trim().toLowerCase();
+  if (RELEASE_PROFILES[normalized]) return normalized;
+  return "";
+}
+
+function releaseProfile(value, launcherPath = "") {
+  const edition = resolveReleaseEdition(value, launcherPath);
+  return edition ? {edition, ...RELEASE_PROFILES[edition]} : null;
+}
+
+function isManagedLauncherArtifact(filename, profile) {
+  const value = String(filename || "");
+  if (!/\.exe(?:\.previous\.exe)?$/i.test(value)) return false;
+  const normalized = value.toLowerCase();
+  return profile.artifactPrefixes.some((prefix) => normalized.startsWith(prefix.toLowerCase()));
+}
+
+function readPortableExecutableVersion(filePath) {
+  if (!fs.existsSync(filePath)) return "";
+  let descriptor = null;
+  try {
+    descriptor = fs.openSync(filePath, "r");
+    const size = fs.fstatSync(descriptor).size;
+    const chunkBytes = Math.min(size, 4 * 1024 * 1024);
+    const chunkStarts = size > chunkBytes ? [0, size - chunkBytes] : [0];
+    const key = Buffer.from("FileVersion\0", "utf16le");
+    for (const start of chunkStarts) {
+      const buffer = Buffer.alloc(chunkBytes);
+      const bytesRead = fs.readSync(descriptor, buffer, 0, chunkBytes, start);
+      const content = bytesRead === buffer.length ? buffer : buffer.subarray(0, bytesRead);
+      let offset = content.indexOf(key);
+      while (offset >= 0) {
+        const valueText = content
+          .subarray(offset + key.length, Math.min(content.length, offset + key.length + 160))
+          .toString("utf16le");
+        const match = valueText.match(/^[\u0000\s]*v?(\d+\.\d+\.\d+(?:\.\d+)?)/i);
+        const version = normalizeVersion(match?.[1]);
+        if (version) return version;
+        offset = content.indexOf(key, offset + key.length);
+      }
+    }
+  } catch (_) {
+  } finally {
+    if (descriptor !== null) fs.closeSync(descriptor);
+  }
+  return "";
+}
 
 function normalizeVersion(value) {
   const match = String(value || "").trim().match(/^v?(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?$/i);
@@ -240,7 +312,96 @@ function writeTextAtomic(filePath, content) {
   fs.mkdirSync(path.dirname(filePath), {recursive: true});
   const temporaryPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
   fs.writeFileSync(temporaryPath, content, "utf8");
+  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   fs.renameSync(temporaryPath, filePath);
+}
+
+function sha256FileSync(filePath) {
+  return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex").toUpperCase();
+}
+
+function cleanupLauncherArtifacts(options = {}) {
+  const platform = String(options.platform || process.platform).toLowerCase();
+  if (platform !== "win32") return {ok: true, supported: false, deleted: [], pending: []};
+
+  const metadataPath = path.resolve(String(options.metadataPath || ""));
+  const metadata = options.metadata || readJson(metadataPath, {}) || {};
+  const launcherPath = path.resolve(String(options.launcherPath || metadata.launcherPath || ""));
+  const profile = releaseProfile(
+    options.releaseEdition || metadata.releaseEdition || metadata.edition,
+    launcherPath,
+  );
+  if (!profile || !path.isAbsolute(launcherPath) || !fs.existsSync(launcherPath)) {
+    return {ok: true, supported: false, deleted: [], pending: []};
+  }
+  if (!isManagedLauncherArtifact(path.basename(launcherPath), profile)) {
+    return {ok: true, supported: false, deleted: [], pending: []};
+  }
+
+  const launcherDirectory = path.dirname(launcherPath);
+  const canonicalPath = path.join(launcherDirectory, profile.canonicalName);
+  const deleted = [];
+  const pending = [];
+  let selectedVersion = normalizeVersion(metadata.version);
+  if (path.normalize(launcherPath).toLowerCase() !== path.normalize(canonicalPath).toLowerCase()) {
+    const readExecutableVersion = options.readExecutableVersion || readPortableExecutableVersion;
+    const currentVersion = selectedVersion || readExecutableVersion(launcherPath);
+    const canonicalVersion = readExecutableVersion(canonicalPath);
+    const keepNewerCanonical = Boolean(
+      currentVersion && canonicalVersion && compareVersions(canonicalVersion, currentVersion) > 0,
+    );
+    if (keepNewerCanonical) {
+      selectedVersion = canonicalVersion;
+    } else {
+      const temporaryPath = path.join(
+        launcherDirectory,
+        `.a-share-canonical-${process.pid}-${Date.now()}.exe`,
+      );
+      try {
+        fs.copyFileSync(launcherPath, temporaryPath);
+        if (sha256FileSync(temporaryPath) !== sha256FileSync(launcherPath)) {
+          throw new Error("标准文件名迁移校验失败。");
+        }
+        if (fs.existsSync(canonicalPath)) fs.unlinkSync(canonicalPath);
+        fs.renameSync(temporaryPath, canonicalPath);
+      } finally {
+        try {
+          if (fs.existsSync(temporaryPath)) fs.unlinkSync(temporaryPath);
+        } catch (_) {
+        }
+      }
+    }
+  }
+
+  const nextMetadata = {
+    ...metadata,
+    version: selectedVersion || metadata.version,
+    launcherPath: canonicalPath,
+    releaseEdition: profile.edition,
+    canonicalLauncherName: profile.canonicalName,
+  };
+  writeTextAtomic(metadataPath, `${JSON.stringify(nextMetadata, null, 2)}\n`);
+
+  for (const filename of fs.readdirSync(launcherDirectory)) {
+    if (!isManagedLauncherArtifact(filename, profile)) continue;
+    const filePath = path.join(launcherDirectory, filename);
+    if (path.normalize(filePath).toLowerCase() === path.normalize(canonicalPath).toLowerCase()) continue;
+    try {
+      fs.unlinkSync(filePath);
+      deleted.push(filePath);
+    } catch (error) {
+      pending.push({path: filePath, message: error.message});
+    }
+  }
+
+  return {
+    ok: pending.length === 0,
+    supported: true,
+    edition: profile.edition,
+    canonicalPath,
+    deleted,
+    pending,
+  };
 }
 
 function encodePowerShellValue(value) {
@@ -248,22 +409,31 @@ function encodePowerShellValue(value) {
 }
 
 function createInstallerScript(options) {
-  const target = encodePowerShellValue(options.launcherPath);
+  const profile = releaseProfile(options.releaseEdition || "member", options.launcherPath);
+  if (!profile) throw new Error("软件更新版本类型无效。");
+  const originalTarget = encodePowerShellValue(options.launcherPath);
   const staged = encodePowerShellValue(options.stagedPath);
   const runtimeRoot = encodePowerShellValue(options.runtimeRoot);
   const logPath = encodePowerShellValue(options.logPath);
   const version = encodePowerShellValue(options.version);
+  const canonicalName = encodePowerShellValue(profile.canonicalName);
+  const artifactPrefixes = encodePowerShellValue(profile.artifactPrefixes.join("\n"));
   return [
     '$ErrorActionPreference = "Stop"',
     'function Decode-Value([string]$value) { return [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($value)) }',
-    ` $target = Decode-Value "${target}"`.trimStart(),
+    ` $originalTarget = Decode-Value "${originalTarget}"`.trimStart(),
     ` $staged = Decode-Value "${staged}"`.trimStart(),
     ` $runtimeRoot = Decode-Value "${runtimeRoot}"`.trimStart(),
     ` $logPath = Decode-Value "${logPath}"`.trimStart(),
     ` $expectedVersion = Decode-Value "${version}"`.trimStart(),
+    ` $canonicalName = Decode-Value "${canonicalName}"`.trimStart(),
+    ` $artifactPrefixes = (Decode-Value "${artifactPrefixes}") -split [char]10`.trimStart(),
     ` $expectedHash = "${String(options.sha256 || "").toUpperCase()}"`.trimStart(),
     ` $servicePid = ${Number(options.servicePid) || 0}`.trimStart(),
     ` $appPid = ${Number(options.appPid) || 0}`.trimStart(),
+    '$target = ""',
+    '$backupTarget = ""',
+    '$targetExisted = $false',
     'function Write-UpdateLog([string]$message) {',
     '  try {',
     '    $directory = [IO.Path]::GetDirectoryName($logPath)',
@@ -281,6 +451,28 @@ function createInstallerScript(options) {
     '    }',
     '  } catch {}',
     '}',
+    'function Test-ManagedLauncherArtifact([string]$name) {',
+    '  $isExecutable = $name.EndsWith(".exe", [StringComparison]::OrdinalIgnoreCase) -or $name.EndsWith(".exe.previous.exe", [StringComparison]::OrdinalIgnoreCase)',
+    '  if (-not $isExecutable) { return $false }',
+    '  foreach ($prefix in $artifactPrefixes) {',
+    '    if ($prefix -and $name.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) { return $true }',
+    '  }',
+    '  return $false',
+    '}',
+    'function Remove-OldLauncherArtifacts([string]$directory, [string]$keepPath) {',
+    '  $deleted = 0',
+    '  foreach ($candidate in [IO.Directory]::GetFiles($directory)) {',
+    '    if ($candidate.Equals($keepPath, [StringComparison]::OrdinalIgnoreCase)) { continue }',
+    '    if (-not (Test-ManagedLauncherArtifact ([IO.Path]::GetFileName($candidate)))) { continue }',
+    '    try {',
+    '      [IO.File]::Delete($candidate)',
+    '      $deleted++',
+    '    } catch {',
+    '      Write-UpdateLog ("Old launcher cleanup pending: " + $candidate)',
+    '    }',
+    '  }',
+    '  return $deleted',
+    '}',
     'try {',
     '  Start-Sleep -Milliseconds 1200',
     '  Stop-VerifiedProcess $appPid $runtimeRoot',
@@ -289,48 +481,43 @@ function createInstallerScript(options) {
     '  if (-not [IO.File]::Exists($staged)) { throw "Downloaded update is missing." }',
     '  $actualHash = (Get-FileHash -LiteralPath $staged -Algorithm SHA256).Hash.ToUpperInvariant()',
     '  if ($actualHash -ne $expectedHash) { throw "Downloaded update hash mismatch." }',
-    '  $targetDirectory = [IO.Path]::GetDirectoryName($target)',
+    '  $targetDirectory = [IO.Path]::GetDirectoryName($originalTarget)',
     '  if (-not $targetDirectory) { throw "Target directory is invalid." }',
     '  [IO.Directory]::CreateDirectory($targetDirectory) | Out-Null',
+    '  $target = [IO.Path]::Combine($targetDirectory, $canonicalName)',
     '  $temporaryTarget = [IO.Path]::Combine($targetDirectory, (".da-a-update-" + [Guid]::NewGuid().ToString("N") + ".exe"))',
     '  $backupTarget = $target + ".previous.exe"',
+    '  $targetExisted = [IO.File]::Exists($target)',
     '  [IO.File]::Copy($staged, $temporaryTarget, $true)',
     '  if ((Get-FileHash -LiteralPath $temporaryTarget -Algorithm SHA256).Hash.ToUpperInvariant() -ne $expectedHash) {',
     '    throw "Copied update hash mismatch."',
     '  }',
     '  if ([IO.File]::Exists($backupTarget)) { [IO.File]::Delete($backupTarget) }',
-    '  if ([IO.File]::Exists($target)) {',
+    '  if ($targetExisted) {',
     '    [IO.File]::Replace($temporaryTarget, $target, $backupTarget, $true)',
     '  } else {',
     '    [IO.File]::Move($temporaryTarget, $target)',
     '  }',
-    '  Start-Process -FilePath $target -WorkingDirectory $targetDirectory',
-    '  $verified = $false',
-    '  for ($attempt = 0; $attempt -lt 75; $attempt++) {',
-    '    Start-Sleep -Seconds 1',
-    '    try {',
-    '      $status = Invoke-RestMethod -Uri "http://127.0.0.1:18765/api/v1/app-update/status" -TimeoutSec 2',
-    '      if ($status.currentVersion -eq $expectedVersion) { $verified = $true; break }',
-    '    } catch {}',
-    '  }',
-    '  if ($verified) {',
-    '    if ([IO.File]::Exists($backupTarget)) { [IO.File]::Delete($backupTarget) }',
-    '    if ([IO.File]::Exists($staged)) { [IO.File]::Delete($staged) }',
-    '    Write-UpdateLog ("Updated successfully to " + $expectedVersion)',
-    '  } else {',
-    '    try { [IO.File]::SetAttributes($backupTarget, [IO.FileAttributes]::Hidden) } catch {}',
-    '    Write-UpdateLog ("Launcher replaced with " + $expectedVersion + "; startup verification timed out, backup retained.")',
-    '  }',
+    '  $launcherProcess = Start-Process -FilePath $target -WorkingDirectory $targetDirectory -PassThru',
+    '  if ($null -eq $launcherProcess) { throw "Updated launcher did not start." }',
+    '  Start-Sleep -Milliseconds 1200',
+    '  if ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToUpperInvariant() -ne $expectedHash) { throw "Installed update hash mismatch." }',
+    '  if ([IO.File]::Exists($backupTarget)) { [IO.File]::Delete($backupTarget) }',
+    '  $deleted = Remove-OldLauncherArtifacts $targetDirectory $target',
+    '  if ([IO.File]::Exists($staged)) { [IO.File]::Delete($staged) }',
+    '  Write-UpdateLog ("Updated successfully to " + $expectedVersion + "; removed old launchers: " + $deleted)',
     '  exit 0',
     '} catch {',
     '  Write-UpdateLog ("Update failed: " + $_.Exception.Message)',
     '  try {',
-    '    $backupTarget = $target + ".previous.exe"',
-    '    if ([IO.File]::Exists($backupTarget)) {',
+    '    if ($backupTarget -and [IO.File]::Exists($backupTarget)) {',
     '      if ([IO.File]::Exists($target)) { [IO.File]::Delete($target) }',
     '      [IO.File]::Move($backupTarget, $target)',
-    '      Start-Process -FilePath $target -WorkingDirectory ([IO.Path]::GetDirectoryName($target))',
+    '    } elseif (-not $targetExisted -and $target -and [IO.File]::Exists($target)) {',
+    '      [IO.File]::Delete($target)',
     '    }',
+    '    $recoveryTarget = if ([IO.File]::Exists($originalTarget)) { $originalTarget } else { $target }',
+    '    if ($recoveryTarget -and [IO.File]::Exists($recoveryTarget)) { Start-Process -FilePath $recoveryTarget -WorkingDirectory ([IO.Path]::GetDirectoryName($recoveryTarget)) }',
     '  } catch {}',
     '  exit 1',
     '}',
@@ -340,6 +527,10 @@ function createInstallerScript(options) {
 
 function createAppUpdateService(options = {}) {
   const edition = String(options.edition || "member").trim().toLowerCase();
+  const configuredReleaseEdition = String(
+    options.releaseEdition || process.env.A_SHARE_REVIEW_RELEASE_EDITION || "",
+  ).trim().toLowerCase();
+  const platform = String(options.platform || process.platform).toLowerCase();
   const appDir = path.resolve(options.appDir || path.join(__dirname, ".."));
   const runtimeRoot = path.resolve(options.runtimeRoot || path.join(appDir, "..", ".."));
   const workDir = path.resolve(options.workDir || __dirname);
@@ -349,11 +540,13 @@ function createAppUpdateService(options = {}) {
   const logPath = path.join(updateDir, "软件更新日志.txt");
   const fetchManifestImpl = options.fetchManifest || fetchManifest;
   const downloadFileImpl = options.downloadFile || downloadFile;
+  const cleanupLauncherArtifactsImpl = options.cleanupLauncherArtifacts || cleanupLauncherArtifacts;
   const spawnImpl = options.spawn || spawn;
   const exitImpl = options.exit || ((code) => process.exit(code));
   const now = options.now || (() => new Date());
   const log = typeof options.log === "function" ? options.log : () => {};
   let installPromise = null;
+  let cleanupTimer = null;
   let lastManifest = null;
   let state = {
     phase: "idle",
@@ -365,6 +558,14 @@ function createAppUpdateService(options = {}) {
 
   function launcherMetadata() {
     return readJson(metadataPath, {}) || {};
+  }
+
+  function currentReleaseProfile() {
+    const metadata = launcherMetadata();
+    return releaseProfile(
+      configuredReleaseEdition || metadata.releaseEdition || metadata.edition || edition,
+      metadata.launcherPath,
+    );
   }
 
   function packageVersion() {
@@ -390,7 +591,7 @@ function createAppUpdateService(options = {}) {
     const metadata = launcherMetadata();
     const launcherPath = String(metadata.launcherPath || "");
     return edition === "member"
-      && process.platform === "win32"
+      && platform === "win32"
       && path.isAbsolute(launcherPath)
       && path.extname(launcherPath).toLowerCase() === ".exe"
       && fs.existsSync(launcherPath);
@@ -400,12 +601,14 @@ function createAppUpdateService(options = {}) {
     const current = currentVersion();
     const latest = lastManifest?.version || "";
     const available = Boolean(latest && compareVersions(latest, current) > 0);
-    const supported = edition === "member" && process.platform === "win32";
+    const supported = edition === "member" && platform === "win32";
+    const profile = currentReleaseProfile();
     return {
       ok: state.phase !== "error",
       supported,
       launcherReady: launcherReady(),
       source: "GitHub",
+      canonicalLauncherName: profile?.canonicalName || "",
       currentVersion: current,
       latestVersion: latest,
       updateAvailable: available,
@@ -421,7 +624,7 @@ function createAppUpdateService(options = {}) {
   }
 
   async function checkForUpdates(options = {}) {
-    if (edition !== "member" || process.platform !== "win32") {
+    if (edition !== "member" || platform !== "win32") {
       state = {...state, phase: "unsupported", message: "当前版本不使用会员版 GitHub 更新通道。", error: ""};
       return publicStatus();
     }
@@ -456,12 +659,62 @@ function createAppUpdateService(options = {}) {
     }
   }
 
+  function cleanupLegacyLaunchers() {
+    const metadata = launcherMetadata();
+    const profile = currentReleaseProfile();
+    const result = cleanupLauncherArtifactsImpl({
+      platform,
+      metadataPath,
+      metadata,
+      launcherPath: metadata.launcherPath,
+      releaseEdition: profile?.edition || configuredReleaseEdition || edition,
+    });
+    if (result.deleted?.length) {
+      log(`已清理 ${result.deleted.length} 个同版本旧启动文件，只保留 ${path.basename(result.canonicalPath)}。`);
+    }
+    if (result.pending?.length) {
+      log(`仍有 ${result.pending.length} 个旧启动文件被占用，稍后自动重试。`);
+    }
+    return result;
+  }
+
+  function scheduleLauncherCleanup(scheduleOptions = {}) {
+    if (platform !== "win32") return false;
+    if (cleanupTimer) clearTimeout(cleanupTimer);
+    const delayMs = Math.max(0, Number(scheduleOptions.delayMs) || 6000);
+    const retryDelayMs = Math.max(1000, Number(scheduleOptions.retryDelayMs) || 4000);
+    const maxAttempts = Math.max(1, Number(scheduleOptions.maxAttempts) || 6);
+    let attempts = 0;
+    const run = () => {
+      cleanupTimer = null;
+      attempts += 1;
+      try {
+        const result = cleanupLegacyLaunchers();
+        if (result.pending?.length && attempts < maxAttempts) {
+          cleanupTimer = setTimeout(run, retryDelayMs);
+          cleanupTimer.unref?.();
+        }
+      } catch (error) {
+        log(`旧版本自动清理失败：${error.message}`);
+        if (attempts < maxAttempts) {
+          cleanupTimer = setTimeout(run, retryDelayMs);
+          cleanupTimer.unref?.();
+        }
+      }
+    };
+    cleanupTimer = setTimeout(run, delayMs);
+    cleanupTimer.unref?.();
+    return true;
+  }
+
   async function runInstall() {
     const checked = lastManifest ? publicStatus() : await checkForUpdates({force: true});
     if (!checked.updateAvailable || !lastManifest) throw new Error("没有可安装的新版本。");
     const metadata = launcherMetadata();
     const launcherPath = String(metadata.launcherPath || "");
+    const profile = currentReleaseProfile();
     if (!launcherReady()) throw new Error("没有找到当前大a后勤部启动程序，请从收到的 exe 文件重新打开软件后再更新。");
+    if (!profile) throw new Error("无法确定当前软件的标准文件名。");
     const stagedPath = path.join(updateDir, `大a后勤部-${lastManifest.version}.exe`);
     state = {...state, phase: "downloading", progress: 0, message: `正在从 GitHub 下载 ${lastManifest.version}`, error: ""};
     await downloadFileImpl(lastManifest.downloadUrl, stagedPath, {
@@ -488,6 +741,7 @@ function createAppUpdateService(options = {}) {
     const scriptPath = path.join(updateDir, `应用更新-${lastManifest.version}.ps1`);
     writeTextAtomic(scriptPath, createInstallerScript({
       launcherPath,
+      releaseEdition: profile.edition,
       stagedPath,
       runtimeRoot,
       logPath,
@@ -529,7 +783,9 @@ function createAppUpdateService(options = {}) {
 
   return {
     checkForUpdates,
+    cleanupLegacyLaunchers,
     getStatus: publicStatus,
+    scheduleLauncherCleanup,
     startInstall,
   };
 }
@@ -538,9 +794,13 @@ module.exports = {
   ALLOWED_DOWNLOAD_HOSTS,
   DEFAULT_MANIFEST_URL,
   compareVersions,
+  cleanupLauncherArtifacts,
   createAppUpdateService,
   createInstallerScript,
   fetchManifest,
   normalizeVersion,
+  readPortableExecutableVersion,
+  releaseProfile,
+  resolveReleaseEdition,
   validateManifest,
 };

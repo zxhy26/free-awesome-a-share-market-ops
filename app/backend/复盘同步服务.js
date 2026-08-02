@@ -16,7 +16,7 @@ const { createUserPreferencesService } = require("./用户设置");
 
 const PORT = Number(process.env.A_SHARE_REVIEW_PORT) || 18765;
 const HOST = process.env.A_SHARE_REVIEW_HOST || "127.0.0.1";
-const SERVICE_VERSION = "3.21.0";
+const SERVICE_VERSION = "3.22.0";
 const ALLOW_REMOTE = process.env.A_SHARE_REVIEW_ALLOW_REMOTE === "1";
 const TEST_MODE = process.env.A_SHARE_REVIEW_TEST_MODE === "1";
 const DISABLE_SCHEDULES = process.env.A_SHARE_REVIEW_DISABLE_SCHEDULES === "1";
@@ -1545,6 +1545,7 @@ server.on("close", () => liveSectorFlow.stopPolling());
 server.listen(PORT, HOST, () => {
   log(`复盘同步服务已启动：http://${HOST}:${PORT}；A股复盘应用：http://${HOST}:${PORT}/app/`);
   if (!TEST_MODE) {
+    appUpdate.scheduleLauncherCleanup();
     liveSectorFlow.startPolling();
     const timer = setTimeout(() => stockAnalysis.warmStockIndex().catch(() => {}), 18000);
     if (typeof timer.unref === "function") timer.unref();
