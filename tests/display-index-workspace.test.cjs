@@ -72,5 +72,5 @@ test("index APIs and new modules are available offline without membership gating
   assert.match(serviceWorker, /display-settings\.js/);
   assert.match(serviceWorker, /index-workspace\.js/);
   assert.match(serviceWorker, /persistent-settings\.js/);
-  assert.match(serviceWorker, /a-share-review-v87-single-trading-app/);
+  assert.match(serviceWorker, /a-share-review-v88-membership-trial/);
 });

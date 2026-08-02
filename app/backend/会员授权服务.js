@@ -6,6 +6,8 @@ const { execFileSync } = require("child_process");
 
 const ACTIVATION_PREFIX = "AFRP1.";
 const CLOCK_ROLLBACK_TOLERANCE_MS = 12 * 60 * 60 * 1000;
+const TRIAL_DURATION_MS = 3 * 24 * 60 * 60 * 1000;
+const TRIAL_RECORD_SCHEMA_VERSION = 1;
 const PAYMENT_ADAPTER_TIMEOUT_MS = 12 * 1000;
 const PAYMENT_RESPONSE_LIMIT = 256 * 1024;
 const PAYMENT_ORDER_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$/;
@@ -138,6 +140,7 @@ function createMembershipService(options = {}) {
   );
   const licensePath = path.join(stateDir, "会员授权.json");
   const clockPath = path.join(stateDir, "时间校验.json");
+  const trialPath = path.join(stateDir, "免费试用记录.json");
   const fallbackDevicePath = path.join(stateDir, "设备标识.json");
   const historyPath = path.join(stateDir, "会员激活记录.json");
   const publicKeyPath = path.join(keyDir, "会员公钥.pem");
@@ -180,6 +183,40 @@ function createMembershipService(options = {}) {
       writeJsonAtomic(clockPath, { maxSeenAt: new Date(now).toISOString() });
     }
     return { ok: true };
+  }
+
+  function readTrialState(now = Date.now()) {
+    const exists = fs.existsSync(trialPath);
+    if (!exists) {
+      return {
+        used: false,
+        available: edition === "member",
+        active: false,
+        startedAt: "",
+        expiresAt: "",
+        statusCode: "TRIAL_AVAILABLE",
+      };
+    }
+
+    const stored = readJson(trialPath, null);
+    const startedAt = parseDate(stored?.startedAt);
+    const expiresAt = parseDate(stored?.expiresAt);
+    const deviceMatches = normalizeDeviceCode(stored?.deviceCode) === getDeviceCode();
+    const durationMatches = Number.isFinite(startedAt)
+      && Number.isFinite(expiresAt)
+      && Math.abs((expiresAt - startedAt) - TRIAL_DURATION_MS) <= 1000;
+    const valid = Number(stored?.schemaVersion) === TRIAL_RECORD_SCHEMA_VERSION
+      && deviceMatches
+      && durationMatches;
+    const active = valid && now >= startedAt && now < expiresAt;
+    return {
+      used: true,
+      available: false,
+      active,
+      startedAt: Number.isFinite(startedAt) ? new Date(startedAt).toISOString() : "",
+      expiresAt: Number.isFinite(expiresAt) ? new Date(expiresAt).toISOString() : "",
+      statusCode: !valid ? "TRIAL_RECORD_INVALID" : active ? "TRIAL_ACTIVE" : "TRIAL_EXPIRED",
+    };
   }
 
   function parseActivationCode(activationCode) {
@@ -254,6 +291,14 @@ function createMembershipService(options = {}) {
 
   function memberStatus() {
     const deviceCode = getDeviceCode();
+    const checkedAt = new Date().toISOString();
+    const noTrial = {
+      trialAvailable: false,
+      trialUsed: false,
+      trialActive: false,
+      trialStartedAt: "",
+      trialExpiresAt: "",
+    };
     if (edition === "self" || edition === "basic") {
       const isSelf = edition === "self";
       return {
@@ -269,11 +314,20 @@ function createMembershipService(options = {}) {
         reason: isSelf
           ? "自用版全部功能及激活码签发权限已启用。"
           : "基础版全部复盘和量化功能已启用，不含激活码签发权限。",
-        checkedAt: new Date().toISOString(),
+        checkedAt,
+        ...noTrial,
       };
     }
 
     const clock = checkClock();
+    const trial = readTrialState();
+    const trialFields = {
+      trialAvailable: clock.ok && trial.available,
+      trialUsed: trial.used,
+      trialActive: clock.ok && trial.active,
+      trialStartedAt: trial.startedAt,
+      trialExpiresAt: trial.expiresAt,
+    };
     if (!clock.ok) {
       return {
         ok: true,
@@ -286,28 +340,58 @@ function createMembershipService(options = {}) {
         remainingDays: 0,
         statusCode: clock.code,
         reason: clock.reason,
-        checkedAt: new Date().toISOString(),
+        checkedAt,
+        ...trialFields,
       };
     }
 
     const stored = readJson(licensePath, null);
-    if (!stored?.envelope) {
+    const verification = stored?.envelope ? verifyEnvelope(stored.envelope) : null;
+    if (verification?.ok) {
+      const payload = verification.payload;
       return {
         ok: true,
         edition,
-        active: false,
+        active: true,
         deviceCode,
-        plan: "",
-        planLabel: "未激活",
-        expiresAt: "",
-        remainingDays: 0,
-        statusCode: "NOT_ACTIVATED",
-        reason: "当前电脑尚未激活会员。",
-        checkedAt: new Date().toISOString(),
+        licenseId: payload.licenseId,
+        plan: payload.plan,
+        planLabel: PLAN_DEFINITIONS[payload.plan].label,
+        issuedAt: payload.issuedAt,
+        validFrom: payload.validFrom,
+        expiresAt: payload.expiresAt,
+        permanent: verification.permanent,
+        remainingDays: verification.permanent
+          ? null
+          : Math.max(1, Math.ceil((verification.expiresAt - Date.now()) / (24 * 60 * 60 * 1000))),
+        customer: payload.customer || "",
+        reason: verification.permanent ? "私人订制永久版授权有效，仅绑定当前设备。" : "会员授权有效。",
+        checkedAt,
+        ...trialFields,
       };
     }
-    const verification = verifyEnvelope(stored.envelope);
-    if (!verification.ok) {
+
+    if (trial.active) {
+      const trialExpiry = parseDate(trial.expiresAt);
+      return {
+        ok: true,
+        edition,
+        active: true,
+        deviceCode,
+        plan: "trial",
+        planLabel: "三天免费试用",
+        issuedAt: trial.startedAt,
+        validFrom: trial.startedAt,
+        expiresAt: trial.expiresAt,
+        permanent: false,
+        remainingDays: Math.max(1, Math.ceil((trialExpiry - Date.now()) / (24 * 60 * 60 * 1000))),
+        reason: "三天免费试用已生效；每台设备仅可领取一次。",
+        checkedAt,
+        ...trialFields,
+      };
+    }
+
+    if (verification && !verification.ok) {
       return {
         ok: true,
         edition,
@@ -320,33 +404,82 @@ function createMembershipService(options = {}) {
         remainingDays: 0,
         statusCode: verification.code,
         reason: verification.reason,
-        checkedAt: new Date().toISOString(),
+        checkedAt,
+        ...trialFields,
       };
     }
-    const payload = verification.payload;
+
+    if (trial.used) {
+      return {
+        ok: true,
+        edition,
+        active: false,
+        deviceCode,
+        plan: "trial",
+        planLabel: "免费试用已结束",
+        expiresAt: trial.expiresAt,
+        permanent: false,
+        remainingDays: 0,
+        statusCode: trial.statusCode,
+        reason: trial.statusCode === "TRIAL_EXPIRED"
+          ? "三天免费试用已结束；每台设备不能重复领取。"
+          : "免费试用记录不可用；每台设备不能重复领取。",
+        checkedAt,
+        ...trialFields,
+      };
+    }
+
     return {
       ok: true,
       edition,
-      active: true,
+      active: false,
       deviceCode,
-      licenseId: payload.licenseId,
-      plan: payload.plan,
-      planLabel: PLAN_DEFINITIONS[payload.plan].label,
-      issuedAt: payload.issuedAt,
-      validFrom: payload.validFrom,
-      expiresAt: payload.expiresAt,
-      permanent: verification.permanent,
-      remainingDays: verification.permanent
-        ? null
-        : Math.max(1, Math.ceil((verification.expiresAt - Date.now()) / (24 * 60 * 60 * 1000))),
-      customer: payload.customer || "",
-      reason: verification.permanent ? "私人订制永久版授权有效，仅绑定当前设备。" : "会员授权有效。",
-      checkedAt: new Date().toISOString(),
+      plan: "",
+      planLabel: "未激活",
+      expiresAt: "",
+      remainingDays: 0,
+      statusCode: "NOT_ACTIVATED",
+      reason: "当前电脑尚未激活会员，可领取一次三天免费试用。",
+      checkedAt,
+      ...trialFields,
     };
   }
 
   function hasAccess() {
     return memberStatus().active;
+  }
+
+  function claimTrial() {
+    if (edition !== "member") {
+      throw Object.assign(new Error("当前版本不提供会员试用。"), {
+        statusCode: 403,
+        code: "TRIAL_EDITION_UNAVAILABLE",
+      });
+    }
+    const clock = checkClock();
+    if (!clock.ok) throw Object.assign(new Error(clock.reason), { statusCode: 409, code: clock.code });
+    const trial = readTrialState();
+    if (trial.used) {
+      throw Object.assign(new Error("本机已经领取过三天免费试用，不能重复领取。"), {
+        statusCode: 409,
+        code: "TRIAL_ALREADY_USED",
+      });
+    }
+    if (memberStatus().active) {
+      throw Object.assign(new Error("当前会员授权已生效，无需领取免费试用。"), {
+        statusCode: 409,
+        code: "MEMBERSHIP_ALREADY_ACTIVE",
+      });
+    }
+    const startedAt = Date.now();
+    const expiresAt = startedAt + TRIAL_DURATION_MS;
+    writeJsonAtomic(trialPath, {
+      schemaVersion: TRIAL_RECORD_SCHEMA_VERSION,
+      deviceCode: getDeviceCode(),
+      startedAt: new Date(startedAt).toISOString(),
+      expiresAt: new Date(expiresAt).toISOString(),
+    });
+    return memberStatus();
   }
 
   function activate(activationCode) {
@@ -727,6 +860,11 @@ function createMembershipService(options = {}) {
         sendJson(res, 200, paymentConfig());
         return true;
       }
+      if (url.pathname === "/api/v1/membership/trial" && req.method === "POST") {
+        const status = claimTrial();
+        sendJson(res, 200, { ok: true, message: "三天免费试用已开通", membership: status });
+        return true;
+      }
       if (url.pathname === "/api/v1/membership/activate" && req.method === "POST") {
         const body = await readRequestJson(req);
         const status = activate(body.activationCode);
@@ -769,6 +907,7 @@ function createMembershipService(options = {}) {
 
   return {
     edition,
+    claimTrial,
     handleRequest,
     hasAccess,
     memberStatus,

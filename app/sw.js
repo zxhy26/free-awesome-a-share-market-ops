@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v87-single-trading-app";
+const CACHE_VERSION = "a-share-review-v88-membership-trial";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [

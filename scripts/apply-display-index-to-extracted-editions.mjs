@@ -68,6 +68,12 @@ function buildIndex(mode) {
       "短线模型",
     );
   }
+  if (mode !== "member") {
+    html = html.replace(
+      /\r?\n\s*<button class="button membership-trial-button"[\s\S]*?<\/button>/,
+      "",
+    );
+  }
   if (mode === "basic" || mode === "custom") {
     html = html
       .replaceAll(/ data-member-feature="[^"]+"/g, "")
@@ -82,7 +88,7 @@ function buildServiceWorker(mode) {
   let source = fs.readFileSync(path.join(sourceApp, "sw.js"), "utf8");
   source = source.replace(
     /const CACHE_VERSION = "[^"]+";/,
-    `const CACHE_VERSION = "a-share-review-v87-single-trading-app-${mode}";`,
+    `const CACHE_VERSION = "a-share-review-v88-membership-trial-${mode}";`,
   );
   const extras = [];
   if (["basic", "self", "custom"].includes(mode)) {
@@ -150,7 +156,7 @@ function patchCustomService(servicePath) {
   );
   source = source.replace(
     /const SERVICE_VERSION = "[^"]+";/,
-    'const SERVICE_VERSION = "3.20.1-shortline-v1";',
+    'const SERVICE_VERSION = "3.21.1-shortline-v1";',
   );
 
   source = insertBefore(

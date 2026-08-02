@@ -14,6 +14,7 @@ const state = {
   paymentOrder: null,
   paymentPollTimer: 0,
   paymentPolling: false,
+  trialStarting: false,
 };
 
 document.addEventListener("click", (event) => {
@@ -228,13 +229,19 @@ function renderCountdown() {
   if (remainingMs <= 0) {
     window.clearInterval(state.countdownTimer);
     state.countdownTimer = 0;
+    const trialExpired = membership.plan === "trial";
     state.membership = {
       ...membership,
       active: false,
+      trialActive: false,
+      trialAvailable: false,
+      trialUsed: trialExpired || membership.trialUsed,
       remainingDays: 0,
-      statusCode: "EXPIRED",
-      planLabel: "会员已到期",
-      reason: "会员已到期，请续费后重新激活。",
+      statusCode: trialExpired ? "TRIAL_EXPIRED" : "EXPIRED",
+      planLabel: trialExpired ? "免费试用已结束" : "会员已到期",
+      reason: trialExpired
+        ? "三天免费试用已结束；每台设备不能重复领取。"
+        : "会员已到期，请续费后重新激活。",
     };
     renderMembership();
     return;
@@ -256,6 +263,20 @@ function restartCountdown() {
   }
 }
 
+function renderTrialButton() {
+  const button = document.querySelector("#membershipTrialButton");
+  const label = document.querySelector("#membershipTrialButtonLabel");
+  if (!button || !label) return;
+  const membership = state.membership;
+  const available = membership?.edition === "member"
+    && !membership.active
+    && membership.trialAvailable === true
+    && membership.trialUsed !== true;
+  button.hidden = !available;
+  button.disabled = state.trialStarting || !available;
+  label.textContent = state.trialStarting ? "正在开通" : "免费试用3天";
+}
+
 function renderMembership() {
   const membership = state.membership;
   document.querySelectorAll(featureSelector).forEach((control) => {
@@ -275,6 +296,7 @@ function renderMembership() {
     toolbarButton.classList.toggle("is-active", Boolean(membership?.active));
     toolbarLabel.textContent = membership?.active ? membership.planLabel : "开通会员";
   }
+  renderTrialButton();
   window.dispatchEvent(new CustomEvent("a-share-membership-change", {
     detail: {active: Boolean(membership?.active), edition: membership?.edition || ""},
   }));
@@ -556,6 +578,31 @@ async function activateMembership() {
   }
 }
 
+async function startFreeTrial() {
+  if (state.trialStarting || state.membership?.trialAvailable !== true) return;
+  state.trialStarting = true;
+  renderTrialButton();
+  try {
+    const response = await fetch("/api/v1/membership/trial", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "免费试用开通失败");
+    state.membership = data.membership;
+    renderMembership();
+    restartCountdown();
+    document.querySelector("#membershipButton")?.focus();
+  } catch (error) {
+    openMembership("");
+    setMessage(error.message || "免费试用开通失败，请稍后重试。", "error");
+  } finally {
+    state.trialStarting = false;
+    renderTrialButton();
+  }
+}
+
 function openMembership(feature = "") {
   const dialog = createDialog();
   dialog.hidden = false;
@@ -579,6 +626,7 @@ function closeMembership() {
 
 function init() {
   createDialog();
+  document.querySelector("#membershipTrialButton")?.addEventListener("click", startFreeTrial);
   document.querySelector("#membershipButton")?.addEventListener("click", () => openMembership(""));
   loadMembership();
   loadPaymentConfig();

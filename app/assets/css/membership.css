@@ -2,6 +2,19 @@
   white-space: nowrap;
 }
 
+.membership-trial-button {
+  border-color: var(--accent);
+  background: var(--warning-soft);
+  color: var(--accent);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.membership-trial-button:not(:disabled):hover {
+  border-color: var(--accent-hover);
+  color: var(--accent-hover);
+}
+
 .membership-trigger.is-active {
   border-color: var(--loss);
   color: var(--loss);

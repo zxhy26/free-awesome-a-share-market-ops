@@ -127,7 +127,7 @@ let serviceWorker = fs.readFileSync(serviceWorkerPath, "utf8");
 serviceWorker = serviceWorker
   .replace(
     /const CACHE_VERSION = "[^"]+";/,
-    'const CACHE_VERSION = "a-share-review-v87-single-trading-app";',
+    'const CACHE_VERSION = "a-share-review-v88-membership-trial";',
   )
   .split(/\r?\n/)
   .filter((line) => !/market-detail/.test(line))

@@ -7,7 +7,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
 const mobileTemplateDir = path.join(repoRoot, "mobile");
 const packageInfo = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
-const mobileReleaseRevision = "single-trading-app-1";
+const mobileReleaseRevision = "desktop-trial-scope-1";
 
 function parseArguments(argv) {
   const values = {};
@@ -213,7 +213,8 @@ function rewriteHtmlFiles(targetDir, edition) {
         .replaceAll('href="/app/pages/', 'href="pages/')
         .replaceAll("href='/app/pages/", "href='pages/")
         .replaceAll(">A股复盘</h1>", edition === "self" ? ">A股复盘自用版</h1>" : ">大A后勤部</h1>")
-        .replace(/<title>[^<]*<\/title>/i, `<title>${edition === "self" ? "A股复盘自用手机版" : "大A后勤部手机版"}</title>`);
+        .replace(/<title>[^<]*<\/title>/i, `<title>${edition === "self" ? "A股复盘自用手机版" : "大A后勤部手机版"}</title>`)
+        .replace(/\s*<button class="button membership-trial-button"[\s\S]*?<\/button>/, "");
       if (edition === "self") {
         html = html
           .replace(/^\s*<link rel="stylesheet" href="assets\/css\/membership\.css[^"]*">\s*$/m, "")

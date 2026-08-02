@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "product": "大A后勤部",
   "edition": "member",
-  "version": "2.19.5",
-  "publishedAt": "2026-08-01T10:40:16.4016851Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.19.5/Da-A-Hou-Qin-Bu-v2.19.5.exe",
-  "sha256": "F0AF08AC4D5262939B804EFA9E59007F0B6E1F2F225477ECF0AD43FAF8ADCCCF",
-  "size": 42739712,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.19.5",
+  "version": "2.20.0",
+  "publishedAt": "2026-08-02T02:32:54.9999785Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.20.0/Da-A-Hou-Qin-Bu-v2.20.0.exe",
+  "sha256": "7BC4F052678D20439A53E0DCA5B61275CEE9FEEEC782AC44EA71A7CA6E256A53",
+  "size": 42741248,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.20.0",
   "notes": [
-    "日K跳转只选择当前设备使用频率最高的一款股票软件。",
-    "使用 Windows 应用启动和切换记录排序，不再依次打开多个候选软件。",
-    "所有桌面版本采用同一设备自适应规则，不再固定某个交易软件。",
-    "若首选软件未完成目标日K定位，本次会明确提示并停止，不会继续启动其他软件。"
+    "大A后勤部右上角新增免费试用3天按钮。",
+    "领取后立即解锁会员内容，并显示准确的试用到期时间。",
+    "每台设备只能领取一次；按钮领取后永久失效，到期后不会重新出现。",
+    "正式会员授权优先于试用状态，已有有效会员不会显示试用入口。"
   ]
 }

@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="assets/css/layout.css?v=20260731-1">
   <link rel="stylesheet" href="assets/css/components.css?v=20260731-2">
   <link rel="stylesheet" href="assets/css/responsive.css?v=20260731-1">
-  <link rel="stylesheet" href="assets/css/membership.css?v=20260730-4">
+  <link rel="stylesheet" href="assets/css/membership.css?v=20260802-1">
 </head>
 <body>
   <div class="app-viewport" id="appViewport">
@@ -38,6 +38,9 @@
       <a class="button" href="/app/pages/data-health.html"><span aria-hidden="true">●</span><span>数据状态</span></a>
       <a class="button" href="/app/pages/history.html" data-member-feature="历史回放"><span aria-hidden="true">◷</span><span>历史回放</span></a>
       <button class="button" id="summaryButton" type="button"><span aria-hidden="true">▤</span><span>市场总结</span></button>
+      <button class="button membership-trial-button" id="membershipTrialButton" type="button" title="每台设备仅可领取一次" hidden>
+        <span aria-hidden="true">◴</span><span id="membershipTrialButtonLabel">免费试用3天</span>
+      </button>
       <button class="button membership-trigger" id="membershipButton" type="button"><span aria-hidden="true">◇</span><span id="membershipButtonLabel">开通会员</span></button>
       <button class="button app-update-button" id="appUpdateButton" type="button" title="从 GitHub 检查并安装最新版" hidden>
         <span aria-hidden="true">⇩</span><span id="appUpdateButtonLabel">检查更新</span>
@@ -270,7 +273,7 @@
     <button class="zoom-value" id="zoomValue" type="button" title="恢复为100%" aria-label="恢复为100%">100%</button>
   </div>
 
-  <script type="module" src="assets/js/membership.js?v=20260728-3"></script>
-  <script type="module" src="assets/js/app.js?v=20260801-3"></script>
+  <script type="module" src="assets/js/membership.js?v=20260802-1"></script>
+  <script type="module" src="assets/js/app.js?v=20260802-1"></script>
 </body>
 </html>

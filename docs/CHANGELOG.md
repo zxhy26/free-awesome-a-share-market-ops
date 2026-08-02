@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.20.0 - 2026-08-02
+
+- Added a one-time three-day membership trial button to the top-right desktop toolbar of the Member edition.
+- Bound trial eligibility and expiry to the local device state instead of browser storage, preserving the consumed state across restarts and application updates.
+- Reused the existing clock-rollback protection and membership access checks so protected pages and APIs unlock immediately and relock at expiry.
+- Kept the trial control out of the Basic, Personal, Custom, and mobile builds.
+
 ## 2.19.5 - 2026-08-01
 
 - Changed Windows daily-K navigation to select exactly one locally installed trading application.

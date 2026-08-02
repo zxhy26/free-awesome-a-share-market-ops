@@ -118,12 +118,18 @@ for (const edition of EDITIONS) {
   const hasQuant = index.includes("quant.html");
   const hasAdmin = index.includes("member-admin.html");
   const hasShortline = index.includes("shortline.html");
+  const hasTrialButton = index.includes('id="membershipTrialButton"');
   const hasPrivateKey = fs.existsSync(path.join(backend, "会员私钥.pem"));
   assert(hasQuant === edition.quant, `${edition.mode} 量化功能边界错误`);
   assert(hasAdmin === edition.admin, `${edition.mode} 会员管理边界错误`);
   assert(hasShortline === edition.shortline, `${edition.mode} 短线功能边界错误`);
   assert(hasPrivateKey === edition.privateKey, `${edition.mode} 私钥边界错误`);
-  if (edition.mode === "member") assert(index.includes('data-member-feature="自选板块分时"'), "会员版解锁边界丢失");
+  if (edition.mode === "member") {
+    assert(index.includes('data-member-feature="自选板块分时"'), "会员版解锁边界丢失");
+    assert(hasTrialButton, "会员版缺少一次性三天试用按钮");
+  } else {
+    assert(!hasTrialButton, `${edition.mode} 不应显示会员试用按钮`);
+  }
   if (edition.mode === "basic" || edition.mode === "custom") {
     assert(!index.includes("data-member-feature="), `${edition.mode} 不应保留会员遮罩`);
     assert(!index.includes('id="membershipButton"'), `${edition.mode} 不应显示会员开通按钮`);
@@ -131,10 +137,10 @@ for (const edition of EDITIONS) {
   if (edition.mode === "custom") {
     assert(service.includes("createShortlineService"), "定制版短线服务丢失");
     assert(service.includes("handleShortlineRequest"), "定制版短线路由丢失");
-    assert(service.includes("3.20.1-shortline-v1"), "定制版服务版本未升级");
+    assert(service.includes("3.21.1-shortline-v1"), "定制版服务版本未升级");
   }
   assert(
-    serviceWorker.includes(`a-share-review-v87-single-trading-app-${edition.mode}`),
+    serviceWorker.includes(`a-share-review-v88-membership-trial-${edition.mode}`),
     `${edition.mode} 离线缓存版本未隔离`,
   );
 

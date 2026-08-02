@@ -16,7 +16,7 @@ const { createUserPreferencesService } = require("./用户设置");
 
 const PORT = Number(process.env.A_SHARE_REVIEW_PORT) || 18765;
 const HOST = process.env.A_SHARE_REVIEW_HOST || "127.0.0.1";
-const SERVICE_VERSION = "3.20.0";
+const SERVICE_VERSION = "3.21.0";
 const ALLOW_REMOTE = process.env.A_SHARE_REVIEW_ALLOW_REMOTE === "1";
 const TEST_MODE = process.env.A_SHARE_REVIEW_TEST_MODE === "1";
 const DISABLE_SCHEDULES = process.env.A_SHARE_REVIEW_DISABLE_SCHEDULES === "1";
@@ -1159,7 +1159,7 @@ const server = http.createServer(async (req, res) => {
       appData: appDataStatus(),
       flowData: flowDataStatus(),
       historyCount: listHistoryDates().length,
-      endpoints: ["/api/v1/market/snapshot", "/api/v1/preferences", "POST /api/v1/preferences", "/api/v1/index-catalog", "/api/v1/index-trend?key=sh000001", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/sector-trend?code=BK0000", "/api/v1/sector-flow?code=BK0000", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "/api/v1/app-update/status", "/api/v1/app-update/check", "POST /api/v1/app-update/install", "POST /api/v1/sync", "POST /api/v1/index-contribution/refresh", "POST /stock-open", "POST /derivatives-refresh", "POST /next-week-events-refresh"],
+      endpoints: ["/api/v1/market/snapshot", "/api/v1/preferences", "POST /api/v1/preferences", "/api/v1/index-catalog", "/api/v1/index-trend?key=sh000001", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/sector-trend?code=BK0000", "/api/v1/sector-flow?code=BK0000", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "/api/v1/membership/status", "POST /api/v1/membership/trial", "/api/v1/app-update/status", "/api/v1/app-update/check", "POST /api/v1/app-update/install", "POST /api/v1/sync", "POST /api/v1/index-contribution/refresh", "POST /stock-open", "POST /derivatives-refresh", "POST /next-week-events-refresh"],
     });
     return;
   }

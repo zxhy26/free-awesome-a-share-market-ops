@@ -27,33 +27,33 @@ using System.Windows.Forms;
 #endif
 [assembly: AssemblyCompany("Free & Awesome A-Share Market Ops")]
 [assembly: AssemblyCopyright("Copyright 2026")]
-[assembly: AssemblyVersion("2.19.5.0")]
-[assembly: AssemblyFileVersion("2.19.5.0")]
+[assembly: AssemblyVersion("2.20.0.0")]
+[assembly: AssemblyFileVersion("2.20.0.0")]
 
 internal static class Program
 {
 #if BASIC_EDITION
     private const string EditionName = "基础版";
     private const string EditionCode = "basic";
-    private const string RuntimeTag = "版本_20260801-2.19.5-基础版-单一交易软件";
-    private const string MutexName = "Local\\AshareReviewLauncher_Basic_21950";
+    private const string RuntimeTag = "版本_20260802-2.20.0-基础版-试用边界";
+    private const string MutexName = "Local\\AshareReviewLauncher_Basic_22000";
 #elif SELF_EDITION
     private const string EditionName = "自用版";
     private const string EditionCode = "self";
-    private const string RuntimeTag = "版本_20260801-2.19.5-自用版-单一交易软件";
-    private const string MutexName = "Local\\AshareReviewLauncher_Self_21950";
+    private const string RuntimeTag = "版本_20260802-2.20.0-自用版-试用边界";
+    private const string MutexName = "Local\\AshareReviewLauncher_Self_22000";
 #elif CUSTOM_EDITION
     private const string EditionName = "定制版";
     private const string EditionCode = "basic";
-    private const string RuntimeTag = "版本_20260801-2.19.5-定制版-单一交易软件";
-    private const string MutexName = "Local\\AshareReviewLauncher_Custom_21950";
+    private const string RuntimeTag = "版本_20260802-2.20.0-定制版-试用边界";
+    private const string MutexName = "Local\\AshareReviewLauncher_Custom_22000";
 #else
     private const string EditionName = "会员版";
     private const string EditionCode = "member";
     private const string RuntimeTag = "版本_自动更新-会员版";
-    private const string MutexName = "Local\\AshareReviewLauncher_Member_21950";
+    private const string MutexName = "Local\\AshareReviewLauncher_Member_22000";
 #endif
-    private const string LauncherVersion = "2.19.5";
+    private const string LauncherVersion = "2.20.0";
     private const string UpdateManifestUrl = "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/member.json";
     private const string PayloadResource = "AshareReviewPayload";
     private const string HashResource = "AshareReviewPayloadHash";
