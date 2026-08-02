@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "product": "大A后勤部",
   "edition": "member",
-  "version": "2.20.1",
-  "publishedAt": "2026-08-02T03:27:11.8451746Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.20.1/Da-A-Hou-Qin-Bu-v2.20.1.exe",
-  "sha256": "2B732B71DFEA0B9F61078033152B5FB74CF584580CEC16BA9F44C37F8D97494C",
-  "size": 42743808,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.20.1",
+  "version": "2.21.0",
+  "publishedAt": "2026-08-02T04:19:27.009Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.0/Da-A-Hou-Qin-Bu-v2.21.0.exe",
+  "sha256": "F82FEA9FF5AB7FD47F57ACF6E1DCC4730E3BD93DB747ACCC6E3560677DA8E1E0",
+  "size": 42746880,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.0",
   "notes": [
-    "更新后统一使用标准文件名，不再沿用旧版本别名。",
-    "新版本启动成功后自动删除同版本旧 EXE 和隐藏 previous 备份。",
-    "清理严格限定当前产品，不会删除基础版、自用版或定制版。",
-    "更新替换或启动失败时仍保留回滚保护，成功后文件夹只留下最新版。"
+    "新增原生 macOS WebKit 运行入口，支持 Apple Silicon 与 Intel Mac。",
+    "Windows 和 macOS 共用同一套实时行情、会员状态、历史数据与页面功能。",
+    "股票和板块跳转会按当前设备选择一个常用交易软件，不再批量打开应用。",
+    "升级成功后只清理当前产品的旧版本，不影响基础版、自用版或定制版。"
   ]
 }
