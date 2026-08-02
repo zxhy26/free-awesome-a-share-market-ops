@@ -12,52 +12,51 @@ permissions:
 
 jobs:
   publish:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Check out transfer branch
         uses: actions/checkout@v4
 
       - name: Reassemble and verify assets
-        shell: powershell
+        shell: bash
         run: |
-          $ErrorActionPreference = "Stop"
-          $manifest = Get-Content -LiteralPath ".release-upload\manifest.json" -Raw -Encoding UTF8 | ConvertFrom-Json
-          if ($manifest.tag -notmatch '^v\d+\.\d+\.\d+$') {
-            throw "发布标签格式无效"
-          }
-          $outputRoot = Join-Path $PWD ".release-output"
-          New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
-          foreach ($asset in $manifest.assets) {
-            if ([IO.Path]::GetFileName($asset.name) -ne $asset.name) {
-              throw "发布文件名无效：$($asset.name)"
-            }
-            $target = Join-Path $outputRoot $asset.name
-            $targetStream = [IO.File]::Create($target)
-            try {
-              foreach ($chunk in $asset.chunks) {
-                $chunkPath = Join-Path ".release-upload" $chunk
-                if (-not (Test-Path -LiteralPath $chunkPath -PathType Leaf)) {
-                  throw "缺少传输分片：$chunk"
-                }
-                $sourceStream = [IO.File]::OpenRead($chunkPath)
-                try {
-                  $sourceStream.CopyTo($targetStream)
-                } finally {
-                  $sourceStream.Dispose()
-                }
-              }
-            } finally {
-              $targetStream.Dispose()
-            }
-            $actualHash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash
-            if ($actualHash -ne ([string]$asset.sha256).ToUpperInvariant()) {
-              throw "发布文件哈希不一致：$($asset.name)"
-            }
-            if ((Get-Item -LiteralPath $target).Length -ne [long]$asset.size) {
-              throw "发布文件大小不一致：$($asset.name)"
-            }
-          }
-          "RELEASE_TAG=$($manifest.tag)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          transfer_root = Path(".release-upload")
+          output_root = Path(".release-output")
+          output_root.mkdir(exist_ok=True)
+          manifest = json.loads((transfer_root / "manifest.json").read_text(encoding="utf-8"))
+          tag = str(manifest.get("tag", ""))
+          if not re.fullmatch(r"v\d+\.\d+\.\d+", tag):
+              raise SystemExit("invalid release tag")
+          for asset in manifest.get("assets", []):
+              name = str(asset.get("name", ""))
+              if not name or Path(name).name != name:
+                  raise SystemExit(f"invalid asset name: {name}")
+              target = output_root / name
+              with target.open("wb") as destination:
+                  for chunk_name in asset.get("chunks", []):
+                      chunk = transfer_root / str(chunk_name)
+                      if not chunk.is_file():
+                          raise SystemExit(f"missing chunk: {chunk_name}")
+                      with chunk.open("rb") as source:
+                          while block := source.read(4 * 1024 * 1024):
+                              destination.write(block)
+              actual_hash = hashlib.sha256(target.read_bytes()).hexdigest().upper()
+              if actual_hash != str(asset.get("sha256", "")).upper():
+                  raise SystemExit(f"asset hash mismatch: {name}")
+              if target.stat().st_size != int(asset.get("size", -1)):
+                  raise SystemExit(f"asset size mismatch: {name}")
+              print(f"verified {name}: {actual_hash}")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
+              handle.write(f"RELEASE_TAG={tag}\n")
+          PY
 
       - name: Upload verified assets to the release
         uses: softprops/action-gh-release@v3
@@ -69,15 +68,19 @@ jobs:
           preserve_order: true
 
       - name: Verify published asset names
-        shell: powershell
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $manifest = Get-Content -LiteralPath ".release-upload\manifest.json" -Raw -Encoding UTF8 | ConvertFrom-Json
-          $published = gh release view $manifest.tag --repo $env:GITHUB_REPOSITORY --json assets | ConvertFrom-Json
-          $names = @($published.assets | ForEach-Object { $_.name })
-          foreach ($asset in $manifest.assets) {
-            if ($names -notcontains $asset.name) {
-              throw "GitHub 发布页缺少文件：$($asset.name)"
-            }
-          }
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets > published-assets.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path(".release-upload/manifest.json").read_text(encoding="utf-8"))
+          published = json.loads(Path("published-assets.json").read_text(encoding="utf-8"))
+          names = {asset["name"] for asset in published.get("assets", [])}
+          missing = [asset["name"] for asset in manifest.get("assets", []) if asset["name"] not in names]
+          if missing:
+              raise SystemExit("missing published assets: " + ", ".join(missing))
+          PY
