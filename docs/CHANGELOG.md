@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.21.0 - 2026-08-02
+
+- Added a native macOS WebKit desktop launcher with one universal binary for Apple Silicon and Intel Macs.
+- Replaced PowerShell-only refresh entry points on macOS with the same Node market, policy-news, derivatives, and quantitative engines used by Windows.
+- Added macOS trading-application discovery that selects one locally installed app by actual usage history and navigates through the system accessibility adapter.
+- Stored mutable runtime data under macOS Application Support and removed older runtime copies only after the new local service passes its health check.
+- Added verified cross-platform packages containing matching Windows and macOS editions while preserving member, basic, personal, and custom feature boundaries.
+
 ## 2.20.1 - 2026-08-02
 
 - Standardized the launcher filename for every desktop edition and migrate legacy aliases on startup.

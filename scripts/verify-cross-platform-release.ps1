@@ -1,4 +1,4 @@
-param(
+﻿param(
   [Parameter(Mandatory = $true)]
   [string]$PackagePath,
 
@@ -58,7 +58,7 @@ try {
       $Bytes = Read-EntryPrefix $Entry 256
       if ($Bytes.Length -lt 28) { return @() }
       $Magic = Read-BigEndianUInt32 $Bytes 0
-      if ($Magic -ne 0xCAFEBABE) { return @() }
+      if ($Magic -ne [Convert]::ToUInt32("CAFEBABE", 16)) { return @() }
       $Count = [int](Read-BigEndianUInt32 $Bytes 4)
       $Architectures = @()
       for ($Index = 0; $Index -lt $Count; $Index++) {

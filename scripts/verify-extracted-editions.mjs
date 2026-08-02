@@ -94,6 +94,7 @@ for (const edition of EDITIONS) {
   const serviceWorker = fs.readFileSync(path.join(appRoot, "sw.js"), "utf8");
   const backend = path.join(appRoot, "backend");
   const tradingAdapter = fs.readFileSync(path.join(backend, "打开通达信日K.ps1"), "utf8");
+  const updater = fs.readFileSync(path.join(backend, "自动更新A股田字格.js"), "utf8");
 
   assert(tradingAdapter.includes("FeatureUsage\\$category"), `${edition.mode} 缺少本机交易软件使用频率读取`);
   assert(tradingAdapter.includes("selectedCandidateCount=1"), `${edition.mode} 未锁定唯一交易软件候选`);
@@ -115,6 +116,13 @@ for (const edition of EDITIONS) {
   assert(service.includes('"/api/v1/app-update/status"'), `${edition.mode} 缺少软件更新状态 API`);
   assert(service.includes("scheduleLauncherCleanup"), `${edition.mode} 缺少旧版本启动文件自动清理`);
   assert(service.includes("userPreferences.handleRequest"), `${edition.mode} 缺少用户设置 API`);
+  assert(fs.existsSync(path.join(backend, "macos-trading-app.js")), `${edition.mode} 缺少 macOS 交易软件适配器`);
+  assert(service.includes("createMacTradingAppService"), `${edition.mode} 未加载 macOS 交易软件适配器`);
+  assert(service.includes('process.platform === "win32"'), `${edition.mode} 未区分 Windows 与 macOS 同步入口`);
+  assert(service.includes('"--intraday"'), `${edition.mode} 缺少 macOS 市场同步入口`);
+  assert(service.includes('"--quant-only"'), `${edition.mode} 缺少 macOS 量化同步入口`);
+  assert(service.includes("DERIVATIVES_NODE_SCRIPT"), `${edition.mode} 缺少 macOS 衍生品同步入口`);
+  assert(updater.includes('"/usr/bin/curl"'), `${edition.mode} 缺少 macOS 行情网络通道`);
 
   const hasQuant = index.includes("quant.html");
   const hasAdmin = index.includes("member-admin.html");
@@ -138,10 +146,10 @@ for (const edition of EDITIONS) {
   if (edition.mode === "custom") {
     assert(service.includes("createShortlineService"), "定制版短线服务丢失");
     assert(service.includes("handleShortlineRequest"), "定制版短线路由丢失");
-    assert(service.includes("3.22.1-shortline-v1"), "定制版服务版本未升级");
+    assert(service.includes("3.23.1-shortline-macos-v1"), "定制版服务版本未升级");
   }
   assert(
-    serviceWorker.includes(`a-share-review-v89-update-cleanup-${edition.mode}`),
+    serviceWorker.includes(`a-share-review-v90-cross-platform-${edition.mode}`),
     `${edition.mode} 离线缓存版本未隔离`,
   );
 

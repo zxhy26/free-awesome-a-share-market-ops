@@ -88,7 +88,7 @@ function buildServiceWorker(mode) {
   let source = fs.readFileSync(path.join(sourceApp, "sw.js"), "utf8");
   source = source.replace(
     /const CACHE_VERSION = "[^"]+";/,
-    `const CACHE_VERSION = "a-share-review-v89-update-cleanup-${mode}";`,
+    `const CACHE_VERSION = "a-share-review-v90-cross-platform-${mode}";`,
   );
   const extras = [];
   if (["basic", "self", "custom"].includes(mode)) {
@@ -126,8 +126,22 @@ function insertBefore(source, needle, addition, label) {
   return source.replace(needle, `${addition}${needle}`);
 }
 
+function replaceSection(target, reference, startMarker, endMarker, label) {
+  const targetStart = target.indexOf(startMarker);
+  const targetEnd = target.indexOf(endMarker, targetStart + startMarker.length);
+  const referenceStart = reference.indexOf(startMarker);
+  const referenceEnd = reference.indexOf(endMarker, referenceStart + startMarker.length);
+  if ([targetStart, targetEnd, referenceStart, referenceEnd].some((value) => value < 0)) {
+    throw new Error(`定制版服务缺少${label}替换边界。`);
+  }
+  return target.slice(0, targetStart)
+    + reference.slice(referenceStart, referenceEnd)
+    + target.slice(targetEnd);
+}
+
 function patchCustomService(servicePath) {
   let source = fs.readFileSync(servicePath, "utf8");
+  const standardService = fs.readFileSync(path.join(sourceApp, "backend", "复盘同步服务.js"), "utf8");
   source = insertBefore(
     source,
     'const { createBoardIntradayService } = require("./board-intraday");',
@@ -139,6 +153,12 @@ function patchCustomService(servicePath) {
     'const { createBoardIntradayService } = require("./board-intraday");',
     'const { createBoardMinuteFlowService } = require("./board-minute-flow");\n',
     "板块资金模块",
+  );
+  source = insertBefore(
+    source,
+    'const { createBoardIntradayService } = require("./board-intraday");',
+    'const { createMacTradingAppService } = require("./macos-trading-app");\n',
+    "macOS 交易软件模块",
   );
   if (!source.includes('require("./index-contribution-online")')) {
     source = insertBefore(
@@ -156,8 +176,20 @@ function patchCustomService(servicePath) {
   );
   source = source.replace(
     /const SERVICE_VERSION = "[^"]+";/,
-    'const SERVICE_VERSION = "3.22.1-shortline-v1";',
+    'const SERVICE_VERSION = "3.23.1-shortline-macos-v1";',
   );
+  if (!source.includes("const AUTO_UPDATE_SCRIPT")) {
+    source = source.replace(
+      'const POLICY_SCRIPT = path.join(WORK_DIR, "更新政策新闻.ps1");',
+      'const POLICY_SCRIPT = path.join(WORK_DIR, "更新政策新闻.ps1");\nconst AUTO_UPDATE_SCRIPT = path.join(WORK_DIR, "自动更新A股田字格.js");',
+    );
+  }
+  if (!source.includes("const DERIVATIVES_NODE_SCRIPT")) {
+    source = source.replace(
+      'const DERIVATIVES_SCRIPT = path.join(WORK_DIR, "更新机构衍生品.ps1");',
+      'const DERIVATIVES_SCRIPT = path.join(WORK_DIR, "更新机构衍生品.ps1");\nconst DERIVATIVES_NODE_SCRIPT = path.join(WORK_DIR, "更新机构衍生品.js");',
+    );
+  }
   if (!source.includes("appUpdate.scheduleLauncherCleanup()")) {
     source = source.replace(
       /(server\.listen\(PORT, HOST, \(\) => \{\r?\n)/,
@@ -188,6 +220,27 @@ function patchCustomService(servicePath) {
 `,
     "用户设置实例",
   );
+  source = insertBefore(
+    source,
+    "const membership = createMembershipService({",
+    `const macTradingApp = createMacTradingAppService({
+  statePath: process.env.A_SHARE_REVIEW_MAC_TRADING_STATE
+    || (PORTABLE_ROOT ? path.join(PORTABLE_ROOT, "数据历史", "macOS交易软件.json") : undefined),
+});
+`,
+    "macOS 交易软件实例",
+  );
+
+  for (const section of [
+    ["function runNodeScript(", "async function runRefresh(", "Node 脚本执行器"],
+    ["async function runRefresh(", "async function runQuant(", "跨平台市场同步"],
+    ["async function runQuant(", "async function runPolicyNews(", "跨平台量化同步"],
+    ["async function runPolicyNews(", "async function runNextWeekEvents(", "跨平台政策新闻同步"],
+    ["async function runDerivatives(", "async function runIndexContribution(", "跨平台衍生品同步"],
+    ["function runLocalStock(", "function minuteOfDay(", "macOS 股票软件跳转"],
+  ]) {
+    source = replaceSection(source, standardService, ...section);
+  }
   source = insertBefore(
     source,
     "const boardIntraday = createBoardIntradayService();",

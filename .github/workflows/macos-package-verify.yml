@@ -1,0 +1,113 @@
+name: Verify macOS Release Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      download_url:
+        description: Public HTTPS URL of the cross-platform Member ZIP
+        required: true
+        type: string
+      sha256:
+        description: Expected uppercase or lowercase SHA-256
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: macos-15
+    steps:
+      - name: Download and verify package
+        shell: bash
+        env:
+          DOWNLOAD_URL: ${{ inputs.download_url }}
+          EXPECTED_SHA256: ${{ inputs.sha256 }}
+        run: |
+          set -euo pipefail
+          case "$DOWNLOAD_URL" in
+            https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/*) ;;
+            *) echo "Unexpected download host or path" >&2; exit 1 ;;
+          esac
+          curl --fail --location --retry 4 --output "$RUNNER_TEMP/release.zip" "$DOWNLOAD_URL"
+          actual="$(shasum -a 256 "$RUNNER_TEMP/release.zip" | awk '{print toupper($1)}')"
+          expected="$(printf '%s' "$EXPECTED_SHA256" | tr '[:lower:]' '[:upper:]')"
+          test "$actual" = "$expected"
+          mkdir -p "$RUNNER_TEMP/release"
+          ditto -x -k "$RUNNER_TEMP/release.zip" "$RUNNER_TEMP/release"
+
+      - name: Verify universal app and executable modes
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$(find "$RUNNER_TEMP/release" -type d -name '*.app' -print -quit)"
+          test -n "$app"
+          launcher="$app/Contents/MacOS/AshareReviewLauncher"
+          node="$app/Contents/Resources/runtime/node"
+          test -x "$launcher"
+          test -x "$node"
+          lipo -archs "$launcher" | tee "$RUNNER_TEMP/launcher-architectures.txt"
+          lipo -archs "$node" | tee "$RUNNER_TEMP/node-architectures.txt"
+          grep -q arm64 "$RUNNER_TEMP/launcher-architectures.txt"
+          grep -q x86_64 "$RUNNER_TEMP/launcher-architectures.txt"
+          grep -q arm64 "$RUNNER_TEMP/node-architectures.txt"
+          grep -q x86_64 "$RUNNER_TEMP/node-architectures.txt"
+          plutil -lint "$app/Contents/Info.plist"
+          A_SHARE_REVIEW_MAC_LAUNCHER_TEST_ONLY=1 \
+            A_SHARE_REVIEW_MAC_LAUNCHER_TEST_RESULT="$RUNNER_TEMP/launcher-self-test.json" \
+            "$launcher"
+
+      - name: Start the actual macOS local service
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$(find "$RUNNER_TEMP/release" -type d -name '*.app' -print -quit)"
+          payload="$app/Contents/Resources/payload"
+          node="$app/Contents/Resources/runtime/node"
+          service="$payload/程序/应用/backend/复盘同步服务.js"
+          "$node" --check "$service"
+          "$node" --check "$payload/程序/应用/backend/自动更新A股田字格.js"
+          export A_SHARE_REVIEW_PORT=19876
+          export A_SHARE_REVIEW_HOST=127.0.0.1
+          export A_SHARE_REVIEW_PORTABLE_ROOT="$payload"
+          export A_SHARE_REVIEW_APP_DIR="$payload/程序/应用"
+          export A_SHARE_REVIEW_EDITION=member
+          export A_SHARE_REVIEW_RELEASE_EDITION=member
+          export A_SHARE_REVIEW_DISABLE_SCHEDULES=1
+          export A_SHARE_REVIEW_TEST_MODE=1
+          export A_SHARE_REVIEW_MEMBER_DATA_DIR="$RUNNER_TEMP/member-state"
+          export A_SHARE_REVIEW_PREFERENCES_PATH="$RUNNER_TEMP/preferences.json"
+          export A_SHARE_REVIEW_LOG_PATH="$RUNNER_TEMP/service.log"
+          "$node" "$service" >"$RUNNER_TEMP/service-stdout.log" 2>"$RUNNER_TEMP/service-stderr.log" &
+          service_pid=$!
+          trap 'kill "$service_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 80); do
+            if curl --fail --silent http://127.0.0.1:19876/api/v1/health >"$RUNNER_TEMP/health.json"; then break; fi
+            sleep 0.25
+          done
+          curl --fail --silent http://127.0.0.1:19876/api/v1/health | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ok"] is True'
+          curl --fail --silent http://127.0.0.1:19876/app/ >"$RUNNER_TEMP/index.html"
+          grep -q '<title>' "$RUNNER_TEMP/index.html"
+          stock_status="$(curl --silent --output "$RUNNER_TEMP/mac-stock-dry-run.json" --write-out '%{http_code}' --request POST 'http://127.0.0.1:19876/stock-open?code=600000&market=sh&name=%E6%B5%A6%E5%8F%91%E9%93%B6%E8%A1%8C&dry=1')"
+          test "$stock_status" = "500"
+          python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["ok"] is False and "Mac" in d["message"]' "$RUNNER_TEMP/mac-stock-dry-run.json"
+          kill "$service_pid"
+          wait "$service_pid" || true
+          trap - EXIT
+
+      - name: Upload verification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-package-verification
+          path: |
+            ${{ runner.temp }}/launcher-self-test.json
+            ${{ runner.temp }}/launcher-architectures.txt
+            ${{ runner.temp }}/node-architectures.txt
+            ${{ runner.temp }}/health.json
+            ${{ runner.temp }}/index.html
+            ${{ runner.temp }}/service-stdout.log
+            ${{ runner.temp }}/service-stderr.log
+            ${{ runner.temp }}/mac-stock-dry-run.json
+          if-no-files-found: warn
+          retention-days: 14

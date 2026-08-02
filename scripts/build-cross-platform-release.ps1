@@ -1,4 +1,4 @@
-param(
+﻿param(
   [Parameter(Mandatory = $true)]
   [ValidateSet("Member", "Basic", "Self", "Custom")]
   [string]$Edition,
