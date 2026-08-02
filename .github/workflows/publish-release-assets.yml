@@ -56,8 +56,12 @@ jobs:
             if ((Get-Item -LiteralPath $target).Length -ne [long]$asset.size) {
               throw "发布文件大小不一致：$($asset.name)"
             }
-            gh release upload $manifest.tag $target --clobber
+            $uploadOutput = @(
+              gh release upload $manifest.tag $target --clobber --repo $env:GITHUB_REPOSITORY 2>&1
+            )
             if ($LASTEXITCODE -ne 0) {
+              $detail = ($uploadOutput -join " | ").Replace("`r", " ").Replace("`n", " ")
+              Write-Host "::error title=GitHub release upload failed::$($asset.name): $detail"
               throw "GitHub 发布上传失败：$($asset.name)"
             }
           }
@@ -68,7 +72,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $manifest = Get-Content -LiteralPath ".release-upload\manifest.json" -Raw -Encoding UTF8 | ConvertFrom-Json
-          $published = gh release view $manifest.tag --json assets | ConvertFrom-Json
+          $published = gh release view $manifest.tag --repo $env:GITHUB_REPOSITORY --json assets | ConvertFrom-Json
           $names = @($published.assets | ForEach-Object { $_.name })
           foreach ($asset in $manifest.assets) {
             if ($names -notcontains $asset.name) {
