@@ -17,21 +17,21 @@ jobs:
       - name: Check out transfer branch
         uses: actions/checkout@v4
 
-      - name: Reassemble, verify, and upload assets
+      - name: Reassemble and verify assets
         shell: powershell
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference = "Stop"
           $manifest = Get-Content -LiteralPath ".release-upload\manifest.json" -Raw -Encoding UTF8 | ConvertFrom-Json
           if ($manifest.tag -notmatch '^v\d+\.\d+\.\d+$') {
             throw "发布标签格式无效"
           }
+          $outputRoot = Join-Path $PWD ".release-output"
+          New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
           foreach ($asset in $manifest.assets) {
             if ([IO.Path]::GetFileName($asset.name) -ne $asset.name) {
               throw "发布文件名无效：$($asset.name)"
             }
-            $target = Join-Path $env:RUNNER_TEMP $asset.name
+            $target = Join-Path $outputRoot $asset.name
             $targetStream = [IO.File]::Create($target)
             try {
               foreach ($chunk in $asset.chunks) {
@@ -56,15 +56,17 @@ jobs:
             if ((Get-Item -LiteralPath $target).Length -ne [long]$asset.size) {
               throw "发布文件大小不一致：$($asset.name)"
             }
-            $uploadOutput = @(
-              gh release upload $manifest.tag $target --clobber --repo $env:GITHUB_REPOSITORY 2>&1
-            )
-            if ($LASTEXITCODE -ne 0) {
-              $detail = ($uploadOutput -join " | ").Replace("`r", " ").Replace("`n", " ")
-              Write-Host "::error title=GitHub release upload failed::$($asset.name): $detail"
-              throw "GitHub 发布上传失败：$($asset.name)"
-            }
           }
+          "RELEASE_TAG=$($manifest.tag)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Upload verified assets to the release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: .release-output/*
+          fail_on_unmatched_files: true
+          overwrite_files: true
+          preserve_order: true
 
       - name: Verify published asset names
         shell: powershell
