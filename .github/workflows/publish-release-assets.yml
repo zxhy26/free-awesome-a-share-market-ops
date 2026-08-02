@@ -50,7 +50,7 @@ jobs:
               $targetStream.Dispose()
             }
             $actualHash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash
-            if ($actualHash -ne String($asset.sha256).ToUpperInvariant()) {
+            if ($actualHash -ne ([string]$asset.sha256).ToUpperInvariant()) {
               throw "发布文件哈希不一致：$($asset.name)"
             }
             if ((Get-Item -LiteralPath $target).Length -ne [long]$asset.size) {
