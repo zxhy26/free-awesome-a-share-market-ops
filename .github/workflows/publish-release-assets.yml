@@ -1,0 +1,77 @@
+name: Publish Verified Release Assets
+
+on:
+  push:
+    branches:
+      - "release-assets/**"
+    paths:
+      - ".release-upload/**"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - name: Check out transfer branch
+        uses: actions/checkout@v4
+
+      - name: Reassemble, verify, and upload assets
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $manifest = Get-Content -LiteralPath ".release-upload\manifest.json" -Raw -Encoding UTF8 | ConvertFrom-Json
+          if ($manifest.tag -notmatch '^v\d+\.\d+\.\d+$') {
+            throw "发布标签格式无效"
+          }
+          foreach ($asset in $manifest.assets) {
+            if ([IO.Path]::GetFileName($asset.name) -ne $asset.name) {
+              throw "发布文件名无效：$($asset.name)"
+            }
+            $target = Join-Path $env:RUNNER_TEMP $asset.name
+            $targetStream = [IO.File]::Create($target)
+            try {
+              foreach ($chunk in $asset.chunks) {
+                $chunkPath = Join-Path ".release-upload" $chunk
+                if (-not (Test-Path -LiteralPath $chunkPath -PathType Leaf)) {
+                  throw "缺少传输分片：$chunk"
+                }
+                $sourceStream = [IO.File]::OpenRead($chunkPath)
+                try {
+                  $sourceStream.CopyTo($targetStream)
+                } finally {
+                  $sourceStream.Dispose()
+                }
+              }
+            } finally {
+              $targetStream.Dispose()
+            }
+            $actualHash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash
+            if ($actualHash -ne String($asset.sha256).ToUpperInvariant()) {
+              throw "发布文件哈希不一致：$($asset.name)"
+            }
+            if ((Get-Item -LiteralPath $target).Length -ne [long]$asset.size) {
+              throw "发布文件大小不一致：$($asset.name)"
+            }
+            gh release upload $manifest.tag $target --clobber
+            if ($LASTEXITCODE -ne 0) {
+              throw "GitHub 发布上传失败：$($asset.name)"
+            }
+          }
+
+      - name: Verify published asset names
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $manifest = Get-Content -LiteralPath ".release-upload\manifest.json" -Raw -Encoding UTF8 | ConvertFrom-Json
+          $published = gh release view $manifest.tag --json assets | ConvertFrom-Json
+          $names = @($published.assets | ForEach-Object { $_.name })
+          foreach ($asset in $manifest.assets) {
+            if ($names -notcontains $asset.name) {
+              throw "GitHub 发布页缺少文件：$($asset.name)"
+            }
+          }
