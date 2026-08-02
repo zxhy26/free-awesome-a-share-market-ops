@@ -1,0 +1,148 @@
+name: Build macOS Universal Runtime
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "macos-launcher/**"
+      - ".github/workflows/macos-runtime.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    env:
+      NODE_VERSION: 24.18.1
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Compile universal WebKit launcher
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdk="$(xcrun --sdk macosx --show-sdk-path)"
+          mkdir -p build/core
+          xcrun swiftc -O -target arm64-apple-macos12.0 -sdk "$sdk" \
+            -framework AppKit -framework WebKit \
+            macos-launcher/AshareReviewLauncher.swift -o build/launcher-arm64
+          xcrun swiftc -O -target x86_64-apple-macos12.0 -sdk "$sdk" \
+            -framework AppKit -framework WebKit \
+            macos-launcher/AshareReviewLauncher.swift -o build/launcher-x64
+          lipo -create build/launcher-arm64 build/launcher-x64 -output build/core/AshareReviewLauncher
+          chmod 755 build/core/AshareReviewLauncher
+          codesign --force --sign - --timestamp=none build/core/AshareReviewLauncher
+          lipo -archs build/core/AshareReviewLauncher | tee build/launcher-architectures.txt
+          grep -q arm64 build/launcher-architectures.txt
+          grep -q x86_64 build/launcher-architectures.txt
+
+      - name: Build universal Node runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://nodejs.org/dist/v${NODE_VERSION}"
+          curl --fail --location --retry 3 --output build/node-arm64.tar.gz "$base/node-v${NODE_VERSION}-darwin-arm64.tar.gz"
+          curl --fail --location --retry 3 --output build/node-x64.tar.gz "$base/node-v${NODE_VERSION}-darwin-x64.tar.gz"
+          tar -xzf build/node-arm64.tar.gz -C build
+          tar -xzf build/node-x64.tar.gz -C build
+          lipo -create \
+            "build/node-v${NODE_VERSION}-darwin-arm64/bin/node" \
+            "build/node-v${NODE_VERSION}-darwin-x64/bin/node" \
+            -output build/core/node
+          chmod 755 build/core/node
+          codesign --force --sign - --timestamp=none build/core/node
+          lipo -archs build/core/node | tee build/node-architectures.txt
+          grep -q arm64 build/node-architectures.txt
+          grep -q x86_64 build/node-architectures.txt
+          build/core/node --version | tee build/node-version.txt
+          grep -q "v${NODE_VERSION}" build/node-version.txt
+
+      - name: Create macOS icon
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/icon.iconset
+          for size in 16 32 128 256 512; do
+            sips -z "$size" "$size" app/assets/icons/icon-512.png --out "build/icon.iconset/icon_${size}x${size}.png" >/dev/null
+            double=$((size * 2))
+            sips -z "$double" "$double" app/assets/icons/icon-512.png --out "build/icon.iconset/icon_${size}x${size}@2x.png" >/dev/null
+          done
+          iconutil -c icns build/icon.iconset -o build/core/AppIcon.icns
+
+      - name: Self-test universal runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="build/Test.app"
+          mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources/runtime" "$app/Contents/Resources/payload/程序/应用/backend"
+          cp build/core/AshareReviewLauncher "$app/Contents/MacOS/AshareReviewLauncher"
+          cp build/core/node "$app/Contents/Resources/runtime/node"
+          printf 'console.log("fixture");\n' > "$app/Contents/Resources/payload/程序/应用/backend/复盘同步服务.js"
+          cat > "$app/Contents/Resources/launcher-config.json" <<'JSON'
+          {
+            "displayName": "A股复盘 macOS 运行自检",
+            "edition": "member",
+            "releaseEdition": "member",
+            "version": "0.0.0",
+            "payloadRevision": "runtime-self-test",
+            "appSupportDirectory": "A股复盘软件测试",
+            "minimumWidth": 1180,
+            "minimumHeight": 760
+          }
+          JSON
+          chmod 755 "$app/Contents/MacOS/AshareReviewLauncher" "$app/Contents/Resources/runtime/node"
+          A_SHARE_REVIEW_MAC_LAUNCHER_TEST_ONLY=1 \
+            A_SHARE_REVIEW_MAC_LAUNCHER_TEST_RESULT="$PWD/build/runtime-self-test.json" \
+            "$app/Contents/MacOS/AshareReviewLauncher"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("build/runtime-self-test.json").read_text())
+          assert result["ok"] is True
+          assert result["serviceExists"] is True
+          assert result["payloadExists"] is True
+          assert result["nodeVersion"].startswith("v24.")
+          PY
+
+      - name: Package runtime core
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root = Path("build/core")
+          files = {}
+          for path in sorted(root.iterdir()):
+              if path.is_file():
+                  files[path.name] = {
+                      "bytes": path.stat().st_size,
+                      "sha256": hashlib.sha256(path.read_bytes()).hexdigest().upper(),
+                  }
+          (root / "runtime-info.json").write_text(json.dumps({
+              "schemaVersion": 1,
+              "nodeVersion": "v24.18.1",
+              "minimumMacOS": "12.0",
+              "architectures": ["arm64", "x86_64"],
+              "files": files,
+          }, ensure_ascii=False, indent=2) + "\n")
+          PY
+          ditto -c -k --sequesterRsrc --keepParent build/core build/macos-universal-runtime.zip
+          shasum -a 256 build/macos-universal-runtime.zip | tee build/macos-universal-runtime.sha256
+
+      - name: Upload universal runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-universal-runtime
+          path: |
+            build/macos-universal-runtime.zip
+            build/macos-universal-runtime.sha256
+            build/runtime-self-test.json
+            build/launcher-architectures.txt
+            build/node-architectures.txt
+          if-no-files-found: error
+          retention-days: 14

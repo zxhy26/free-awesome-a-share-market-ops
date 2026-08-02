@@ -338,6 +338,9 @@ function sleep(ms) {
 }
 
 function runPowerShell(script, timeoutMs = 60000) {
+  if (process.platform !== "win32") {
+    throw new Error("当前系统不提供 Windows PowerShell 备用通道");
+  }
   return execFileSync(
     "powershell.exe",
     ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
@@ -406,14 +409,18 @@ function fetchText(url, timeoutSec = 35) {
   const escaped = url.replace(/'/g, "''");
   const timeout = Math.max(6, Number(timeoutSec) || 20);
   const errors = [];
+  const curlCommand = process.platform === "win32" ? "curl.exe" : "/usr/bin/curl";
   try {
     return execFileSync(
-      "curl.exe",
+      curlCommand,
       ["-L", "--silent", "--show-error", "--max-time", String(timeout), "-H", "Referer: https://quote.eastmoney.com/ztb/", url],
       { encoding: "utf8", timeout: (timeout + 8) * 1000, maxBuffer: 64 * 1024 * 1024 },
     );
   } catch (error) {
     errors.push(error.message);
+  }
+  if (process.platform !== "win32") {
+    throw new Error(`行情接口连续失败：${url}；${errors.at(-1) || "未知错误"}`);
   }
   const command =
     `[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);` +
@@ -462,7 +469,7 @@ function fetchCurlTextAsync(url, options = {}) {
   curlArgs.push(url);
   return new Promise((resolve, reject) => {
     execFile(
-      "curl.exe",
+      process.platform === "win32" ? "curl.exe" : "/usr/bin/curl",
       curlArgs,
       {
         encoding: "utf8",
@@ -613,6 +620,9 @@ let tdxBoardEntriesCache = null;
 
 function readDefaultText(filePath) {
   if (!fs.existsSync(filePath)) return "";
+  if (process.platform !== "win32") {
+    return fs.readFileSync(filePath, "latin1");
+  }
   const file = psQuote(filePath);
   return runPowerShell(
     `[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);` +

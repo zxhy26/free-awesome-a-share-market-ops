@@ -13,6 +13,7 @@ const { createIndexIntradayService } = require("./index-intraday");
 const { refreshIndexContribution } = require("./index-contribution-online");
 const { createAppUpdateService } = require("./app-update");
 const { createUserPreferencesService } = require("./用户设置");
+const { createMacTradingAppService } = require("./macos-trading-app");
 
 const PORT = Number(process.env.A_SHARE_REVIEW_PORT) || 18765;
 const HOST = process.env.A_SHARE_REVIEW_HOST || "127.0.0.1";
@@ -37,8 +38,10 @@ const LOG_PATH = process.env.A_SHARE_REVIEW_LOG_PATH || path.join(WORK_DIR, "自
 const REFRESH_SCRIPT = path.join(WORK_DIR, "盘中实时更新.ps1");
 const QUANT_SCRIPT = path.join(WORK_DIR, "运行量化选股.ps1");
 const POLICY_SCRIPT = path.join(WORK_DIR, "更新政策新闻.ps1");
+const AUTO_UPDATE_SCRIPT = path.join(WORK_DIR, "自动更新A股田字格.js");
 const NEXT_WEEK_EVENTS_SCRIPT = path.join(WORK_DIR, "next-week-events-updater.js");
 const DERIVATIVES_SCRIPT = path.join(WORK_DIR, "更新机构衍生品.ps1");
+const DERIVATIVES_NODE_SCRIPT = path.join(WORK_DIR, "更新机构衍生品.js");
 const STOCK_APP_SCRIPT = path.join(WORK_DIR, "打开通达信日K.ps1");
 const APP_EDITION = resolveAppEdition();
 const appUpdate = createAppUpdateService({
@@ -49,6 +52,10 @@ const appUpdate = createAppUpdateService({
   log,
 });
 const userPreferences = createUserPreferencesService({filePath: USER_PREFERENCES_PATH});
+const macTradingApp = createMacTradingAppService({
+  statePath: process.env.A_SHARE_REVIEW_MAC_TRADING_STATE
+    || (PORTABLE_ROOT ? path.join(PORTABLE_ROOT, "数据历史", "macOS交易软件.json") : undefined),
+});
 const membership = createMembershipService({
   edition: APP_EDITION,
   appDir: APP_DIR,
@@ -654,7 +661,7 @@ function runPowerShell(scriptPath, extraArgs, timeoutMs, onProgress) {
   });
 }
 
-function runNodeScript(scriptPath, extraArgs, timeoutMs) {
+function runNodeScript(scriptPath, extraArgs, timeoutMs, onProgress) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [scriptPath, ...extraArgs], {cwd: WORK_DIR, windowsHide: true});
     let stdout = "";
@@ -671,7 +678,9 @@ function runNodeScript(scriptPath, extraArgs, timeoutMs) {
       resolve({ok: false, code: null, message: "更新超时，后台任务已经停止", stdout: stdout.trim(), stderr: stderr.trim()});
     }, timeoutMs);
     child.stdout.on("data", (chunk) => {
-      stdout += chunk.toString("utf8");
+      const text = chunk.toString("utf8");
+      stdout += text;
+      if (typeof onProgress === "function") onProgress(text);
     });
     child.stderr.on("data", (chunk) => {
       stderr += chunk.toString("utf8");
@@ -717,7 +726,23 @@ async function runRefresh(options = {}) {
   log(source === "auto" ? "后台实时同步启动" : "页面手动同步请求已接收");
   const startedAt = Date.now();
   const args = force ? ["-Force"] : [];
-  const result = await runPowerShell(REFRESH_SCRIPT, args, timeoutMs, updateProgressFromOutput);
+  let result;
+  if (process.platform === "win32") {
+    result = await runPowerShell(REFRESH_SCRIPT, args, timeoutMs, updateProgressFromOutput);
+  } else if (!fs.existsSync(AUTO_UPDATE_SCRIPT)) {
+    result = {ok: false, code: null, message: "找不到跨平台市场同步脚本", stdout: "", stderr: ""};
+  } else {
+    const updateArgs = ["--intraday", "--skip-quant", "--no-compass"];
+    if (force) updateArgs.push("--force", "--policy-news-force");
+    result = await runNodeScript(AUTO_UPDATE_SCRIPT, updateArgs, timeoutMs, updateProgressFromOutput);
+    if (result.ok && fs.existsSync(DERIVATIVES_NODE_SCRIPT)) {
+      const derivativesArgs = force ? ["--force"] : [];
+      const derivativesResult = await runNodeScript(DERIVATIVES_NODE_SCRIPT, derivativesArgs, 2 * 60 * 1000);
+      if (!derivativesResult.ok) {
+        log(`机构衍生品更新失败，保留上一份有效数据：${derivativesResult.message}`);
+      }
+    }
+  }
   const errorCode = classifySyncFailure(result);
   const body = {
     ...result,
@@ -753,14 +778,19 @@ async function runQuant() {
       lastResult: lastQuantResult,
     };
   }
-  if (!fs.existsSync(QUANT_SCRIPT)) {
+  const directQuantAvailable = process.platform !== "win32"
+    && fs.existsSync(AUTO_UPDATE_SCRIPT)
+    && fs.existsSync(path.join(APP_DIR, "pages", "quant.html"));
+  if (!fs.existsSync(QUANT_SCRIPT) && !directQuantAvailable) {
     return {ok: false, running: false, message: "找不到量化选股更新脚本", errorCode: "QUANT_SCRIPT_MISSING"};
   }
   quantRunning = true;
   log("页面量化选股更新请求已接收");
   const startedAt = Date.now();
   try {
-    const result = await runPowerShell(QUANT_SCRIPT, [], 16 * 60 * 1000);
+    const result = process.platform === "win32"
+      ? await runPowerShell(QUANT_SCRIPT, [], 16 * 60 * 1000)
+      : await runNodeScript(AUTO_UPDATE_SCRIPT, ["--quant-only", "--no-compass"], 16 * 60 * 1000);
     const body = {
       ...result,
       errorCode: result.ok ? "" : classifySyncFailure(result),
@@ -780,10 +810,17 @@ async function runPolicyNews(options = {}) {
   if (policyNewsRunning) return {ok: false, running: true, message: "政策新闻同步正在运行", policyNews: policyNewsStatus()};
   policyNewsRunning = true;
   const source = options.source || "manual";
-  const args = options.force === false ? [] : ["-Force"];
+  const force = options.force !== false;
+  const args = force ? ["-Force"] : [];
   log(source === "auto" ? "后台政策新闻同步启动" : "页面政策新闻同步请求已接收");
   try {
-    const result = await runPowerShell(POLICY_SCRIPT, args, 90 * 1000);
+    const result = process.platform === "win32"
+      ? await runPowerShell(POLICY_SCRIPT, args, 90 * 1000)
+      : await runNodeScript(
+        AUTO_UPDATE_SCRIPT,
+        ["--policy-news-only", "--no-compass", ...(force ? ["--policy-news-force"] : [])],
+        90 * 1000,
+      );
     const body = {...result, running: false, source, policyNews: policyNewsStatus()};
     lastPolicyNewsAt = nowText();
     lastPolicyNewsResult = body;
@@ -819,13 +856,17 @@ async function runNextWeekEvents(options = {}) {
 
 async function runDerivatives(options = {}) {
   if (derivativesRunning) return {ok: false, running: true, message: "机构衍生品正在更新", derivatives: derivativesStatus()};
-  if (!fs.existsSync(DERIVATIVES_SCRIPT)) return {ok: false, running: false, message: "找不到机构衍生品更新脚本", errorCode: "DERIVATIVES_SCRIPT_MISSING"};
+  const derivativesRunner = process.platform === "win32" ? DERIVATIVES_SCRIPT : DERIVATIVES_NODE_SCRIPT;
+  if (!fs.existsSync(derivativesRunner)) return {ok: false, running: false, message: "找不到机构衍生品更新脚本", errorCode: "DERIVATIVES_SCRIPT_MISSING"};
   derivativesRunning = true;
   const source = options.source || "manual";
-  const args = options.force === false ? [] : ["-Force"];
+  const force = options.force !== false;
+  const args = force ? ["-Force"] : [];
   log(source === "auto" ? "后台机构衍生品同步启动" : "页面机构衍生品同步请求已接收");
   try {
-    const result = await runPowerShell(DERIVATIVES_SCRIPT, args, 2 * 60 * 1000);
+    const result = process.platform === "win32"
+      ? await runPowerShell(DERIVATIVES_SCRIPT, args, 2 * 60 * 1000)
+      : await runNodeScript(DERIVATIVES_NODE_SCRIPT, force ? ["--force"] : [], 2 * 60 * 1000);
     const body = {...result, running: false, source, derivatives: derivativesStatus()};
     lastDerivativesAt = nowText();
     lastDerivativesResult = body;
@@ -883,6 +924,12 @@ function runLocalStock(searchParams) {
   }
   if (isSector && !/^\d{6}$/.test(stockCode) && !name) {
     return Promise.resolve({ ok: false, message: "板块代码和名称均为空" });
+  }
+  if (process.platform === "darwin") {
+    return macTradingApp.openTarget({code: stockCode, market, name, dryRun});
+  }
+  if (process.platform !== "win32") {
+    return Promise.resolve({ok: false, message: "当前系统暂未配置股票软件跳转适配器"});
   }
   if (!fs.existsSync(STOCK_APP_SCRIPT)) {
     return Promise.resolve({ ok: false, message: "找不到本机股票软件适配脚本" });

@@ -128,7 +128,10 @@ function createMembershipService(options = {}) {
   const appDir = path.resolve(options.appDir || path.join(__dirname, ".."));
   const dataDir = path.resolve(options.dataDir || path.join(appDir, "data"));
   const keyDir = path.resolve(options.keyDir || __dirname);
-  const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
+  const localAppData = process.env.LOCALAPPDATA
+    || (process.platform === "darwin"
+      ? path.join(os.homedir(), "Library", "Application Support")
+      : path.join(os.homedir(), "AppData", "Local"));
   const editionDirectory = {
     member: "会员版",
     basic: "基础版",
