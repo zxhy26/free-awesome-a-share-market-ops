@@ -6,7 +6,9 @@ on:
     branches:
       - main
     paths:
+      - "app/**"
       - "macos-launcher/**"
+      - "package.json"
       - ".github/workflows/macos-runtime.yml"
 
 permissions:
@@ -108,6 +110,93 @@ jobs:
           assert result["nodeVersion"].startswith("v24.")
           PY
 
+      - name: Verify a complete packaged app on macOS
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_app="$PWD/app"
+          package_root="$PWD/build/full-package"
+          packaged_app="$package_root/AshareReview.app"
+          mkdir -p \
+            "$packaged_app/Contents/MacOS" \
+            "$packaged_app/Contents/Resources/runtime" \
+            "$packaged_app/Contents/Resources/payload/程序"
+          cp build/core/AshareReviewLauncher "$packaged_app/Contents/MacOS/AshareReviewLauncher"
+          cp build/core/node "$packaged_app/Contents/Resources/runtime/node"
+          cp build/core/AppIcon.icns "$packaged_app/Contents/Resources/AppIcon.icns"
+          ditto "$source_app" "$packaged_app/Contents/Resources/payload/程序/应用"
+          cat > "$packaged_app/Contents/Resources/launcher-config.json" <<'JSON'
+          {
+            "displayName": "大a后勤部",
+            "edition": "member",
+            "releaseEdition": "member",
+            "version": "2.21.0",
+            "payloadRevision": "github-macos-integration",
+            "appSupportDirectory": "A股复盘软件",
+            "minimumWidth": 1180,
+            "minimumHeight": 760
+          }
+          JSON
+          cat > "$packaged_app/Contents/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>CFBundleExecutable</key><string>AshareReviewLauncher</string>
+            <key>CFBundleIdentifier</key><string>com.zxhy26.ashare-review.member</string>
+            <key>CFBundleName</key><string>大a后勤部</string>
+            <key>CFBundleDisplayName</key><string>大a后勤部</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>2.21.0</string>
+            <key>CFBundleVersion</key><string>22100</string>
+            <key>LSMinimumSystemVersion</key><string>12.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict></plist>
+          PLIST
+          chmod 755 \
+            "$packaged_app/Contents/MacOS/AshareReviewLauncher" \
+            "$packaged_app/Contents/Resources/runtime/node"
+          plutil -lint "$packaged_app/Contents/Info.plist"
+          ditto -c -k --sequesterRsrc --keepParent "$packaged_app" build/full-package.zip
+          mkdir -p build/full-package-extracted
+          ditto -x -k build/full-package.zip build/full-package-extracted
+
+          app="$PWD/build/full-package-extracted/AshareReview.app"
+          payload="$app/Contents/Resources/payload"
+          node="$app/Contents/Resources/runtime/node"
+          service="$payload/程序/应用/backend/复盘同步服务.js"
+          test -x "$app/Contents/MacOS/AshareReviewLauncher"
+          test -x "$node"
+          "$node" --check "$service"
+          "$node" --check "$payload/程序/应用/backend/自动更新A股田字格.js"
+          export A_SHARE_REVIEW_PORT=19876
+          export A_SHARE_REVIEW_HOST=127.0.0.1
+          export A_SHARE_REVIEW_PORTABLE_ROOT="$payload"
+          export A_SHARE_REVIEW_APP_DIR="$payload/程序/应用"
+          export A_SHARE_REVIEW_EDITION=member
+          export A_SHARE_REVIEW_RELEASE_EDITION=member
+          export A_SHARE_REVIEW_DISABLE_SCHEDULES=1
+          export A_SHARE_REVIEW_TEST_MODE=1
+          export A_SHARE_REVIEW_MEMBER_DATA_DIR="$RUNNER_TEMP/member-state"
+          export A_SHARE_REVIEW_PREFERENCES_PATH="$RUNNER_TEMP/preferences.json"
+          export A_SHARE_REVIEW_LOG_PATH="$RUNNER_TEMP/service.log"
+          "$node" "$service" >build/service-stdout.log 2>build/service-stderr.log &
+          service_pid=$!
+          trap 'kill "$service_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 80); do
+            if curl --fail --silent http://127.0.0.1:19876/api/v1/health >build/health.json; then break; fi
+            sleep 0.25
+          done
+          curl --fail --silent http://127.0.0.1:19876/api/v1/health | \
+            python3 -c 'import json,sys; data=json.load(sys.stdin); assert data["ok"] is True'
+          curl --fail --silent http://127.0.0.1:19876/app/ >build/index.html
+          grep -q '<title>' build/index.html
+          stock_status="$(curl --silent --output build/mac-stock-dry-run.json --write-out '%{http_code}' --request POST 'http://127.0.0.1:19876/stock-open?code=600000&market=sh&name=%E6%B5%A6%E5%8F%91%E9%93%B6%E8%A1%8C&dry=1')"
+          test "$stock_status" = "500"
+          python3 -c 'import json; data=json.load(open("build/mac-stock-dry-run.json")); assert data["ok"] is False and "Mac" in data["message"]'
+          kill "$service_pid"
+          wait "$service_pid" || true
+          trap - EXIT
+
       - name: Package runtime core
         shell: bash
         run: |
@@ -144,5 +233,11 @@ jobs:
             build/runtime-self-test.json
             build/launcher-architectures.txt
             build/node-architectures.txt
+            build/full-package.zip
+            build/health.json
+            build/index.html
+            build/service-stdout.log
+            build/service-stderr.log
+            build/mac-stock-dry-run.json
           if-no-files-found: error
           retention-days: 14
