@@ -183,11 +183,13 @@ jobs:
           service_pid=$!
           trap 'kill "$service_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 80); do
-            if curl --fail --silent http://127.0.0.1:19876/api/v1/health >build/health.json; then break; fi
+            if curl --fail --silent http://127.0.0.1:19876/health >build/health.json; then break; fi
             sleep 0.25
           done
-          curl --fail --silent http://127.0.0.1:19876/api/v1/health | \
+          curl --fail --silent http://127.0.0.1:19876/health | \
             python3 -c 'import json,sys; data=json.load(sys.stdin); assert data["ok"] is True'
+          curl --fail --silent http://127.0.0.1:19876/api/v1/health >build/data-health.json
+          python3 -c 'import json; data=json.load(open("build/data-health.json")); assert "service" in data'
           curl --fail --silent http://127.0.0.1:19876/app/ >build/index.html
           grep -q '<title>' build/index.html
           stock_status="$(curl --silent --output build/mac-stock-dry-run.json --write-out '%{http_code}' --request POST 'http://127.0.0.1:19876/stock-open?code=600000&market=sh&name=%E6%B5%A6%E5%8F%91%E9%93%B6%E8%A1%8C&dry=1')"
@@ -235,6 +237,7 @@ jobs:
             build/node-architectures.txt
             build/full-package.zip
             build/health.json
+            build/data-health.json
             build/index.html
             build/service-stdout.log
             build/service-stderr.log
