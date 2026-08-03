@@ -5,6 +5,8 @@ const path = require("path");
 const {spawn} = require("child_process");
 
 const DEFAULT_MANIFEST_URL = "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/member.json";
+const CUSTOM_MANIFEST_URL = "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/custom.json";
+const UPDATE_RELEASE_EDITIONS = new Set(["member", "custom"]);
 const MAX_MANIFEST_BYTES = 256 * 1024;
 const MAX_DOWNLOAD_BYTES = 160 * 1024 * 1024;
 const ALLOWED_MANIFEST_HOSTS = new Set([
@@ -21,6 +23,7 @@ const RELEASE_PROFILES = Object.freeze({
   member: Object.freeze({
     canonicalName: "大a后勤部.exe",
     artifactPrefixes: Object.freeze(["大a后勤部", "Da-A-Hou-Qin-Bu-v"]),
+    manifestUrl: DEFAULT_MANIFEST_URL,
   }),
   basic: Object.freeze({
     canonicalName: "复盘软件基础版.exe",
@@ -33,6 +36,7 @@ const RELEASE_PROFILES = Object.freeze({
   custom: Object.freeze({
     canonicalName: "复盘软件定制版-短线模型V1.0.exe",
     artifactPrefixes: Object.freeze(["复盘软件定制版"]),
+    manifestUrl: CUSTOM_MANIFEST_URL,
   }),
 });
 
@@ -162,7 +166,7 @@ function requestBuffer(rawUrl, options = {}, redirectCount = 0) {
   });
 }
 
-async function fetchManifest(manifestUrl = DEFAULT_MANIFEST_URL) {
+async function fetchManifest(manifestUrl = DEFAULT_MANIFEST_URL, expectedEdition = "member") {
   const separator = manifestUrl.includes("?") ? "&" : "?";
   const buffer = await requestBuffer(`${manifestUrl}${separator}t=${Date.now()}`, {
     allowedHosts: ALLOWED_MANIFEST_HOSTS,
@@ -182,12 +186,15 @@ async function fetchManifest(manifestUrl = DEFAULT_MANIFEST_URL) {
       throw new Error(`GitHub 更新清单内容无效：${error.message}`);
     }
   }
-  return validateManifest(payload);
+  return validateManifest(payload, expectedEdition);
 }
 
-function validateManifest(payload) {
+function validateManifest(payload, expectedEdition = "member") {
   if (!payload || Number(payload.schemaVersion) !== 1) throw new Error("GitHub 更新清单版本不受支持。");
-  if (String(payload.edition || "").toLowerCase() !== "member") throw new Error("GitHub 更新清单版本类型不匹配。");
+  const normalizedExpectedEdition = String(expectedEdition || "member").trim().toLowerCase();
+  if (!UPDATE_RELEASE_EDITIONS.has(normalizedExpectedEdition)) throw new Error("当前版本没有独立的软件更新通道。");
+  const manifestEdition = String(payload.edition || "").trim().toLowerCase();
+  if (manifestEdition !== normalizedExpectedEdition) throw new Error("GitHub 更新清单版本类型不匹配。");
   const version = normalizeVersion(payload.version);
   if (!version) throw new Error("GitHub 更新清单缺少有效版本号。");
   const downloadUrl = assertAllowedHttpsUrl(payload.downloadUrl, ALLOWED_DOWNLOAD_HOSTS, "更新下载地址").href;
@@ -203,7 +210,7 @@ function validateManifest(payload) {
   return {
     schemaVersion: 1,
     product: String(payload.product || "大a后勤部"),
-    edition: "member",
+    edition: manifestEdition,
     version,
     publishedAt: String(payload.publishedAt || ""),
     downloadUrl,
@@ -534,7 +541,9 @@ function createAppUpdateService(options = {}) {
   const appDir = path.resolve(options.appDir || path.join(__dirname, ".."));
   const runtimeRoot = path.resolve(options.runtimeRoot || path.join(appDir, "..", ".."));
   const workDir = path.resolve(options.workDir || __dirname);
-  const manifestUrl = String(options.manifestUrl || process.env.A_SHARE_REVIEW_UPDATE_MANIFEST_URL || DEFAULT_MANIFEST_URL);
+  const configuredManifestUrl = String(
+    options.manifestUrl || process.env.A_SHARE_REVIEW_UPDATE_MANIFEST_URL || "",
+  ).trim();
   const metadataPath = path.join(runtimeRoot, ".launcher.json");
   const updateDir = path.join(runtimeRoot, "缓存", "软件更新");
   const logPath = path.join(updateDir, "软件更新日志.txt");
@@ -568,6 +577,18 @@ function createAppUpdateService(options = {}) {
     );
   }
 
+  function currentManifestUrl(profile = currentReleaseProfile()) {
+    const metadata = launcherMetadata();
+    return configuredManifestUrl
+      || String(metadata.manifestUrl || "").trim()
+      || profile?.manifestUrl
+      || DEFAULT_MANIFEST_URL;
+  }
+
+  function updaterSupported(profile = currentReleaseProfile()) {
+    return platform === "win32" && Boolean(profile && UPDATE_RELEASE_EDITIONS.has(profile.edition));
+  }
+
   function packageVersion() {
     const candidates = [
       path.join(appDir, "..", "package.json"),
@@ -590,8 +611,8 @@ function createAppUpdateService(options = {}) {
   function launcherReady() {
     const metadata = launcherMetadata();
     const launcherPath = String(metadata.launcherPath || "");
-    return edition === "member"
-      && platform === "win32"
+    const profile = currentReleaseProfile();
+    return updaterSupported(profile)
       && path.isAbsolute(launcherPath)
       && path.extname(launcherPath).toLowerCase() === ".exe"
       && fs.existsSync(launcherPath);
@@ -601,13 +622,14 @@ function createAppUpdateService(options = {}) {
     const current = currentVersion();
     const latest = lastManifest?.version || "";
     const available = Boolean(latest && compareVersions(latest, current) > 0);
-    const supported = edition === "member" && platform === "win32";
     const profile = currentReleaseProfile();
+    const supported = updaterSupported(profile);
     return {
       ok: state.phase !== "error",
       supported,
       launcherReady: launcherReady(),
       source: "GitHub",
+      releaseEdition: profile?.edition || "",
       canonicalLauncherName: profile?.canonicalName || "",
       currentVersion: current,
       latestVersion: latest,
@@ -624,8 +646,9 @@ function createAppUpdateService(options = {}) {
   }
 
   async function checkForUpdates(options = {}) {
-    if (edition !== "member" || platform !== "win32") {
-      state = {...state, phase: "unsupported", message: "当前版本不使用会员版 GitHub 更新通道。", error: ""};
+    const profile = currentReleaseProfile();
+    if (!updaterSupported(profile)) {
+      state = {...state, phase: "unsupported", message: "当前版本未启用独立的软件更新通道。", error: ""};
       return publicStatus();
     }
     if (!options.force && lastManifest && state.checkedAt && Date.now() - Date.parse(state.checkedAt) < 5 * 60 * 1000) {
@@ -633,7 +656,8 @@ function createAppUpdateService(options = {}) {
     }
     state = {...state, phase: "checking", progress: 0, message: "正在连接 GitHub 检查更新", error: ""};
     try {
-      lastManifest = await fetchManifestImpl(manifestUrl);
+      const fetchedManifest = await fetchManifestImpl(currentManifestUrl(profile), profile.edition);
+      lastManifest = validateManifest(fetchedManifest, profile.edition);
       const status = publicStatus();
       state = {
         ...state,
@@ -713,9 +737,12 @@ function createAppUpdateService(options = {}) {
     const metadata = launcherMetadata();
     const launcherPath = String(metadata.launcherPath || "");
     const profile = currentReleaseProfile();
-    if (!launcherReady()) throw new Error("没有找到当前大a后勤部启动程序，请从收到的 exe 文件重新打开软件后再更新。");
+    if (!launcherReady()) throw new Error("没有找到当前版本的启动程序，请从收到的 exe 文件重新打开软件后再更新。");
     if (!profile) throw new Error("无法确定当前软件的标准文件名。");
-    const stagedPath = path.join(updateDir, `大a后勤部-${lastManifest.version}.exe`);
+    const stagedPath = path.join(
+      updateDir,
+      `${path.parse(profile.canonicalName).name}-${lastManifest.version}.exe`,
+    );
     state = {...state, phase: "downloading", progress: 0, message: `正在从 GitHub 下载 ${lastManifest.version}`, error: ""};
     await downloadFileImpl(lastManifest.downloadUrl, stagedPath, {
       expectedSize: lastManifest.size,
@@ -792,6 +819,7 @@ function createAppUpdateService(options = {}) {
 
 module.exports = {
   ALLOWED_DOWNLOAD_HOSTS,
+  CUSTOM_MANIFEST_URL,
   DEFAULT_MANIFEST_URL,
   compareVersions,
   cleanupLauncherArtifacts,

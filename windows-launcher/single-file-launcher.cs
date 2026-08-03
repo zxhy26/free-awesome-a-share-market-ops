@@ -27,8 +27,8 @@ using System.Windows.Forms;
 #endif
 [assembly: AssemblyCompany("Free & Awesome A-Share Market Ops")]
 [assembly: AssemblyCopyright("Copyright 2026")]
-[assembly: AssemblyVersion("2.21.1.0")]
-[assembly: AssemblyFileVersion("2.21.1.0")]
+[assembly: AssemblyVersion("2.21.2.0")]
+[assembly: AssemblyFileVersion("2.21.2.0")]
 
 internal static class Program
 {
@@ -37,32 +37,36 @@ internal static class Program
     private const string EditionCode = "basic";
     private const string ReleaseEditionCode = "basic";
     private const string CanonicalLauncherName = "复盘软件基础版.exe";
-    private const string RuntimeTag = "版本_20260803-2.21.1-基础版-跨平台";
-    private const string MutexName = "Local\\AshareReviewLauncher_Basic_22110";
+    private const string RuntimeTag = "版本_20260803-2.21.2-基础版-跨平台";
+    private const string MutexName = "Local\\AshareReviewLauncher_Basic_22120";
 #elif SELF_EDITION
     private const string EditionName = "自用版";
     private const string EditionCode = "self";
     private const string ReleaseEditionCode = "self";
     private const string CanonicalLauncherName = "复盘软件自用版.exe";
-    private const string RuntimeTag = "版本_20260803-2.21.1-自用版-跨平台";
-    private const string MutexName = "Local\\AshareReviewLauncher_Self_22110";
+    private const string RuntimeTag = "版本_20260803-2.21.2-自用版-跨平台";
+    private const string MutexName = "Local\\AshareReviewLauncher_Self_22120";
 #elif CUSTOM_EDITION
     private const string EditionName = "定制版";
     private const string EditionCode = "basic";
     private const string ReleaseEditionCode = "custom";
     private const string CanonicalLauncherName = "复盘软件定制版-短线模型V1.0.exe";
-    private const string RuntimeTag = "版本_20260803-2.21.1-定制版-跨平台";
-    private const string MutexName = "Local\\AshareReviewLauncher_Custom_22110";
+    private const string RuntimeTag = "版本_20260803-2.21.2-定制版-跨平台";
+    private const string MutexName = "Local\\AshareReviewLauncher_Custom_22120";
 #else
     private const string EditionName = "会员版";
     private const string EditionCode = "member";
     private const string ReleaseEditionCode = "member";
     private const string CanonicalLauncherName = "大a后勤部.exe";
     private const string RuntimeTag = "版本_自动更新-会员版";
-    private const string MutexName = "Local\\AshareReviewLauncher_Member_22110";
+    private const string MutexName = "Local\\AshareReviewLauncher_Member_22120";
 #endif
-    private const string LauncherVersion = "2.21.1";
+    private const string LauncherVersion = "2.21.2";
+#if CUSTOM_EDITION
+    private const string UpdateManifestUrl = "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/custom.json";
+#else
     private const string UpdateManifestUrl = "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/member.json";
+#endif
     private const string PayloadResource = "AshareReviewPayload";
     private const string HashResource = "AshareReviewPayloadHash";
     private const string InnerExecutable = "A股复盘Windows版.exe";
@@ -105,6 +109,7 @@ internal static class Program
                 Environment.SetEnvironmentVariable("A_SHARE_REVIEW_EDITION", EditionCode);
                 Environment.SetEnvironmentVariable("A_SHARE_REVIEW_RELEASE_EDITION", ReleaseEditionCode);
                 Environment.SetEnvironmentVariable("A_SHARE_REVIEW_LAUNCHER_VERSION", LauncherVersion);
+                Environment.SetEnvironmentVariable("A_SHARE_REVIEW_UPDATE_MANIFEST_URL", UpdateManifestUrl);
                 Process innerProcess = Process.Start(startInfo);
                 WriteLauncherMetadata(runtimeRoot, expectedHash, innerProcess == null ? 0 : innerProcess.Id);
             }

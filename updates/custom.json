@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "product": "复盘软件定制版-短线模型V1.0",
+  "edition": "custom",
+  "version": "2.21.2",
+  "publishedAt": "2026-08-03T06:51:27.1036253Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.2/A-Share-Review-Custom-Shortline-v2.21.2.exe",
+  "sha256": "C82A54E4F27951D67EFF225A60E6A53C79909F91165E2CF7406E0BC98F7BD9AB",
+  "size": 43888640,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.2",
+  "notes": [
+    "Day1 候选区明确显示量能、时间、分时、祖训四项条件，勾叉与名称逐列对应。",
+    "R12 一字定节点下方展示对应几进几的完整梯队，包含节点票、同板块队友和同梯队队友。",
+    "节点梯队按可溯源辨识度、涨停速度、5日及10日涨幅排序，历史复盘数据按交易日截断。",
+    "定制版启用独立 custom 软件内更新通道，与大A后勤部、基础版和自用版严格隔离。"
+  ]
+}

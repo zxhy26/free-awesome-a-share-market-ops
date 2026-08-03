@@ -16,7 +16,7 @@ const {
   validateManifest,
 } = require("../app/backend/app-update");
 
-function validManifest(overrides = {}) {
+function validManifest(overrides = {}, expectedEdition = "member") {
   return validateManifest({
     schemaVersion: 1,
     product: "大a后勤部",
@@ -28,7 +28,7 @@ function validManifest(overrides = {}) {
     size: 2 * 1024 * 1024,
     notes: ["测试更新"],
     ...overrides,
-  });
+  }, expectedEdition);
 }
 
 test("version comparison handles normal and v-prefixed semantic versions", () => {
@@ -52,8 +52,17 @@ test("portable executable version reader finds the version resource near the fil
   }
 });
 
-test("manifest accepts only the member GitHub HTTPS update channel", () => {
+test("manifest enforces the requested member or custom GitHub HTTPS update channel", () => {
   assert.equal(validManifest().version, "2.18.1");
+  const custom = validManifest({
+    product: "复盘软件定制版-短线模型V1.0",
+    edition: "custom",
+    version: "2.21.2",
+    downloadUrl: "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.2/A-Share-Review-Custom-Shortline-v2.21.2.exe",
+  }, "custom");
+  assert.equal(custom.edition, "custom");
+  assert.throws(() => validateManifest(custom, "member"), /版本类型不匹配/);
+  assert.throws(() => validateManifest(validManifest(), "custom"), /版本类型不匹配/);
   assert.throws(() => validManifest({downloadUrl: "http://github.com/file.exe"}), /GitHub HTTPS/);
   assert.throws(() => validManifest({downloadUrl: "https://example.com/file.exe"}), /GitHub HTTPS/);
   assert.throws(() => validManifest({sha256: "1234"}), /SHA-256/);
@@ -85,6 +94,81 @@ test("member updater reports an available GitHub version from launcher metadata"
     assert.equal(status.latestVersion, "2.18.1");
     assert.equal(status.updateAvailable, true);
     assert.equal(status.phase, "available");
+  } finally {
+    fs.rmSync(root, {recursive: true, force: true});
+  }
+});
+
+test("custom updater uses its independent manifest while retaining basic feature permissions", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "a-share-custom-update-status-"));
+  try {
+    const appDir = path.join(root, "程序", "应用");
+    fs.mkdirSync(appDir, {recursive: true});
+    const launcherPath = path.join(root, "复盘软件定制版-短线模型V1.0.exe");
+    fs.writeFileSync(launcherPath, "old-custom");
+    fs.writeFileSync(path.join(root, ".launcher.json"), JSON.stringify({
+      edition: "basic",
+      releaseEdition: "custom",
+      version: "2.21.1",
+      launcherPath,
+      manifestUrl: "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/custom.json",
+      appPid: 0,
+    }));
+    const calls = [];
+    const service = createAppUpdateService({
+      edition: "basic",
+      appDir,
+      runtimeRoot: root,
+      fetchManifest: async (url, expectedEdition) => {
+        calls.push({url, expectedEdition});
+        return validManifest({
+          product: "复盘软件定制版-短线模型V1.0",
+          edition: "custom",
+          version: "2.21.2",
+          downloadUrl: "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.2/A-Share-Review-Custom-Shortline-v2.21.2.exe",
+        }, "custom");
+      },
+      disableExit: true,
+    });
+    const status = await service.checkForUpdates({force: true});
+    assert.equal(status.supported, true);
+    assert.equal(status.launcherReady, true);
+    assert.equal(status.releaseEdition, "custom");
+    assert.equal(status.canonicalLauncherName, "复盘软件定制版-短线模型V1.0.exe");
+    assert.equal(status.latestVersion, "2.21.2");
+    assert.equal(status.updateAvailable, true);
+    assert.deepEqual(calls, [{
+      url: "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/custom.json",
+      expectedEdition: "custom",
+    }]);
+  } finally {
+    fs.rmSync(root, {recursive: true, force: true});
+  }
+});
+
+test("custom updater rejects a member manifest instead of crossing release channels", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "a-share-custom-update-mismatch-"));
+  try {
+    const appDir = path.join(root, "程序", "应用");
+    fs.mkdirSync(appDir, {recursive: true});
+    const launcherPath = path.join(root, "复盘软件定制版-短线模型V1.0.exe");
+    fs.writeFileSync(launcherPath, "old-custom");
+    fs.writeFileSync(path.join(root, ".launcher.json"), JSON.stringify({
+      edition: "basic",
+      releaseEdition: "custom",
+      version: "2.21.1",
+      launcherPath,
+    }));
+    const service = createAppUpdateService({
+      edition: "basic",
+      appDir,
+      runtimeRoot: root,
+      fetchManifest: async () => validManifest(),
+      disableExit: true,
+    });
+    const status = await service.checkForUpdates({force: true});
+    assert.equal(status.phase, "error");
+    assert.match(status.error, /版本类型不匹配/);
   } finally {
     fs.rmSync(root, {recursive: true, force: true});
   }
@@ -183,6 +267,36 @@ test("launcher cleanup migrates a legacy alias and removes only same-edition art
     assert.equal(metadata.launcherPath, canonicalPath);
     assert.equal(metadata.releaseEdition, "member");
     assert.equal(metadata.canonicalLauncherName, "大a后勤部.exe");
+  } finally {
+    fs.rmSync(root, {recursive: true, force: true});
+  }
+});
+
+test("custom cleanup removes only custom launchers and preserves the other three editions", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "a-share-custom-update-cleanup-"));
+  try {
+    const customAlias = path.join(root, "复盘软件定制版-短线模型V1.0-v2.21.2.exe");
+    const customCanonical = path.join(root, "复盘软件定制版-短线模型V1.0.exe");
+    const otherLaunchers = [
+      path.join(root, "大a后勤部.exe"),
+      path.join(root, "复盘软件基础版.exe"),
+      path.join(root, "复盘软件自用版.exe"),
+    ];
+    fs.writeFileSync(customAlias, "latest-custom");
+    fs.writeFileSync(customCanonical, "old-custom");
+    otherLaunchers.forEach((filePath) => fs.writeFileSync(filePath, path.basename(filePath)));
+    const metadataPath = path.join(root, ".launcher.json");
+    fs.writeFileSync(metadataPath, JSON.stringify({
+      edition: "basic",
+      releaseEdition: "custom",
+      version: "2.21.2",
+      launcherPath: customAlias,
+    }));
+    const result = cleanupLauncherArtifacts({platform: "win32", metadataPath});
+    assert.equal(result.edition, "custom");
+    assert.equal(fs.readFileSync(customCanonical, "utf8"), "latest-custom");
+    assert.equal(fs.existsSync(customAlias), false);
+    otherLaunchers.forEach((filePath) => assert.equal(fs.existsSync(filePath), true));
   } finally {
     fs.rmSync(root, {recursive: true, force: true});
   }
