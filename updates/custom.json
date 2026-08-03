@@ -2,16 +2,17 @@
   "schemaVersion": 1,
   "product": "复盘软件定制版-短线模型V1.0",
   "edition": "custom",
-  "version": "2.21.2",
-  "publishedAt": "2026-08-03T06:51:27.1036253Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.2/A-Share-Review-Custom-Shortline-v2.21.2.exe",
-  "sha256": "C82A54E4F27951D67EFF225A60E6A53C79909F91165E2CF7406E0BC98F7BD9AB",
-  "size": 43888640,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.2",
+  "version": "2.21.3",
+  "publishedAt": "2026-08-03T07:51:06.4163178Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.3/A-Share-Review-Custom-Shortline-v2.21.3.exe",
+  "sha256": "AFF622F2F127FCBD8B6E68DF816C75BBC36356C83A7A01ED91A6F6C69F0DE535",
+  "size": 43901440,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.3",
   "notes": [
-    "Day1 候选区明确显示量能、时间、分时、祖训四项条件，勾叉与名称逐列对应。",
-    "R12 一字定节点下方展示对应几进几的完整梯队，包含节点票、同板块队友和同梯队队友。",
-    "节点梯队按可溯源辨识度、涨停速度、5日及10日涨幅排序，历史复盘数据按交易日截断。",
-    "定制版启用独立 custom 软件内更新通道，与大A后勤部、基础版和自用版严格隔离。"
+    "Day2 于09:20开始同步实时竞价数据，09:25冻结当日集合竞价前置样本。",
+    "标准买点要求竞价金额达到流通市值1%、竞价涨幅严格大于3%、板块红盘家数多于绿盘家数，并纳入晋级率分母。",
+    "临盘买点仅保留金额和板块达标但涨幅未达标的冻结观察票，不计入正式晋级统计。",
+    "实时条件池展示自身强、锚定、有力度和抗量化的数值、时间与来源；缺少盘口证据保持待人工确认。",
+    "右侧仅保留节点与买点，定制版继续使用独立 custom 软件内更新通道。"
   ]
 }

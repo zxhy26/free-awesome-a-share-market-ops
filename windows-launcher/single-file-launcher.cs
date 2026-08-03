@@ -27,8 +27,8 @@ using System.Windows.Forms;
 #endif
 [assembly: AssemblyCompany("Free & Awesome A-Share Market Ops")]
 [assembly: AssemblyCopyright("Copyright 2026")]
-[assembly: AssemblyVersion("2.21.2.0")]
-[assembly: AssemblyFileVersion("2.21.2.0")]
+[assembly: AssemblyVersion("2.21.3.0")]
+[assembly: AssemblyFileVersion("2.21.3.0")]
 
 internal static class Program
 {
@@ -51,8 +51,8 @@ internal static class Program
     private const string EditionCode = "basic";
     private const string ReleaseEditionCode = "custom";
     private const string CanonicalLauncherName = "复盘软件定制版-短线模型V1.0.exe";
-    private const string RuntimeTag = "版本_20260803-2.21.2-定制版-跨平台";
-    private const string MutexName = "Local\\AshareReviewLauncher_Custom_22120";
+    private const string RuntimeTag = "版本_20260803-2.21.3-定制版-跨平台";
+    private const string MutexName = "Local\\AshareReviewLauncher_Custom_22130";
 #else
     private const string EditionName = "会员版";
     private const string EditionCode = "member";
@@ -61,7 +61,7 @@ internal static class Program
     private const string RuntimeTag = "版本_自动更新-会员版";
     private const string MutexName = "Local\\AshareReviewLauncher_Member_22120";
 #endif
-    private const string LauncherVersion = "2.21.2";
+    private const string LauncherVersion = "2.21.3";
 #if CUSTOM_EDITION
     private const string UpdateManifestUrl = "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/custom.json";
 #else
