@@ -1,0 +1,17 @@
+{
+  "tag": "v2.21.2",
+  "assets": [
+    {
+      "name": "A-Share-Review-Custom-Shortline-v2.21.2.exe",
+      "sha256": "C82A54E4F27951D67EFF225A60E6A53C79909F91165E2CF7406E0BC98F7BD9AB",
+      "size": 43888640,
+      "chunks": [
+        "custom-v2.21.2.part001",
+        "custom-v2.21.2.part002",
+        "custom-v2.21.2.part003",
+        "custom-v2.21.2.part004",
+        "custom-v2.21.2.part005"
+      ]
+    }
+  ]
+}
