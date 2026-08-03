@@ -2,17 +2,17 @@
   "schemaVersion": 1,
   "product": "复盘软件定制版-短线模型V1.0",
   "edition": "custom",
-  "version": "2.21.3",
-  "publishedAt": "2026-08-03T07:51:06.4163178Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.3/A-Share-Review-Custom-Shortline-v2.21.3.exe",
-  "sha256": "AFF622F2F127FCBD8B6E68DF816C75BBC36356C83A7A01ED91A6F6C69F0DE535",
-  "size": 43901440,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.3",
+  "version": "2.21.4",
+  "publishedAt": "2026-08-03T11:10:18.5661677Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.4/A-Share-Review-Custom-Shortline-v2.21.4.exe",
+  "sha256": "16AA5E806A8D2671136FBD4EFDEF7889D0278FAAB7BE16AB89040C1DBB6DA85D",
+  "size": 43912704,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.4",
   "notes": [
-    "Day2 于09:20开始同步实时竞价数据，09:25冻结当日集合竞价前置样本。",
-    "标准买点要求竞价金额达到流通市值1%、竞价涨幅严格大于3%、板块红盘家数多于绿盘家数，并纳入晋级率分母。",
-    "临盘买点仅保留金额和板块达标但涨幅未达标的冻结观察票，不计入正式晋级统计。",
-    "实时条件池展示自身强、锚定、有力度和抗量化的数值、时间与来源；缺少盘口证据保持待人工确认。",
-    "右侧仅保留节点与买点，定制版继续使用独立 custom 软件内更新通道。"
+    "R13一字方向从09:15开始扫描全A市场：09:15-09:19显示可撤单实时预览，09:20-09:24显示不可撤单实时预览。",
+    "09:25仅使用同日最终竞价开盘价冻结一字名单；冻结后不增删标的，只更新一字封住、开板回封、炸板未回封或状态待数据。",
+    "一字方向展示主板块、概念题材、几进几、开板次数、首次开板、回封时间和数据来源；覆盖不足90%时保持待数据，不输出确定方向。",
+    "全市场行情按100只一批、12路并发刷新，目标约5秒一轮；无涨跌幅新股、退市整理和缺昨收标的不参与一字判定。",
+    "Day2条件池仍按09:20实时预览、09:25冻结前置样本，定制版继续使用独立custom软件内更新通道。"
   ]
 }
