@@ -106,6 +106,7 @@ for (const edition of EDITIONS) {
   assert(index.includes('id="indexPicker"'), `${edition.mode} 缺少指数选择器`);
   assert(index.includes('id="indexCount">8/8'), `${edition.mode} 缺少指数上限状态`);
   assert(fs.existsSync(path.join(appRoot, "assets", "js", "display-settings.js")), `${edition.mode} 缺少显示设置模块`);
+  assert(fs.existsSync(path.join(appRoot, "assets", "js", "display-page-sync.js")), `${edition.mode} 缺少独立页面显示同步模块`);
   assert(fs.existsSync(path.join(appRoot, "assets", "js", "index-workspace.js")), `${edition.mode} 缺少指数工作区模块`);
   assert(fs.existsSync(path.join(appRoot, "assets", "js", "persistent-settings.js")), `${edition.mode} 缺少持久设置模块`);
   assert(fs.existsSync(path.join(backend, "用户设置.js")), `${edition.mode} 缺少用户设置服务`);
@@ -129,6 +130,11 @@ for (const edition of EDITIONS) {
   const hasShortline = index.includes("shortline.html");
   const hasTrialButton = index.includes('id="membershipTrialButton"');
   const hasPrivateKey = fs.existsSync(path.join(backend, "会员私钥.pem"));
+  const independentPages = fs.readdirSync(path.join(appRoot, "pages")).filter((name) => name.endsWith(".html"));
+  for (const pageName of independentPages) {
+    const pageSource = fs.readFileSync(path.join(appRoot, "pages", pageName), "utf8");
+    assert(pageSource.includes("display-page-sync.js"), `${edition.mode} ${pageName} 未同步全局字号与缩放`);
+  }
   assert(hasQuant === edition.quant, `${edition.mode} 量化功能边界错误`);
   assert(hasAdmin === edition.admin, `${edition.mode} 会员管理边界错误`);
   assert(hasShortline === edition.shortline, `${edition.mode} 短线功能边界错误`);
@@ -149,7 +155,7 @@ for (const edition of EDITIONS) {
     assert(service.includes("3.23.1-shortline-macos-v1"), "定制版服务版本未升级");
   }
   assert(
-    serviceWorker.includes(`a-share-review-v90-cross-platform-${edition.mode}`),
+    serviceWorker.includes(`a-share-review-v91-cross-platform-${edition.mode}`),
     `${edition.mode} 离线缓存版本未隔离`,
   );
 

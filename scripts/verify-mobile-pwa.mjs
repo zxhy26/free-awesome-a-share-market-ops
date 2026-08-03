@@ -133,6 +133,7 @@ function validateEdition(edition) {
   );
   const requiredInternalDetailFiles = [
     "pages/content-detail.html",
+    "assets/js/display-page-sync.js",
     "assets/js/mobile-trading-app.js",
     "assets/js/mobile-content-detail.js",
     "assets/js/mobile-internal-navigation.js",
@@ -313,6 +314,14 @@ function validateEdition(edition) {
       }
     }
   }
+  const contentDetailSource = fs.readFileSync(
+    path.join(root, "pages", "content-detail.html"),
+    "utf8",
+  );
+  assert(
+    /display-page-sync\.js/.test(contentDetailSource),
+    `${label}: 内容详情页未接入字号与缩放同步`,
+  );
 
   const liveFallback = readJson(path.join(root, "data", "live-sector-flows.json"));
   const baseIndices = readJson(path.join(root, "data", "indices.json"));

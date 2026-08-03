@@ -32,7 +32,7 @@
   border-radius: var(--radius-sm);
   background: var(--surface-raised);
   color: var(--text);
-  font-size: 14px;
+  font-size: calc(14 * var(--app-font-unit));
 }
 
 .stock-search-input-wrap input:focus {
@@ -50,7 +50,7 @@
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  font-size: 20px;
+  font-size: calc(20 * var(--app-font-unit));
 }
 
 .stock-search-clear[hidden] {
@@ -64,7 +64,7 @@
 .stock-search-hint {
   margin-top: 7px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: calc(11 * var(--app-font-unit));
 }
 
 .stock-search-suggestions {
@@ -121,13 +121,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
+  font-size: calc(14 * var(--app-font-unit));
 }
 
 .stock-suggestion-identity small,
 .stock-suggestion-market {
   color: var(--muted);
-  font-size: 11px;
+  font-size: calc(11 * var(--app-font-unit));
   white-space: nowrap;
 }
 
@@ -162,7 +162,7 @@
 
 .stock-search-empty strong {
   color: var(--text);
-  font-size: 17px;
+  font-size: calc(17 * var(--app-font-unit));
 }
 
 .stock-identity {
@@ -186,12 +186,12 @@
 }
 
 .stock-identity-title h2 {
-  font-size: 20px;
+  font-size: calc(20 * var(--app-font-unit));
 }
 
 .stock-identity-title > span {
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13 * var(--app-font-unit));
   font-weight: 800;
 }
 
@@ -211,7 +211,7 @@
   border-radius: 3px;
   background: var(--surface-raised);
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: calc(10 * var(--app-font-unit));
   font-weight: 700;
 }
 
@@ -219,7 +219,7 @@
   max-width: 980px;
   margin-top: 8px;
   color: var(--text-soft);
-  font-size: 11px;
+  font-size: calc(11 * var(--app-font-unit));
   line-height: 1.65;
 }
 
@@ -235,15 +235,15 @@
 .stock-quote > span {
   grid-column: 1 / -1;
   color: var(--muted);
-  font-size: 10px;
+  font-size: calc(10 * var(--app-font-unit));
 }
 
 .stock-quote > strong {
-  font-size: 24px;
+  font-size: calc(24 * var(--app-font-unit));
 }
 
 .stock-quote > b {
-  font-size: 13px;
+  font-size: calc(13 * var(--app-font-unit));
 }
 
 .stock-quote > .button {
@@ -260,7 +260,7 @@
   border-radius: var(--radius-sm);
   background: var(--warning-soft);
   color: var(--warning);
-  font-size: 11px;
+  font-size: calc(11 * var(--app-font-unit));
 }
 
 .stock-analysis-grid {
@@ -295,13 +295,13 @@
 }
 
 .analysis-panel-heading h2 {
-  font-size: 16px;
+  font-size: calc(16 * var(--app-font-unit));
 }
 
 .analysis-panel-heading p {
   margin-top: 2px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: calc(10 * var(--app-font-unit));
 }
 
 .analysis-badge {
@@ -314,7 +314,7 @@
   border: 1px solid var(--border);
   border-radius: 3px;
   background: var(--surface-raised);
-  font-size: 11px;
+  font-size: calc(11 * var(--app-font-unit));
   font-weight: 850;
   white-space: nowrap;
 }
@@ -324,7 +324,7 @@
   border-bottom: 1px solid var(--border);
   background: var(--surface-soft);
   color: var(--text-soft);
-  font-size: 11px;
+  font-size: calc(11 * var(--app-font-unit));
   line-height: 1.6;
 }
 
@@ -344,7 +344,7 @@
 
 .analysis-judgement-heading h3 {
   color: var(--text);
-  font-size: 13px;
+  font-size: calc(13 * var(--app-font-unit));
 }
 
 .analysis-judgement-label {
@@ -353,7 +353,7 @@
   border: 1px solid var(--border);
   border-radius: 3px;
   background: var(--surface);
-  font-size: 11px;
+  font-size: calc(11 * var(--app-font-unit));
   text-align: center;
   white-space: nowrap;
 }
@@ -361,7 +361,7 @@
 .analysis-judgement > p,
 .analysis-judgement-evidence {
   color: var(--text-soft);
-  font-size: 11px;
+  font-size: calc(11 * var(--app-font-unit));
   line-height: 1.65;
 }
 
@@ -420,14 +420,14 @@
 .stock-metric > small {
   display: block;
   color: var(--muted);
-  font-size: 9px;
+  font-size: calc(9 * var(--app-font-unit));
 }
 
 .stock-metric > strong {
   display: block;
   margin: 3px 0;
   color: var(--text);
-  font-size: 18px;
+  font-size: calc(18 * var(--app-font-unit));
 }
 
 .compact-section-heading {
@@ -442,12 +442,12 @@
 }
 
 .compact-section-heading h3 {
-  font-size: 12px;
+  font-size: calc(12 * var(--app-font-unit));
 }
 
 .compact-section-heading span {
   color: var(--muted);
-  font-size: 9px;
+  font-size: calc(9 * var(--app-font-unit));
   text-align: right;
 }
 
@@ -471,12 +471,12 @@
 .fundamental-section h3 {
   margin-bottom: 6px;
   color: var(--text);
-  font-size: 12px;
+  font-size: calc(12 * var(--app-font-unit));
 }
 
 .fundamental-section p {
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: calc(10 * var(--app-font-unit));
   line-height: 1.65;
 }
 
@@ -502,7 +502,7 @@
   border-top: 1px solid var(--border);
   border-right: 1px solid var(--border);
   color: var(--text-soft);
-  font-size: 9px;
+  font-size: calc(9 * var(--app-font-unit));
   line-height: 1.35;
   text-align: right;
   overflow-wrap: anywhere;
@@ -530,7 +530,7 @@
 .fundamental-method {
   padding: 9px 11px 11px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: calc(9 * var(--app-font-unit));
   line-height: 1.6;
 }
 
@@ -569,7 +569,7 @@
 }
 
 .cycle-analysis-item h4 {
-  font-size: 11px;
+  font-size: calc(11 * var(--app-font-unit));
 }
 
 .cycle-analysis-label {
@@ -577,14 +577,14 @@
   border: 1px solid var(--border);
   border-radius: 3px;
   background: var(--surface-raised);
-  font-size: 9px;
+  font-size: calc(9 * var(--app-font-unit));
   font-weight: 800;
   white-space: nowrap;
 }
 
 .cycle-analysis-item p {
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: calc(10 * var(--app-font-unit));
   line-height: 1.65;
 }
 
@@ -601,7 +601,7 @@
   gap: 8px;
   padding: 5px 10px 0;
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: calc(10 * var(--app-font-unit));
 }
 
 .technical-chart-legend {
@@ -663,7 +663,7 @@
 .technical-section p,
 .risk-list li {
   color: var(--text-soft);
-  font-size: 11px;
+  font-size: calc(11 * var(--app-font-unit));
   line-height: 1.65;
 }
 
@@ -705,12 +705,12 @@
 .technical-level-item > span,
 .technical-level-item > small {
   color: var(--muted);
-  font-size: 9px;
+  font-size: calc(9 * var(--app-font-unit));
 }
 
 .technical-level-item > strong {
   color: var(--text);
-  font-size: 11px;
+  font-size: calc(11 * var(--app-font-unit));
 }
 
 .data-coverage-row {
@@ -725,12 +725,12 @@
 }
 
 .data-coverage-row > strong {
-  font-size: 10px;
+  font-size: calc(10 * var(--app-font-unit));
 }
 
 .data-coverage-row > p {
   color: var(--text-soft);
-  font-size: 9px;
+  font-size: calc(9 * var(--app-font-unit));
   line-height: 1.5;
 }
 
@@ -739,7 +739,7 @@
   border: 1px solid var(--border);
   border-radius: 3px;
   background: var(--surface-raised);
-  font-size: 9px;
+  font-size: calc(9 * var(--app-font-unit));
   font-weight: 800;
   text-align: center;
   white-space: nowrap;
@@ -749,7 +749,7 @@
   padding: 7px 11px;
   background: var(--surface-soft);
   color: var(--muted);
-  font-size: 9px;
+  font-size: calc(9 * var(--app-font-unit));
   line-height: 1.55;
 }
 
@@ -780,12 +780,12 @@
 .news-group-heading p {
   margin-top: 2px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: calc(9 * var(--app-font-unit));
 }
 
 .news-group-heading > span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: calc(10 * var(--app-font-unit));
   white-space: nowrap;
 }
 
@@ -810,7 +810,7 @@
   gap: 5px 9px;
   margin-bottom: 4px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: calc(9 * var(--app-font-unit));
 }
 
 .news-category {
@@ -821,7 +821,7 @@
 .news-item > a,
 .news-item > strong {
   color: var(--text);
-  font-size: 12px;
+  font-size: calc(12 * var(--app-font-unit));
   font-weight: 800;
   line-height: 1.55;
   text-decoration: none;
@@ -835,7 +835,7 @@
 .news-item > p {
   margin-top: 4px;
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: calc(10 * var(--app-font-unit));
   line-height: 1.6;
 }
 
@@ -843,7 +843,7 @@
   display: block;
   margin-top: 4px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: calc(9 * var(--app-font-unit));
 }
 
 .news-reason {
@@ -855,7 +855,7 @@
   padding: 9px 11px 11px;
   border-top: 1px solid var(--border);
   color: var(--muted);
-  font-size: 9px;
+  font-size: calc(9 * var(--app-font-unit));
   line-height: 1.6;
 }
 
@@ -1048,7 +1048,7 @@
   .fundamental-table-wrap th,
   .fundamental-table-wrap td {
     padding: 6px 3px;
-    font-size: 8px;
+    font-size: calc(8 * var(--app-font-unit));
   }
 
   .technical-chart-header {

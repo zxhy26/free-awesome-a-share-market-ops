@@ -309,7 +309,7 @@
   border-radius: 4px;
   background: var(--surface-soft);
   color: var(--text);
-  font: 600 15px/1.2 Consolas, monospace;
+  font: 600 calc(15 * var(--app-font-unit))/1.2 Consolas, monospace;
   letter-spacing: 0;
 }
 
@@ -338,7 +338,7 @@
   padding: 10px;
   background: var(--surface);
   color: var(--text);
-  font: 13px/1.5 Consolas, monospace;
+  font: calc(13 * var(--app-font-unit))/1.5 Consolas, monospace;
 }
 
 .membership-activation .button {

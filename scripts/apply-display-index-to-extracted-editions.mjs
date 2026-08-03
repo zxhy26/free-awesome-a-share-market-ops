@@ -18,6 +18,8 @@ const EDITIONS = [
   {result: "定制版.json", mode: "custom"},
 ];
 
+const DISPLAY_SYNC_SCRIPT = '  <script type="module" src="../assets/js/display-page-sync.js?v=20260803-1"></script>';
+
 function copyTree(source, destination, options = {}) {
   fs.mkdirSync(destination, {recursive: true});
   for (const entry of fs.readdirSync(source, {withFileTypes: true})) {
@@ -37,6 +39,38 @@ function copyTree(source, destination, options = {}) {
 function insertAfter(html, needle, addition, label) {
   if (!html.includes(needle)) throw new Error(`首页缺少${label}插入点。`);
   return html.replace(needle, `${needle}\n${addition}`);
+}
+
+function ensureDisplaySyncScript(html, pageName) {
+  if (html.includes("display-page-sync.js")) return html;
+  if (!html.includes("</head>")) throw new Error(`${pageName} 缺少 </head>，无法接入全局字号与缩放。`);
+  return html.replace("</head>", `${DISPLAY_SYNC_SCRIPT}\n</head>`);
+}
+
+function patchEditionPages(pagesRoot) {
+  for (const entry of fs.readdirSync(pagesRoot, {withFileTypes: true})) {
+    if (!entry.isFile() || path.extname(entry.name).toLowerCase() !== ".html") continue;
+    const pagePath = path.join(pagesRoot, entry.name);
+    const source = fs.readFileSync(pagePath, "utf8");
+    fs.writeFileSync(pagePath, ensureDisplaySyncScript(source, entry.name), "utf8");
+  }
+}
+
+function patchFixedFontSizes(cssRoot) {
+  for (const entry of fs.readdirSync(cssRoot, {withFileTypes: true})) {
+    const cssPath = path.join(cssRoot, entry.name);
+    if (entry.isDirectory()) {
+      patchFixedFontSizes(cssPath);
+      continue;
+    }
+    if (!entry.isFile() || path.extname(entry.name).toLowerCase() !== ".css") continue;
+    const source = fs.readFileSync(cssPath, "utf8");
+    const updated = source.replace(
+      /font-size:\s*(\d+(?:\.\d+)?)px/g,
+      "font-size: calc($1 * var(--app-font-unit))",
+    );
+    if (updated !== source) fs.writeFileSync(cssPath, updated, "utf8");
+  }
 }
 
 function buildIndex(mode) {
@@ -88,7 +122,7 @@ function buildServiceWorker(mode) {
   let source = fs.readFileSync(path.join(sourceApp, "sw.js"), "utf8");
   source = source.replace(
     /const CACHE_VERSION = "[^"]+";/,
-    `const CACHE_VERSION = "a-share-review-v90-cross-platform-${mode}";`,
+    `const CACHE_VERSION = "a-share-review-v91-cross-platform-${mode}";`,
   );
   const extras = [];
   if (["basic", "self", "custom"].includes(mode)) {
@@ -375,6 +409,8 @@ for (const edition of EDITIONS) {
   fs.copyFileSync(path.join(sourceApp, "manifest.webmanifest"), path.join(targetApp, "manifest.webmanifest"));
   fs.writeFileSync(path.join(targetApp, "index.html"), buildIndex(edition.mode), "utf8");
   fs.writeFileSync(path.join(targetApp, "sw.js"), buildServiceWorker(edition.mode), "utf8");
+  patchEditionPages(path.join(targetApp, "pages"));
+  patchFixedFontSizes(path.join(targetApp, "assets", "css"));
   if (edition.mode === "custom") {
     patchCustomService(path.join(targetApp, "backend", "复盘同步服务.js"));
   }

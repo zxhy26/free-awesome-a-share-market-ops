@@ -2,7 +2,7 @@ import {checkAppUpdate, getAppUpdateStatus, getHealth, installAppUpdate, loadBoa
 import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNumber, formatPercent, formatYi, signed, summarizeMoneyEffect, valueClass} from "./analysis.js?v=20260730-1";
 import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260731-3";
 import {createSummaryDialog} from "./dialog.js";
-import {createDisplaySettings} from "./display-settings.js?v=20260730-1";
+import {createDisplaySettings} from "./display-settings.js?v=20260803-1";
 import {createIndexWorkspace, resolveIndexGridLayout} from "./index-workspace.js?v=20260731-1";
 import {initializePwa} from "./pwa.js?v=20260719-2";
 import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260727-2";

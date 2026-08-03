@@ -119,6 +119,7 @@ try {
     $HasIndexCatalog = Test-Path -LiteralPath (Join-Path $AppRoot "backend\index-catalog.js")
     $HasIndexWorkspace = Test-Path -LiteralPath (Join-Path $AppRoot "assets\js\index-workspace.js")
     $HasDisplaySettings = Test-Path -LiteralPath (Join-Path $AppRoot "assets\js\display-settings.js")
+    $HasDisplayPageSync = Test-Path -LiteralPath (Join-Path $AppRoot "assets\js\display-page-sync.js")
     $HasPersistentSettings = Test-Path -LiteralPath (Join-Path $AppRoot "assets\js\persistent-settings.js")
     $BackendScriptContents = @(
       Get-ChildItem -LiteralPath (Join-Path $AppRoot "backend") -File -Filter "*.js" |
@@ -134,18 +135,25 @@ try {
     $HasDisplayControls = $Index -match 'id="zoomRange"' -and
       $Index -match 'id="fontSizeButton"' -and
       $Index -match 'id="indexPicker"'
+    $IndependentPagesSynced = @(
+      Get-ChildItem -LiteralPath (Join-Path $AppRoot "pages") -File -Filter "*.html" |
+        Where-Object { (Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8) -notmatch "display-page-sync\.js" }
+    ).Count -eq 0
     $BoundaryOk = $HasQuant -eq $Target.Quant -and
       $HasAdmin -eq $Target.Admin -and
       $HasPrivateKey -eq $Target.PrivateKey -and
       $HasShortline -eq $Target.Shortline
     if (-not $HasLiveModule -or -not $HasIndexCatalog -or -not $HasIndexWorkspace -or
-      -not $HasDisplaySettings -or -not $HasPersistentSettings -or -not $HasUserPreferences -or
+      -not $HasDisplaySettings -or -not $HasDisplayPageSync -or -not $IndependentPagesSynced -or
+      -not $HasPersistentSettings -or -not $HasUserPreferences -or
       -not $HasDisplayControls -or -not $BoundaryOk) {
       $FeatureState = [ordered]@{
         liveModule = $HasLiveModule
         indexCatalog = $HasIndexCatalog
         indexWorkspace = $HasIndexWorkspace
         displaySettings = $HasDisplaySettings
+        displayPageSync = $HasDisplayPageSync
+        independentPagesSynced = $IndependentPagesSynced
         persistentSettings = $HasPersistentSettings
         userPreferences = $HasUserPreferences
         userPreferencesFile = $HasUserPreferencesFile
@@ -170,6 +178,8 @@ try {
       indexCatalog = $HasIndexCatalog
       indexWorkspace = $HasIndexWorkspace
       displaySettings = $HasDisplaySettings
+      displayPageSync = $HasDisplayPageSync
+      independentPagesSynced = $IndependentPagesSynced
       persistentSettings = $HasPersistentSettings
       userPreferences = $HasUserPreferences
       boundaryOk = $BoundaryOk

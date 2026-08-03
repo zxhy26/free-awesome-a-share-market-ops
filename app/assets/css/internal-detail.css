@@ -11,7 +11,7 @@
 
 .internal-detail-header h1 {
   margin: 3px 0 5px;
-  font-size: 25px;
+  font-size: calc(25 * var(--app-font-unit));
 }
 
 .internal-detail-header p {
@@ -20,7 +20,7 @@
 
 .internal-detail-eyebrow {
   color: var(--accent);
-  font-size: 12px;
+  font-size: calc(12 * var(--app-font-unit));
   font-weight: 700;
 }
 
@@ -62,13 +62,13 @@
 .internal-detail-section h2,
 .market-chart-section h2 {
   margin: 0 0 9px;
-  font-size: 17px;
+  font-size: calc(17 * var(--app-font-unit));
 }
 
 .internal-detail-section p {
   margin: 0;
   color: var(--text-soft);
-  font-size: 14px;
+  font-size: calc(14 * var(--app-font-unit));
   line-height: 1.72;
 }
 
@@ -128,12 +128,12 @@
 .market-metric span,
 .market-metric small {
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12 * var(--app-font-unit));
 }
 
 .market-metric strong {
   overflow-wrap: anywhere;
-  font-size: 20px;
+  font-size: calc(20 * var(--app-font-unit));
   font-variant-numeric: tabular-nums;
 }
 
@@ -160,7 +160,7 @@
 .market-chart-header p {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12 * var(--app-font-unit));
 }
 
 .market-range-control {
@@ -209,7 +209,7 @@
 
 .chart-axis-label {
   fill: var(--muted);
-  font-size: 12px;
+  font-size: calc(12 * var(--app-font-unit));
 }
 
 .candle-stem {
@@ -264,7 +264,7 @@
   gap: 8px 16px;
   margin-top: 8px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12 * var(--app-font-unit));
 }
 
 .market-chart-legend span {
@@ -308,7 +308,7 @@
 }
 
 .market-context-block > strong {
-  font-size: 13px;
+  font-size: calc(13 * var(--app-font-unit));
 }
 
 .market-tag-list {
@@ -322,7 +322,7 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--text-soft);
-  font-size: 12px;
+  font-size: calc(12 * var(--app-font-unit));
 }
 
 .market-source-list {
@@ -345,7 +345,7 @@
   }
 
   .internal-detail-header h1 {
-    font-size: 21px;
+    font-size: calc(21 * var(--app-font-unit));
   }
 
   .market-detail-metrics {

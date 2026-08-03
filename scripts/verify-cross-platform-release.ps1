@@ -117,6 +117,14 @@ try {
     $Admin = [bool](Entry-BySuffix "/Contents/Resources/payload/程序/应用/pages/member-admin.html")
     $PrivateKey = [bool](Entry-BySuffix "/Contents/Resources/payload/程序/应用/backend/会员私钥.pem")
     $Shortline = [bool](Entry-BySuffix "/Contents/Resources/payload/程序/应用/pages/shortline.html")
+    $DisplayPageSync = [bool](Entry-BySuffix "/Contents/Resources/payload/程序/应用/assets/js/display-page-sync.js")
+    if (-not $DisplayPageSync) { throw "$Edition 版 Mac 载荷缺少独立页面显示同步模块" }
+    $UnsyncedPages = @(
+      $Entries |
+        Where-Object { $_.FullName -match '/Contents/Resources/payload/程序/应用/pages/[^/]+\.html$' } |
+        Where-Object { (Read-EntryText $_) -notmatch 'display-page-sync\.js' }
+    )
+    if ($UnsyncedPages.Count) { throw "$Edition 版 Mac 载荷存在未同步字号与缩放的页面" }
     $Boundaries = @{Quant=$Quant; Admin=$Admin; PrivateKey=$PrivateKey; Shortline=$Shortline}
     foreach ($Boundary in $Boundaries.Keys) {
       if ([bool]$Boundaries[$Boundary] -ne [bool]$Profile[$Boundary]) {
@@ -137,6 +145,8 @@ try {
       macLauncherArchitectures = $LauncherArchitectures
       macNodeArchitectures = $NodeArchitectures
       executableModes = $true
+      displayPageSync = $DisplayPageSync
+      independentPagesSynced = ($UnsyncedPages.Count -eq 0)
       boundaries = $Boundaries
       serviceCrossPlatform = ((Read-EntryText $ServiceEntry) -match 'process\.platform === "win32"')
       updaterUsesMacCurl = ((Read-EntryText $UpdaterEntry) -match '"/usr/bin/curl"')

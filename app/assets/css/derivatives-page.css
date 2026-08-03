@@ -22,7 +22,7 @@
 
 .derivatives-page-status strong {
   overflow-wrap: anywhere;
-  font-size: 13px;
+  font-size: calc(13 * var(--app-font-unit));
   font-variant-numeric: tabular-nums;
 }
 
@@ -41,12 +41,12 @@
 }
 
 .derivatives-page-panel .derivatives-headline {
-  font-size: 12px;
+  font-size: calc(12 * var(--app-font-unit));
 }
 
 .derivatives-page-panel .derivative-product-row,
 .derivatives-page-panel .derivative-member-row {
-  font-size: 11px;
+  font-size: calc(11 * var(--app-font-unit));
 }
 
 .derivatives-page-panel .derivative-member-head,
@@ -68,13 +68,13 @@
 }
 
 .derivatives-method h2 {
-  font-size: 16px;
+  font-size: calc(16 * var(--app-font-unit));
 }
 
 .derivatives-method header p {
   max-width: 920px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: calc(11 * var(--app-font-unit));
   line-height: 1.6;
   text-align: right;
 }
@@ -90,7 +90,7 @@
   padding: 10px;
   color: var(--text-soft);
   border-right: 1px solid var(--border);
-  font-size: 10px;
+  font-size: calc(10 * var(--app-font-unit));
   line-height: 1.6;
 }
 
@@ -102,7 +102,7 @@
   display: block;
   margin-bottom: 3px;
   color: var(--text);
-  font-size: 11px;
+  font-size: calc(11 * var(--app-font-unit));
 }
 
 @media (max-width: 1000px) {
@@ -214,6 +214,6 @@
 
   .derivatives-page-panel .derivative-member-row {
     grid-template-columns: minmax(78px, 1fr) 52px 52px 44px;
-    font-size: 9px;
+    font-size: calc(9 * var(--app-font-unit));
   }
 }

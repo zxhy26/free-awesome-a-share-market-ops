@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v90-cross-platform";
+const CACHE_VERSION = "a-share-review-v91-cross-platform";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [
@@ -31,6 +31,7 @@ const CORE_ASSETS = [
   "/app/assets/js/sector-flow-chart.js",
   "/app/assets/js/custom-sector-workspace.js",
   "/app/assets/js/display-settings.js",
+  "/app/assets/js/display-page-sync.js",
   "/app/assets/js/index-workspace.js",
   "/app/assets/js/persistent-settings.js",
   "/app/assets/js/dialog.js",

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.21.1 - 2026-08-03
+
+- Shared the main-page zoom and font-size preferences with every independent toolbar and market-detail page.
+- Added live cross-page display synchronization through browser storage and a local broadcast channel.
+- Routed fixed page-specific font sizes through the global font scale so policy news, history, stock search, quantitative selection, member administration, and custom shortline pages all follow the selected size.
+- Added edition-package injection and regression coverage so retained private pages cannot miss the display synchronizer.
+
 ## 2.21.0 - 2026-08-02
 
 - Added a native macOS WebKit desktop launcher with one universal binary for Apple Silicon and Intel Macs.
