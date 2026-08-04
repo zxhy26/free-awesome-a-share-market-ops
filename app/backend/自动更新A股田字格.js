@@ -12,6 +12,12 @@ const { reconcileBoardFlowGroups } = require("./板块资金自动纠偏");
 const {INDEX_CATALOG, DEFAULT_INDEX_KEYS} = require("./index-catalog");
 const {compareLegacyArchives} = require("./history-quality");
 const {
+  collectClosedLimitDownRows,
+  isHistoricalClosedLimit,
+  reconcileLimitDownPool,
+} = require("./market-extremes");
+const {hydrateHistoryCacheFromStructuredArchive} = require("./recent-market-history");
+const {
   CLS_INDEX_ANNOTATION_ENDPOINTS,
   fallbackClsAnnotationFeed,
   normalizeClsAnchorPayload,
@@ -878,7 +884,7 @@ function fetchZtbPool(kind, tradeDate, pageSize = 500) {
   const rows = Array.isArray(data.pool) ? data.pool : [];
   return {
     rows,
-    total: Number.isFinite(Number(data.tc)) ? Number(data.tc) : rows.length,
+    total: Math.max(Number.isFinite(Number(data.tc)) ? Number(data.tc) : 0, rows.length),
     qdate: data.qdate ? String(data.qdate).replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3") : tradeDate,
   };
 }
@@ -1092,6 +1098,30 @@ function loadLocalTdxConceptMap() {
     }
   } catch (error) {
     log("通达信本地概念兜底暂不可用：" + error.message);
+  }
+  return map;
+}
+
+function loadLocalTdxNameMap() {
+  const map = new Map();
+  if (!CONFIG.tdxVipdocDir) return map;
+  const t0002 = path.join(path.dirname(CONFIG.tdxVipdocDir), "T0002", "hq_cache");
+  const files = ["shs.tnf", "szs.tnf", "bjs.tnf"];
+  for (const fileName of files) {
+    const filePath = path.join(t0002, fileName);
+    if (!fs.existsSync(filePath)) continue;
+    try {
+      const buffer = fs.readFileSync(filePath);
+      const decoder = new TextDecoder("gb18030");
+      for (let offset = 50; offset + 360 <= buffer.length; offset += 360) {
+        const code = buffer.subarray(offset, offset + 6).toString("ascii").replace(/\0/g, "").trim();
+        if (!isAStockCode(code)) continue;
+        const name = decoder.decode(buffer.subarray(offset + 31, offset + 63)).split("\0", 1)[0].trim();
+        if (name) map.set(code, name);
+      }
+    } catch (error) {
+      log(`通达信证券名称表读取失败（${fileName}）：${error.message}`);
+    }
   }
   return map;
 }
@@ -1985,7 +2015,12 @@ function summarizeMarketBreadth(rows, tradeDate, source) {
     const code = String(row?.code || row?.f12 || "").trim();
     const changePct = finiteNumber(row?.changePct ?? row?.f3);
     if (!isAStockCode(code) || !Number.isFinite(changePct)) continue;
-    byCode.set(code, changePct);
+    byCode.set(code, {
+      ...row,
+      code,
+      name: String(row?.name || row?.f14 || "").trim(),
+      changePct,
+    });
   }
   if (byCode.size < MIN_COMPLETE_A_STOCK_COUNT) {
     throw new Error(`${source}仅取得${byCode.size}只有效 A 股，低于完整性阈值${MIN_COMPLETE_A_STOCK_COUNT}只`);
@@ -1993,18 +2028,28 @@ function summarizeMarketBreadth(rows, tradeDate, source) {
   let upCount = 0;
   let downCount = 0;
   let flatCount = 0;
-  for (const changePct of byCode.values()) {
+  for (const quote of byCode.values()) {
+    const changePct = quote.changePct;
     if (changePct > 0) upCount += 1;
     else if (changePct < 0) downCount += 1;
     else flatCount += 1;
   }
-  return { tradeDate, stockCount: byCode.size, upCount, downCount, flatCount, source };
+  const quotes = [...byCode.values()];
+  return {
+    tradeDate,
+    stockCount: byCode.size,
+    upCount,
+    downCount,
+    flatCount,
+    limitDownRows: collectClosedLimitDownRows(quotes, tradeDate),
+    source,
+  };
 }
 
 async function fetchMarketBreadthFromEastmoney(tradeDate) {
   const allAStockFs = STOCK_LIST_FS_GROUPS.join(",");
   const rows = await fetchClistAsync(allAStockFs, {
-    fields: "f12,f14,f3",
+    fields: "f2,f3,f5,f6,f12,f13,f14,f15,f16,f17,f18,f26,f100,f103",
     pageSize: 6000,
     maxPages: 2,
     fid: "f3",
@@ -2067,7 +2112,19 @@ async function fetchMarketBreadthFromTencent(tradeDate) {
     throw new Error(`本地或内置 A 股基础名单仅${local.length}只，无法发起完整腾讯行情补采`);
   }
   const quoteMap = await fetchTencentQuoteMapComplete(local);
-  const rows = [...quoteMap.values()].filter((quote) => quote.quoteDate === tradeDate);
+  const metadata = new Map(local.map((stock) => [stock.code, stock]));
+  const rows = [...quoteMap.values()]
+    .filter((quote) => quote.quoteDate === tradeDate)
+    .map((quote) => {
+      const stock = metadata.get(quote.code) || {};
+      return {
+        ...stock,
+        ...quote,
+        name: quote.name || stock.name || quote.code,
+        sector: stock.sector || "",
+        concepts: stock.concepts || [],
+      };
+    });
   const universeSource = localQuotes.length >= MIN_COMPLETE_A_STOCK_COUNT ? "通达信基础名单" : "内置全 A 基础名单";
   return summarizeMarketBreadth(rows, tradeDate, `腾讯全 A 实时行情（${universeSource}）`);
 }
@@ -3773,8 +3830,20 @@ function buildRecentMarketDays(tradeDate, todayStats, options = {}) {
       indexChangePct: null,
     }];
   }
-  const dates = recentWeekdayDates(tradeDate, 6);
-  const turnoverMap = safeHistoricalTurnoverMap(tradeDate, 12);
+  let dates = [];
+  try {
+    dates = tencentIndexTradingDates(18)
+      .filter((date) => date <= tradeDate)
+      .sort((left, right) => right.localeCompare(left))
+      .slice(0, 10);
+  } catch (error) {
+    log(`近期交易日日历暂未取到，使用工作日兜底：${error.message}`);
+  }
+  if (!dates.includes(tradeDate)) dates.unshift(tradeDate);
+  dates = uniqueTextList([...dates, ...recentWeekdayDates(tradeDate, 10)])
+    .sort((left, right) => right.localeCompare(left))
+    .slice(0, 10);
+  const turnoverMap = safeHistoricalTurnoverMap(tradeDate, 20);
   const days = [];
   for (const date of dates) {
     const isToday = date === tradeDate;
@@ -3784,7 +3853,6 @@ function buildRecentMarketDays(tradeDate, todayStats, options = {}) {
     const limitDownCount = isToday ? todayStats.limitDownCount : safeZtbTotal("limitDown", date);
     const totalAmountYi = isToday && Number.isFinite(Number(todayStats.totalAmountYi)) ? todayStats.totalAmountYi : turnover.amountYi;
     const totalVolumeYiHands = isToday && Number.isFinite(Number(todayStats.totalVolumeYiHands)) ? todayStats.totalVolumeYiHands : turnover.volumeYiHands;
-    if (!isToday && Number(limitUpCount) === 0 && Number(limitDownCount) === 0) continue;
     days.push({
       date,
       compactDate: compact,
@@ -3799,11 +3867,12 @@ function buildRecentMarketDays(tradeDate, todayStats, options = {}) {
 }
 
 async function fetchMarketStats(tradeDate, options = {}) {
-  const breadth = await fetchMarketBreadth(tradeDate);
   const limitUpPool = safeZtbPool("limitUp", tradeDate);
-  const limitDownPool = safeZtbPool("limitDown", tradeDate);
+  const topicLimitDownPool = safeZtbPool("limitDown", tradeDate);
   const brokenPool = safeZtbPool("broken", tradeDate);
   const yesterdayLimitPool = safeZtbPool("yesterdayLimitUp", tradeDate);
+  const breadth = await fetchMarketBreadth(tradeDate);
+  const limitDownPool = reconcileLimitDownPool(topicLimitDownPool, breadth.limitDownRows, tradeDate);
   const turnover = options.intraday ? { totalAmountYi: null, totalVolumeYiHands: null } : safeTurnoverStats();
   const limitUpStocks = enrichLimitRowsWithBoardInfo(normalizeLimitPoolRows(limitUpPool, "limitUp"), options);
   const limitDownStocks = enrichLimitRowsWithBoardInfo(normalizeLimitPoolRows(limitDownPool, "limitDown"), options);
@@ -3833,6 +3902,8 @@ async function fetchMarketStats(tradeDate, options = {}) {
     brokenRate: brokenStats.brokenRate,
     brokenQuoteDate: brokenPool.qdate,
     brokenSource: "东方财富涨停专题当日炸板池",
+    limitDownSource: limitDownPool.source,
+    limitDownCrossCheck: limitDownPool.crossCheck,
     limitUpStocks,
     limitDownStocks,
     brokenStocks,
@@ -4050,19 +4121,30 @@ function repairHistoricalBreadthFromLocal(cache, currentDate) {
     .filter((day) => day?.date && day.date < currentDate)
     .filter((day) => {
       const market = day.market || {};
-      return [market.stockCount, market.upCount, market.downCount, market.flatCount].some((value) => finiteValue(value) === null);
+      const missingBreadth = [market.stockCount, market.upCount, market.downCount, market.flatCount]
+        .some((value) => finiteValue(value) === null);
+      return missingBreadth || market.limitCountsSource !== "通达信本地日线逐股校验";
     })
     .map((day) => day.date));
-  if (!targets.size) return;
+  if (!targets.size || !CONFIG.tdxVipdocDir) return;
 
-  const counts = new Map([...targets].map((date) => [date, { stockCount: 0, upCount: 0, downCount: 0, flatCount: 0 }]));
+  const counts = new Map([...targets].map((date) => [date, {
+    stockCount: 0,
+    upCount: 0,
+    downCount: 0,
+    flatCount: 0,
+    limitUpCount: 0,
+    limitDownCount: 0,
+  }]));
+  const nameMap = loadLocalTdxNameMap();
   for (const prefix of ["sh", "sz", "bj"]) {
     const dir = path.join(CONFIG.tdxVipdocDir, prefix, "lday");
     if (!fs.existsSync(dir)) continue;
     for (const fileName of fs.readdirSync(dir)) {
       const match = fileName.match(/^(?:sh|sz|bj)(\d{6})\.day$/i);
-      if (!match || !isAStockCode(match[1])) continue;
-      const history = readTdxDayHistory(match[1], prefix);
+      if (!match || !isAStockCodeForTdxPrefix(match[1], prefix)) continue;
+      const code = match[1];
+      const history = readTdxDayHistory(code, prefix);
       for (let index = 1; index < history.length; index += 1) {
         const row = history[index];
         if (!targets.has(row.date)) continue;
@@ -4074,6 +4156,17 @@ function repairHistoricalBreadthFromLocal(cache, currentDate) {
         if (delta > 0.004) item.upCount += 1;
         else if (delta < -0.004) item.downCount += 1;
         else item.flatCount += 1;
+        const limitQuote = {
+          code,
+          name: nameMap.get(code) || "",
+          price: row.close,
+          preClose: previous.close,
+          high: row.high,
+          low: row.low,
+          listingIndex: index,
+        };
+        if (isHistoricalClosedLimit(limitQuote, "up")) item.limitUpCount += 1;
+        if (isHistoricalClosedLimit(limitQuote, "down")) item.limitDownCount += 1;
       }
     }
   }
@@ -4085,9 +4178,12 @@ function repairHistoricalBreadthFromLocal(cache, currentDate) {
       continue;
     }
     day.market = day.market || {};
-    Object.assign(day.market, item, { breadthSource: "通达信本地日线逐股回补" });
-    day.source = `${day.source || "历史快照"}；全 A 涨跌家数已由通达信日线回补`;
-    log(`历史市场广度已修复 ${day.date}：上涨${item.upCount}、下跌${item.downCount}、平盘${item.flatCount}。`);
+    Object.assign(day.market, item, {
+      breadthSource: "通达信本地日线逐股回补",
+      limitCountsSource: "通达信本地日线逐股校验",
+    });
+    day.source = `${day.source || "历史快照"}；全 A 涨跌与涨跌停家数已由通达信日线逐股回补`;
+    log(`历史市场统计已修复 ${day.date}：上涨${item.upCount}、下跌${item.downCount}、涨停${item.limitUpCount}、跌停${item.limitDownCount}。`);
   }
 }
 
@@ -4172,8 +4268,13 @@ function mergeHistoryIntoRecentDays(marketData, cache) {
   (cache.days || []).forEach((day) => {
     const item = byDate.get(day.date) || { date: day.date, compactDate: formatCompactDate(day.date) };
     const stored = day.market || {};
-    if (finiteValue(item.limitUpCount) === null && finiteValue(stored.limitUpCount) !== null) item.limitUpCount = stored.limitUpCount;
-    if (finiteValue(item.limitDownCount) === null && finiteValue(stored.limitDownCount) !== null) item.limitDownCount = stored.limitDownCount;
+    const verifiedLimitCounts = stored.limitCountsSource === "通达信本地日线逐股校验";
+    if (finiteValue(stored.limitUpCount) !== null && (
+      finiteValue(item.limitUpCount) === null || verifiedLimitCounts || (Number(item.limitUpCount) === 0 && Number(stored.limitUpCount) > 0)
+    )) item.limitUpCount = stored.limitUpCount;
+    if (finiteValue(stored.limitDownCount) !== null && (
+      finiteValue(item.limitDownCount) === null || verifiedLimitCounts || (Number(item.limitDownCount) === 0 && Number(stored.limitDownCount) > 0)
+    )) item.limitDownCount = stored.limitDownCount;
     if (finiteValue(item.totalAmountYi) === null && finiteValue(stored.totalAmountYi) !== null) item.totalAmountYi = stored.totalAmountYi;
     if (finiteValue(item.totalVolumeYiHands) === null && finiteValue(stored.totalVolumeYiHands) !== null) item.totalVolumeYiHands = stored.totalVolumeYiHands;
     const sh = Array.isArray(day.indices) ? day.indices.find((row) => row.name === "上证指数") : null;
@@ -4328,7 +4429,16 @@ function analyzeMarketStructure(marketData) {
 }
 
 function updateMarketHistory(marketData, options = {}) {
-  const cache = loadMarketHistoryCache();
+  const loadedCache = loadMarketHistoryCache();
+  const initialDates = new Set((loadedCache.days || []).map((day) => day?.date).filter(Boolean));
+  const hydrated = hydrateHistoryCacheFromStructuredArchive(
+    loadedCache,
+    CONFIG.structuredHistoryDir,
+    CONFIG.marketHistoryMaxDays,
+  );
+  const cache = hydrated.cache;
+  const recoveredCount = hydrated.recoveredDates.filter((date) => !initialDates.has(date)).length;
+  if (recoveredCount) log(`已从结构化复盘归档恢复${recoveredCount}个缺失交易日。`);
   bootstrapHistoryDays(cache, marketData);
   repairHistoricalBreadthFromLocal(cache, marketData?.market?.tradeDate || marketData?.index?.tradeDate || "");
   upsertMarketHistoryDay(cache, buildMarketHistorySnapshot(marketData));

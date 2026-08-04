@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -27,8 +28,8 @@ using System.Windows.Forms;
 #endif
 [assembly: AssemblyCompany("Free & Awesome A-Share Market Ops")]
 [assembly: AssemblyCopyright("Copyright 2026")]
-[assembly: AssemblyVersion("2.21.4.0")]
-[assembly: AssemblyFileVersion("2.21.4.0")]
+[assembly: AssemblyVersion("2.21.5.0")]
+[assembly: AssemblyFileVersion("2.21.5.0")]
 
 internal static class Program
 {
@@ -37,31 +38,31 @@ internal static class Program
     private const string EditionCode = "basic";
     private const string ReleaseEditionCode = "basic";
     private const string CanonicalLauncherName = "复盘软件基础版.exe";
-    private const string RuntimeTag = "版本_20260803-2.21.2-基础版-跨平台";
-    private const string MutexName = "Local\\AshareReviewLauncher_Basic_22120";
+    private const string RuntimeTag = "版本_20260804-2.21.5-基础版-跨平台";
+    private const string MutexName = "Local\\AshareReviewLauncher_Basic_22150";
 #elif SELF_EDITION
     private const string EditionName = "自用版";
     private const string EditionCode = "self";
     private const string ReleaseEditionCode = "self";
     private const string CanonicalLauncherName = "复盘软件自用版.exe";
-    private const string RuntimeTag = "版本_20260803-2.21.2-自用版-跨平台";
-    private const string MutexName = "Local\\AshareReviewLauncher_Self_22120";
+    private const string RuntimeTag = "版本_20260804-2.21.5-自用版-跨平台";
+    private const string MutexName = "Local\\AshareReviewLauncher_Self_22150";
 #elif CUSTOM_EDITION
     private const string EditionName = "定制版";
     private const string EditionCode = "basic";
     private const string ReleaseEditionCode = "custom";
     private const string CanonicalLauncherName = "复盘软件定制版-短线模型V1.0.exe";
-    private const string RuntimeTag = "版本_20260803-2.21.4-定制版-跨平台";
-    private const string MutexName = "Local\\AshareReviewLauncher_Custom_22140";
+    private const string RuntimeTag = "版本_20260804-2.21.5-定制版-跨平台";
+    private const string MutexName = "Local\\AshareReviewLauncher_Custom_22150";
 #else
     private const string EditionName = "会员版";
     private const string EditionCode = "member";
     private const string ReleaseEditionCode = "member";
     private const string CanonicalLauncherName = "大a后勤部.exe";
     private const string RuntimeTag = "版本_自动更新-会员版";
-    private const string MutexName = "Local\\AshareReviewLauncher_Member_22120";
+    private const string MutexName = "Local\\AshareReviewLauncher_Member_22150";
 #endif
-    private const string LauncherVersion = "2.21.4";
+    private const string LauncherVersion = "2.21.5";
 #if CUSTOM_EDITION
     private const string UpdateManifestUrl = "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/custom.json";
 #else
@@ -208,12 +209,15 @@ internal static class Program
             }
             File.WriteAllText(Path.Combine(temporaryRoot, ".payload.sha256"), expectedHash, Encoding.ASCII);
 
-            string preservedRoot = Directory.Exists(runtimeRoot)
-                ? runtimeRoot
-                : FindLegacyRuntimeRoot(parent, runtimeRoot);
-            if (!string.IsNullOrEmpty(preservedRoot))
+            string historyCachePath = Path.Combine("\u7f13\u5b58", "A\u80a1\u590d\u76d8\u5386\u53f2\u5e93.json");
+            bool payloadHasHistoryCache = File.Exists(Path.Combine(temporaryRoot, historyCachePath));
+            foreach (string preservedRoot in FindLegacyRuntimeRoots(parent, runtimeRoot))
             {
                 MergePreservedDirectory(preservedRoot, temporaryRoot, "\u6570\u636e\u5386\u53f2");
+                if (!payloadHasHistoryCache)
+                {
+                    MergePreservedFile(preservedRoot, temporaryRoot, historyCachePath, true);
+                }
             }
 
             if (Directory.Exists(runtimeRoot))
@@ -235,29 +239,34 @@ internal static class Program
         }
     }
 
-    private static string FindLegacyRuntimeRoot(string parent, string currentRoot)
+    private static List<string> FindLegacyRuntimeRoots(string parent, string currentRoot)
     {
+        List<string> roots = new List<string>();
         try
         {
             string current = Path.GetFullPath(currentRoot).TrimEnd(Path.DirectorySeparatorChar);
-            string best = "";
-            DateTime bestWriteTime = DateTime.MinValue;
             foreach (string candidate in Directory.GetDirectories(parent, "\u7248\u672c_*", SearchOption.TopDirectoryOnly))
             {
                 string fullCandidate = Path.GetFullPath(candidate).TrimEnd(Path.DirectorySeparatorChar);
-                if (string.Equals(fullCandidate, current, StringComparison.OrdinalIgnoreCase)) continue;
-                if (!Directory.Exists(Path.Combine(candidate, "\u6570\u636e\u5386\u53f2"))) continue;
-                DateTime writeTime = Directory.GetLastWriteTimeUtc(candidate);
-                if (writeTime <= bestWriteTime) continue;
-                best = candidate;
-                bestWriteTime = writeTime;
+                bool hasHistory = Directory.Exists(Path.Combine(candidate, "\u6570\u636e\u5386\u53f2"));
+                bool hasHistoryCache = File.Exists(Path.Combine(candidate, "\u7f13\u5b58", "A\u80a1\u590d\u76d8\u5386\u53f2\u5e93.json"));
+                if (!hasHistory && !hasHistoryCache) continue;
+                if (!roots.Exists(delegate(string item) {
+                    return string.Equals(Path.GetFullPath(item).TrimEnd(Path.DirectorySeparatorChar), fullCandidate, StringComparison.OrdinalIgnoreCase);
+                })) roots.Add(candidate);
             }
-            return best;
+            if (Directory.Exists(current) && !roots.Exists(delegate(string item) {
+                return string.Equals(Path.GetFullPath(item).TrimEnd(Path.DirectorySeparatorChar), current, StringComparison.OrdinalIgnoreCase);
+            })) roots.Add(current);
+            roots.Sort(delegate(string left, string right) {
+                return Directory.GetLastWriteTimeUtc(left).CompareTo(Directory.GetLastWriteTimeUtc(right));
+            });
         }
         catch
         {
-            return "";
+            return roots;
         }
+        return roots;
     }
 
     private static void MergePreservedDirectory(string oldRoot, string newRoot, string relativePath)
@@ -278,8 +287,20 @@ internal static class Program
             string destinationFile = Path.Combine(destinationRoot, relativeFile);
             string destinationDirectory = Path.GetDirectoryName(destinationFile);
             if (!string.IsNullOrEmpty(destinationDirectory)) Directory.CreateDirectory(destinationDirectory);
-            File.Copy(sourceFile, destinationFile, true);
+            bool userSettings = string.Equals(relativeFile, "\u7528\u6237\u8bbe\u7f6e.json", StringComparison.OrdinalIgnoreCase);
+            if (!File.Exists(destinationFile) || userSettings) File.Copy(sourceFile, destinationFile, true);
         }
+    }
+
+    private static void MergePreservedFile(string oldRoot, string newRoot, string relativePath, bool replaceExisting)
+    {
+        string sourceFile = Path.Combine(oldRoot, relativePath);
+        if (!File.Exists(sourceFile)) return;
+        string destinationFile = Path.Combine(newRoot, relativePath);
+        if (File.Exists(destinationFile) && !replaceExisting) return;
+        string destinationDirectory = Path.GetDirectoryName(destinationFile);
+        if (!string.IsNullOrEmpty(destinationDirectory)) Directory.CreateDirectory(destinationDirectory);
+        File.Copy(sourceFile, destinationFile, true);
     }
 
     private static void CopyAndVerifyPayload(string targetZip, string expectedHash)

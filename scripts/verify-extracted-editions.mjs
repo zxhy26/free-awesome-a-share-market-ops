@@ -112,6 +112,8 @@ for (const edition of EDITIONS) {
   assert(fs.existsSync(path.join(backend, "用户设置.js")), `${edition.mode} 缺少用户设置服务`);
   assert(fs.existsSync(path.join(backend, "index-catalog.js")), `${edition.mode} 缺少指数目录服务`);
   assert(fs.existsSync(path.join(backend, "index-intraday.js")), `${edition.mode} 缺少指数分时服务`);
+  assert(fs.existsSync(path.join(backend, "market-extremes.js")), `${edition.mode} 缺少涨跌停全 A 校验模块`);
+  assert(fs.existsSync(path.join(backend, "recent-market-history.js")), `${edition.mode} 缺少近期交易日恢复模块`);
   assert(service.includes('"/api/v1/index-catalog"'), `${edition.mode} 缺少指数目录 API`);
   assert(service.includes('"/api/v1/index-trend"'), `${edition.mode} 缺少指数分时 API`);
   assert(service.includes('"/api/v1/app-update/status"'), `${edition.mode} 缺少软件更新状态 API`);
@@ -124,6 +126,18 @@ for (const edition of EDITIONS) {
   assert(service.includes('"--quant-only"'), `${edition.mode} 缺少 macOS 量化同步入口`);
   assert(service.includes("DERIVATIVES_NODE_SCRIPT"), `${edition.mode} 缺少 macOS 衍生品同步入口`);
   assert(updater.includes('"/usr/bin/curl"'), `${edition.mode} 缺少 macOS 行情网络通道`);
+  assert(updater.includes("reconcileLimitDownPool"), `${edition.mode} 跌停统计未接入全 A 行情校验`);
+  assert(updater.includes("hydrateHistoryCacheFromStructuredArchive"), `${edition.mode} 未接入结构化历史恢复`);
+
+  const marketData = readJson(path.join(appRoot, "data", "market.json"));
+  const stockData = readJson(path.join(appRoot, "data", "stocks.json"));
+  const recentDays = marketData.market?.recentDays || [];
+  const limitDownRows = stockData.groups?.limitDown?.rows || [];
+  assert(recentDays.length >= 8, `${edition.mode} 主版面近期交易日少于8个`);
+  assert(recentDays[1]?.date && Number.isFinite(Number(recentDays[1]?.limitUpCount)), `${edition.mode} 前一交易日涨停数据缺失`);
+  assert(Number.isFinite(Number(recentDays[1]?.limitDownCount)), `${edition.mode} 前一交易日跌停数据缺失`);
+  assert(Number.isFinite(Number(recentDays[1]?.totalAmountYi)), `${edition.mode} 前一交易日成交额缺失`);
+  assert(Number(marketData.market?.limitDownCount) === limitDownRows.length, `${edition.mode} 跌停总数与明细不一致`);
 
   const hasQuant = index.includes("quant.html");
   const hasAdmin = index.includes("member-admin.html");

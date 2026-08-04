@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.21.5 - 2026-08-04
+
+- Cross-check the limit-down topic pool against a complete same-session all-A quote snapshot, so an erroneous provider total of zero cannot hide validated limit-down stocks.
+- Rebuild recent comparison rows from structured daily archives and verify historical limit-up and limit-down counts against local Tongdaxin daily bars when available.
+- Show up to ten real recent trading days without dropping a day solely because a topic endpoint returned two zero counts.
+- Merge missing history from every prior Windows runtime during upgrades and preserve the historical statistics cache.
+
 ## 2.21.1 - 2026-08-03
 
 - Shared the main-page zoom and font-size preferences with every independent toolbar and market-detail page.
