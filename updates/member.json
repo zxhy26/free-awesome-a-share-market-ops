@@ -2,15 +2,16 @@
   "schemaVersion": 1,
   "product": "大A后勤部",
   "edition": "member",
-  "version": "2.21.1",
-  "publishedAt": "2026-08-03T04:52:14.730Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.1/Da-A-Hou-Qin-Bu-v2.21.1.exe",
-  "sha256": "00F7B4A3B974220FFD834219E5738F4E74827AF29CAE623FCE94E21C91F98149",
-  "size": 42748416,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.1",
+  "version": "2.21.5",
+  "publishedAt": "2026-08-04T11:21:52.5592893Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.5/Da-A-Hou-Qin-Bu-v2.21.5.exe",
+  "sha256": "3015A45836A130528DE0C0E140053F724AD425B519A211A848A8AA3678936D0F",
+  "size": 43831808,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.5",
   "notes": [
-    "主页面调整字号或缩放后，顶部栏目打开的所有独立页面会同步应用。",
-    "已打开的栏目页会实时响应设置变化，重新启动后继续保留用户设置。",
-    "Windows、macOS 与手机版发行包同步更新，并补充独立页面打包校验。"
+    "跌停统计改为使用同交易日全A收盘行情交叉校验，接口错误返回0时不再漏掉真实跌停股。",
+    "近期交易日数据池恢复为17个交易日，主版面可连续对比最近8个交易日，前一日涨跌停与成交额不再为空。",
+    "升级时会合并全部旧版本历史归档并保留历史统计缓存，避免更新后近期数据重新缺失。",
+    "Windows、macOS 与安卓苹果手机版发行包同步更新。"
   ]
 }
