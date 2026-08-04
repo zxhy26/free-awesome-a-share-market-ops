@@ -1,0 +1,57 @@
+{
+    "tag":  "v2.21.5",
+    "assets":  [
+                   {
+                       "name":  "Da-A-Hou-Qin-Bu-v2.21.5.exe",
+                       "sha256":  "3015A45836A130528DE0C0E140053F724AD425B519A211A848A8AA3678936D0F",
+                       "size":  43831808,
+                       "chunks":  [
+                                      "member-exe-v2.21.5.part001",
+                                      "member-exe-v2.21.5.part002",
+                                      "member-exe-v2.21.5.part003",
+                                      "member-exe-v2.21.5.part004",
+                                      "member-exe-v2.21.5.part005"
+                                  ]
+                   },
+                   {
+                       "name":  "Da-A-Hou-Qin-Bu-v2.21.5-Windows-macOS.zip",
+                       "sha256":  "2398D62D83E53CFC6C87B41C573AFE95FBF154F8A7CCA0513687EEB2EF217C73",
+                       "size":  131630648,
+                       "chunks":  [
+                                      "member-universal-v2.21.5.part001",
+                                      "member-universal-v2.21.5.part002",
+                                      "member-universal-v2.21.5.part003",
+                                      "member-universal-v2.21.5.part004",
+                                      "member-universal-v2.21.5.part005",
+                                      "member-universal-v2.21.5.part006",
+                                      "member-universal-v2.21.5.part007",
+                                      "member-universal-v2.21.5.part008",
+                                      "member-universal-v2.21.5.part009",
+                                      "member-universal-v2.21.5.part010",
+                                      "member-universal-v2.21.5.part011",
+                                      "member-universal-v2.21.5.part012",
+                                      "member-universal-v2.21.5.part013"
+                                  ]
+                   },
+                   {
+                       "name":  "A-Share-Review-v2.21.5-Android-iOS.zip",
+                       "sha256":  "3F625E7E5B8A39417ADB133AB0781276758F44FECFEF5CA97C0ECAF36E386040",
+                       "size":  6945250,
+                       "chunks":  [
+                                      "mobile-v2.21.5.part001"
+                                  ]
+                   },
+                   {
+                       "name":  "A-Share-Review-Custom-Shortline-v2.21.5.exe",
+                       "sha256":  "5DE1A82A8C8D930F4CC2313DBAF39573C17C344209C33FBBD012DEAA8493F9E0",
+                       "size":  44895232,
+                       "chunks":  [
+                                      "custom-exe-v2.21.5.part001",
+                                      "custom-exe-v2.21.5.part002",
+                                      "custom-exe-v2.21.5.part003",
+                                      "custom-exe-v2.21.5.part004",
+                                      "custom-exe-v2.21.5.part005"
+                                  ]
+                   }
+               ]
+}
