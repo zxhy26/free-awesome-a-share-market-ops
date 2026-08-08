@@ -28,8 +28,8 @@ using System.Windows.Forms;
 #endif
 [assembly: AssemblyCompany("Free & Awesome A-Share Market Ops")]
 [assembly: AssemblyCopyright("Copyright 2026")]
-[assembly: AssemblyVersion("2.21.5.0")]
-[assembly: AssemblyFileVersion("2.21.5.0")]
+[assembly: AssemblyVersion("2.21.6.0")]
+[assembly: AssemblyFileVersion("2.21.6.0")]
 
 internal static class Program
 {
@@ -38,31 +38,31 @@ internal static class Program
     private const string EditionCode = "basic";
     private const string ReleaseEditionCode = "basic";
     private const string CanonicalLauncherName = "复盘软件基础版.exe";
-    private const string RuntimeTag = "版本_20260804-2.21.5-基础版-跨平台";
-    private const string MutexName = "Local\\AshareReviewLauncher_Basic_22150";
+    private const string RuntimeTag = "版本_20260808-2.21.6-基础版-跨平台";
+    private const string MutexName = "Local\\AshareReviewLauncher_Basic_22160";
 #elif SELF_EDITION
     private const string EditionName = "自用版";
     private const string EditionCode = "self";
     private const string ReleaseEditionCode = "self";
     private const string CanonicalLauncherName = "复盘软件自用版.exe";
-    private const string RuntimeTag = "版本_20260804-2.21.5-自用版-跨平台";
-    private const string MutexName = "Local\\AshareReviewLauncher_Self_22150";
+    private const string RuntimeTag = "版本_20260808-2.21.6-自用版-跨平台";
+    private const string MutexName = "Local\\AshareReviewLauncher_Self_22160";
 #elif CUSTOM_EDITION
     private const string EditionName = "定制版";
     private const string EditionCode = "basic";
     private const string ReleaseEditionCode = "custom";
     private const string CanonicalLauncherName = "复盘软件定制版-短线模型V1.0.exe";
-    private const string RuntimeTag = "版本_20260804-2.21.5-定制版-跨平台";
-    private const string MutexName = "Local\\AshareReviewLauncher_Custom_22150";
+    private const string RuntimeTag = "版本_20260808-2.21.6-定制版-跨平台";
+    private const string MutexName = "Local\\AshareReviewLauncher_Custom_22160";
 #else
     private const string EditionName = "会员版";
     private const string EditionCode = "member";
     private const string ReleaseEditionCode = "member";
     private const string CanonicalLauncherName = "大a后勤部.exe";
     private const string RuntimeTag = "版本_自动更新-会员版";
-    private const string MutexName = "Local\\AshareReviewLauncher_Member_22150";
+    private const string MutexName = "Local\\AshareReviewLauncher_Member_22160";
 #endif
-    private const string LauncherVersion = "2.21.5";
+    private const string LauncherVersion = "2.21.6";
 #if CUSTOM_EDITION
     private const string UpdateManifestUrl = "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/custom.json";
 #else
@@ -103,6 +103,8 @@ internal static class Program
                     return;
                 }
 
+                RefreshBackgroundTasks(runtimeRoot);
+
                 ProcessStartInfo startInfo = new ProcessStartInfo();
                 startInfo.FileName = innerPath;
                 startInfo.WorkingDirectory = runtimeRoot;
@@ -133,6 +135,76 @@ internal static class Program
             {
                 if (acquired) mutex.ReleaseMutex();
             }
+        }
+    }
+
+    private static void RefreshBackgroundTasks(string runtimeRoot)
+    {
+        string scriptPath = Path.Combine(runtimeRoot, "程序", "应用", "backend", "安装盘中实时任务.ps1");
+        if (!File.Exists(scriptPath)) return;
+
+        string powershellPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.System),
+            "WindowsPowerShell",
+            "v1.0",
+            "powershell.exe"
+        );
+        if (!File.Exists(powershellPath))
+        {
+            WriteBackgroundTaskLog(runtimeRoot, "未找到 Windows PowerShell，跳过后台任务重绑。");
+            return;
+        }
+
+        try
+        {
+            ProcessStartInfo startInfo = new ProcessStartInfo();
+            startInfo.FileName = powershellPath;
+            startInfo.Arguments = "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"" + scriptPath + "\"";
+            startInfo.WorkingDirectory = Path.GetDirectoryName(scriptPath);
+            startInfo.UseShellExecute = false;
+            startInfo.CreateNoWindow = true;
+            startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+
+            using (Process process = Process.Start(startInfo))
+            {
+                if (process == null)
+                {
+                    WriteBackgroundTaskLog(runtimeRoot, "后台任务重绑进程未启动。");
+                    return;
+                }
+                if (!process.WaitForExit(45000))
+                {
+                    try { process.Kill(); } catch { }
+                    WriteBackgroundTaskLog(runtimeRoot, "后台任务重绑超时，软件继续启动。");
+                    return;
+                }
+                if (process.ExitCode != 0)
+                {
+                    WriteBackgroundTaskLog(runtimeRoot, "后台任务重绑失败，退出码 " + process.ExitCode.ToString() + "。");
+                    return;
+                }
+            }
+            WriteBackgroundTaskLog(runtimeRoot, "后台任务已切换到当前版本运行目录。");
+        }
+        catch (Exception error)
+        {
+            WriteBackgroundTaskLog(runtimeRoot, "后台任务重绑异常：" + error.Message);
+        }
+    }
+
+    private static void WriteBackgroundTaskLog(string runtimeRoot, string message)
+    {
+        try
+        {
+            string logPath = Path.Combine(runtimeRoot, ".background-task-refresh.log");
+            File.AppendAllText(
+                logPath,
+                "[" + DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss") + "] " + message + Environment.NewLine,
+                new UTF8Encoding(false)
+            );
+        }
+        catch
+        {
         }
     }
 

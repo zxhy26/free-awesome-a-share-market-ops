@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.21.6 - 2026-08-08
+
+- Rebind every Windows background synchronization task to the current extracted runtime whenever a new launcher version starts.
+- Stop only stale review-service processes that still point at an older runtime before starting the current hidden service.
+- Register the quantitative after-close task only in editions that contain the quantitative runner, and remove a stale quantitative task from editions that do not.
+
 ## 2.21.5 - 2026-08-04
 
 - Cross-check the limit-down topic pool against a complete same-session all-A quote snapshot, so an erroneous provider total of zero cannot hide validated limit-down stocks.

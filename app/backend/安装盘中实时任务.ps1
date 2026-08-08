@@ -144,6 +144,26 @@ function Register-LogonTask($taskName, $scriptPath) {
   Register-ScheduledTask -TaskName $taskName -Xml $xml -Force | Out-Null
 }
 
+function Stop-LegacySyncService {
+  $currentScriptDir = [IO.Path]::GetFullPath($scriptDir)
+  $stopped = 0
+  $processes = @(Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyContinue)
+  foreach ($process in $processes) {
+    $commandLine = [string]$process.CommandLine
+    if (-not $commandLine -or $commandLine.IndexOf("复盘同步服务.js", [StringComparison]::OrdinalIgnoreCase) -lt 0) { continue }
+    if ($commandLine.IndexOf($currentScriptDir, [StringComparison]::OrdinalIgnoreCase) -ge 0) { continue }
+    try {
+      Stop-Process -Id $process.ProcessId -Force -ErrorAction Stop
+      $stopped++
+    } catch {
+      Write-RunLog ("旧同步服务停止失败，PID={0}：{1}" -f $process.ProcessId, $_.Exception.Message)
+    }
+  }
+  if ($stopped -gt 0) {
+    Write-RunLog ("已停止 {0} 个指向旧版本目录的同步服务进程。" -f $stopped)
+  }
+}
+
 try {
   Ensure-SilentRunner
   if (Get-ScheduledTask -TaskName "A股0AMV盘前数据源准备" -ErrorAction SilentlyContinue) {
@@ -152,11 +172,18 @@ try {
   }
   Register-XmlTask -taskName "A股盘中实时自动更新" -scriptPath (Join-Path $scriptDir "盘中实时更新.ps1") -startTime ([TimeSpan]"09:15") -repeatInterval "PT1M" -repeatDuration "PT5H45M"
   Register-XmlTask -taskName "A股收盘最终复盘更新" -scriptPath (Join-Path $scriptDir "运行自动更新.ps1") -startTime ([TimeSpan]"15:05") -repeatInterval $null -repeatDuration $null -executionTimeLimit "PT40M"
-  # 普通版不注册量化选股任务。
+  $quantScript = Join-Path $scriptDir "运行量化选股.ps1"
+  if (Test-Path -LiteralPath $quantScript -PathType Leaf) {
+    Register-XmlTask -taskName "A股量化选股收盘自动更新" -scriptPath $quantScript -startTime ([TimeSpan]"15:35") -repeatInterval $null -repeatDuration $null -executionTimeLimit "PT40M"
+  } elseif (Get-ScheduledTask -TaskName "A股量化选股收盘自动更新" -ErrorAction SilentlyContinue) {
+    Unregister-ScheduledTask -TaskName "A股量化选股收盘自动更新" -Confirm:$false
+    Write-RunLog "当前版本不含量化选股，已删除旧量化计划任务。"
+  }
   Register-XmlTask -taskName "A股机构衍生品收盘更新" -scriptPath (Join-Path $scriptDir "更新机构衍生品.ps1") -startTime ([TimeSpan]"17:15") -repeatInterval $null -repeatDuration $null -executionTimeLimit "PT10M"
   Register-LogonTask -taskName "A股复盘同步服务" -scriptPath (Join-Path $scriptDir "启动复盘同步服务.ps1")
   Register-LogonTask -taskName "A股开机后补更新" -scriptPath (Join-Path $scriptDir "开机后检查更新.ps1")
   if (-not $RegisterOnly) {
+    Stop-LegacySyncService
     Start-ScheduledTask -TaskName "A股复盘同步服务"
   }
   Write-RunLog "复盘软件自动同步已安装：登录后启动本地同步服务；09:15集合竞价起逐秒获取板块与指数实时快照、每1分钟完整同步市场；15:05收盘最终更新；17:15更新中金所机构衍生品；15:00后开机自动补更新。"
