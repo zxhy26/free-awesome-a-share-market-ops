@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "product": "大A后勤部",
   "edition": "member",
-  "version": "2.21.5",
-  "publishedAt": "2026-08-04T11:21:52.5592893Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.5/Da-A-Hou-Qin-Bu-v2.21.5.exe",
-  "sha256": "3015A45836A130528DE0C0E140053F724AD425B519A211A848A8AA3678936D0F",
-  "size": 43831808,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.5",
+  "version": "2.21.6",
+  "publishedAt": "2026-08-08T12:49:17.2213273Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.6/Da-A-Hou-Qin-Bu-v2.21.6.exe",
+  "sha256": "049791942EAB4D77B3DE88A52796776936D04AE50380F07AAB9465EC0B2F66A2",
+  "size": 45667840,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.6",
   "notes": [
-    "跌停统计改为使用同交易日全A收盘行情交叉校验，接口错误返回0时不再漏掉真实跌停股。",
-    "近期交易日数据池恢复为17个交易日，主版面可连续对比最近8个交易日，前一日涨跌停与成交额不再为空。",
-    "升级时会合并全部旧版本历史归档并保留历史统计缓存，避免更新后近期数据重新缺失。",
+    "升级启动时会静默把全部后台同步任务切换到当前运行目录，不再继续向旧版本写入数据。",
+    "自动停止仍指向旧目录的复盘同步服务，再启动当前版本服务，全程不显示命令窗口。",
+    "内置数据更新至2026-08-07，包含20个近期交易日、最新指数贡献和8月10日至16日下周大事件。",
     "Windows、macOS 与安卓苹果手机版发行包同步更新。"
   ]
 }

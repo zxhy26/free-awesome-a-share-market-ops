@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "product": "复盘软件定制版-短线模型V1.0",
   "edition": "custom",
-  "version": "2.21.5",
-  "publishedAt": "2026-08-04T11:21:52.5592893Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.5/A-Share-Review-Custom-Shortline-v2.21.5.exe",
-  "sha256": "5DE1A82A8C8D930F4CC2313DBAF39573C17C344209C33FBBD012DEAA8493F9E0",
-  "size": 44895232,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.5",
+  "version": "2.21.6",
+  "publishedAt": "2026-08-08T12:49:17.2213273Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.6/A-Share-Review-Custom-Shortline-v2.21.6.exe",
+  "sha256": "6977588C6665F09E6D1064AC52B5393CA056C273D2069AF66DD07070D9CF3529",
+  "size": 46737920,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.6",
   "notes": [
-    "跌停统计改为使用同交易日全A收盘行情交叉校验，接口错误返回0时不再漏掉真实跌停股。",
-    "近期交易日数据池恢复为17个交易日，主版面可连续对比最近8个交易日，前一日涨跌停与成交额不再为空。",
-    "升级时会合并全部旧版本历史归档并保留历史统计缓存，避免更新后近期数据重新缺失。",
+    "升级启动时会静默把全部后台同步任务切换到当前运行目录，不再继续向旧版本写入数据。",
+    "自动停止仍指向旧目录的复盘同步服务，再启动当前版本服务，全程不显示命令窗口。",
+    "内置数据更新至2026-08-07，量化全A扫描5302只并生成38个正式候选。",
     "保留R13一字方向、Day2条件池及定制版独立custom软件内更新通道。"
   ]
 }
