@@ -1,22 +1,22 @@
 {
-  "tag": "v2.21.7",
-  "ready": true,
-  "assets": [
-    {
-      "name": "Da-A-Hou-Qin-Bu-v2.21.7.exe",
-      "sha256": "D1902BBD3EA5AC0E3A2254A94F4968740001AAB35A05422407B6A338166ED882",
-      "size": 44956160,
-      "chunks": [
-        "member-v2.21.7.part001",
-        "member-v2.21.7.part002",
-        "member-v2.21.7.part003",
-        "member-v2.21.7.part004",
-        "member-v2.21.7.part005",
-        "member-v2.21.7.part006",
-        "member-v2.21.7.part007",
-        "member-v2.21.7.part008",
-        "member-v2.21.7.part009"
-      ]
-    }
-  ]
+    "tag":  "v2.21.8",
+    "ready":  true,
+    "assets":  [
+                   {
+                       "name":  "Da-A-Hou-Qin-Bu-v2.21.8.exe",
+                       "sha256":  "CA3EF5FD79428C9E4C20977F6B25C2A11BD32FCD99C251AD65EA03F1E2BF1B91",
+                       "size":  44962816,
+                       "chunks":  [
+                                      "member-v2.21.8.part001",
+                                      "member-v2.21.8.part002",
+                                      "member-v2.21.8.part003",
+                                      "member-v2.21.8.part004",
+                                      "member-v2.21.8.part005",
+                                      "member-v2.21.8.part006",
+                                      "member-v2.21.8.part007",
+                                      "member-v2.21.8.part008",
+                                      "member-v2.21.8.part009"
+                                  ]
+                   }
+               ]
 }
