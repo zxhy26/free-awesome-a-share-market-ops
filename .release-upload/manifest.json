@@ -1,7 +1,21 @@
-﻿{
-    "tag":  "v2.21.7",
-    "ready":  false,
-    "assets":  [
-
-               ]
+{
+  "tag": "v2.21.7",
+  "ready": true,
+  "assets": [
+    {
+      "name": "A-Share-Review-Custom-Shortline-v2.21.7.exe",
+      "sha256": "37676D682833AC244445EC155462EFBB1F3B18D81BF480EAB9FD1C6AFB971B50",
+      "size": 41369088,
+      "chunks": [
+        "custom-v2.21.7.part001",
+        "custom-v2.21.7.part002",
+        "custom-v2.21.7.part003",
+        "custom-v2.21.7.part004",
+        "custom-v2.21.7.part005",
+        "custom-v2.21.7.part006",
+        "custom-v2.21.7.part007",
+        "custom-v2.21.7.part008"
+      ]
+    }
+  ]
 }
