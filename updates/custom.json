@@ -1,17 +1,17 @@
 {
-  "schemaVersion": 1,
-  "product": "复盘软件定制版-短线模型V1.0",
-  "edition": "custom",
-  "version": "2.21.7",
-  "publishedAt": "2026-08-09T11:38:27.2333538Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.7/A-Share-Review-Custom-Shortline-v2.21.7.exe",
-  "sha256": "37676D682833AC244445EC155462EFBB1F3B18D81BF480EAB9FD1C6AFB971B50",
-  "size": 41369088,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.7",
-  "notes": [
-    "新增题材宝典，提供综合、涨幅、资金和扩散四种题材排名。",
-    "题材解读仅依据真实涨跌、主力净额、上涨覆盖和领涨股数据，不虚构消息原因。",
-    "题材图谱按领涨、核心、跟随和分歧展示最多80只高成交成分股，并支持日K跳转。",
-    "保留量化选股、R13一字方向、Day2条件池和独立custom软件内更新通道。"
-  ]
+    "schemaVersion":  1,
+    "product":  "复盘软件定制版-短线模型V1.0",
+    "edition":  "custom",
+    "version":  "2.21.8",
+    "publishedAt":  "2026-08-09T16:01:52.9765132Z",
+    "downloadUrl":  "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.8/A-Share-Review-Custom-Shortline-v2.21.8.exe",
+    "sha256":  "234B27DA0C615E83C267431A60D3AE6B1DC344979E3370241AFD870EE67477B5",
+    "size":  41375744,
+    "releasePage":  "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.8",
+    "notes":  [
+                  "自选行业与题材概念分时图在确认后的主要拐点标注同时间窗主导题材概念。",
+                  "标注只使用同一交易日、确认时刻以前的真实概念板块分钟资金，不使用个股、行业名、插值、未来样本或跨日数据。",
+                  "每张紧凑分时图保留六至十个最强且间隔清晰的拐点，向上红色、向下绿色，出现后持续保留。",
+                  "Windows、macOS 与安卓苹果手机版同步更新至 2.21.8。"
+              ]
 }
