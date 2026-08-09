@@ -1,5 +1,22 @@
 {
   "tag": "v2.21.7",
-  "ready": false,
-  "assets": []
+  "ready": true,
+  "assets": [
+    {
+      "name": "Da-A-Hou-Qin-Bu-v2.21.7.exe",
+      "sha256": "D1902BBD3EA5AC0E3A2254A94F4968740001AAB35A05422407B6A338166ED882",
+      "size": 44956160,
+      "chunks": [
+        "member-v2.21.7.part001",
+        "member-v2.21.7.part002",
+        "member-v2.21.7.part003",
+        "member-v2.21.7.part004",
+        "member-v2.21.7.part005",
+        "member-v2.21.7.part006",
+        "member-v2.21.7.part007",
+        "member-v2.21.7.part008",
+        "member-v2.21.7.part009"
+      ]
+    }
+  ]
 }
