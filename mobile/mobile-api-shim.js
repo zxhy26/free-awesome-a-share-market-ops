@@ -371,6 +371,54 @@
     };
   }
 
+  async function themeAccessResponse() {
+    const status = await membershipStatus();
+    if (status.active) return null;
+    return jsonResponse({
+      ok: false,
+      errorCode: "MEMBERSHIP_REQUIRED",
+      feature: "题材宝典",
+      message: "题材宝典需要开通会员后使用。",
+      membership: status,
+    }, 402);
+  }
+
+  async function themeRanking(url, force = false) {
+    const fallbackUrl = new URL("data/live-sector-flows.json", rootUrl);
+    let snapshot;
+    try {
+      snapshot = await globalThis.AShareMobileLive.loadLiveSectorFlows({fallbackUrl});
+    } catch (error) {
+      const fallback = await originalFetch(new URL("data/theme-treasure.json", rootUrl), {cache: "no-store"});
+      if (!fallback.ok) throw error;
+      snapshot = await fallback.json();
+    }
+    const model = globalThis.AShareThemeTreasureModel;
+    if (!model?.buildThemeRanking) throw new Error("题材排名模型缺失，请重新下载最新版");
+    const result = model.buildThemeRanking(snapshot, {
+      sort: url.searchParams.get("sort") || "score",
+      query: url.searchParams.get("q") || "",
+      limit: url.searchParams.get("limit") || 120,
+    });
+    if (!result.items?.length) throw new Error("题材榜单没有可用的真实行情快照");
+    return {...result, refreshed: force};
+  }
+
+  async function themeDetail(url) {
+    const code = String(url.searchParams.get("code") || "").trim().toUpperCase();
+    const rankingUrl = new URL(url.href);
+    rankingUrl.searchParams.set("sort", "score");
+    rankingUrl.searchParams.set("limit", "600");
+    const ranking = await themeRanking(rankingUrl);
+    const theme = ranking.items.find((item) => item.code === code);
+    if (!theme) throw new Error("当前题材快照中找不到该题材");
+    const constituents = await globalThis.AShareMobileLive.loadBoardConstituents(code);
+    return globalThis.AShareThemeTreasureModel.buildThemeDetail(theme, constituents, {
+      source: "东方财富概念板块成分股公开行情",
+      fetchedAt: new Date().toISOString(),
+    });
+  }
+
   async function routeFetch(input, init = {}) {
     const requestUrl = new URL(
       typeof input === "string" || input instanceof URL ? input : input.url,
@@ -413,6 +461,33 @@
         ));
       } catch (error) {
         return jsonResponse({ok: false, message: error.message || "指数分时暂不可用"}, 502);
+      }
+    }
+    if (path.endsWith("/api/v1/theme-treasure") && method === "GET") {
+      const denied = await themeAccessResponse();
+      if (denied) return denied;
+      try {
+        return jsonResponse(await themeRanking(requestUrl));
+      } catch (error) {
+        return jsonResponse({ok: false, message: error.message || "题材榜单暂不可用"}, 502);
+      }
+    }
+    if (path.endsWith("/api/v1/theme-treasure/detail") && method === "GET") {
+      const denied = await themeAccessResponse();
+      if (denied) return denied;
+      try {
+        return jsonResponse(await themeDetail(requestUrl));
+      } catch (error) {
+        return jsonResponse({ok: false, message: error.message || "题材解读暂不可用"}, 502);
+      }
+    }
+    if (path.endsWith("/api/v1/theme-treasure/refresh") && method === "POST") {
+      const denied = await themeAccessResponse();
+      if (denied) return denied;
+      try {
+        return jsonResponse(await themeRanking(requestUrl, true));
+      } catch (error) {
+        return jsonResponse({ok: false, message: error.message || "题材更新失败"}, 502);
       }
     }
     if (path.endsWith("/api/v1/live/sector-flows") || path.endsWith("/api/v1/live/sector-flows/refresh")) {

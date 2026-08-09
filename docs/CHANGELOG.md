@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.21.7 - 2026-08-09
+
+- Added a real-time thematic-topic handbook with composite, price-change, main-capital, and breadth rankings sourced from the full public concept-board snapshot.
+- Added evidence-based topic interpretation and topic-to-constituent relationship maps without inventing news or policy causes.
+- Added on-demand high-turnover constituent retrieval and current-device trading-application daily-chart actions.
+- Protected the handbook in the Member edition while keeping it directly available in Basic, Personal, and Custom editions, including the shared mobile package.
+
 ## 2.21.6 - 2026-08-08
 
 - Rebind every Windows background synchronization task to the current extracted runtime whenever a new launcher version starts.

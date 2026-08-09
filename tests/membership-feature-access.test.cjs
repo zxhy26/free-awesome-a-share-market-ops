@@ -31,6 +31,23 @@ test("index contribution data routes require membership access", () => {
   assert.equal(service.protectedFeatureForApi("/api/v1/index-contribution/refresh", "POST"), "指数贡献");
 });
 
+test("theme treasure is membership-only in the member edition", () => {
+  const indexHtml = read("app", "index.html");
+  const service = createMembershipService({
+    edition: "member",
+    appDir: path.join(__dirname, "..", "app"),
+    dataDir: path.join(__dirname, "..", "app", "data"),
+    keyDir: path.join(__dirname, "..", "app", "backend"),
+  });
+
+  assert.match(indexHtml, /href="\/app\/pages\/theme-treasure\.html"[^>]*data-member-feature="题材宝典"/);
+  assert.equal(service.protectedFeatureForPath("/app/pages/theme-treasure.html"), "题材宝典");
+  assert.equal(service.protectedFeatureForPath("/app/data/theme-treasure.json"), "题材宝典");
+  assert.equal(service.protectedFeatureForApi("/api/v1/theme-treasure", "GET"), "题材宝典");
+  assert.equal(service.protectedFeatureForApi("/api/v1/theme-treasure/detail", "GET"), "题材宝典");
+  assert.equal(service.protectedFeatureForApi("/api/v1/theme-treasure/refresh", "POST"), "题材宝典更新");
+});
+
 test("core dashboard loads without protected contribution data", () => {
   const apiSource = read("app", "assets", "js", "api.js");
   const appSource = read("app", "assets", "js", "app.js");

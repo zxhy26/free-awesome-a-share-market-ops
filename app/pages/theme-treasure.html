@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#eef0f2">
+  <title>题材宝典｜A股复盘</title>
+  <link rel="icon" href="../assets/icons/favicon-32.png">
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/layout.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <link rel="stylesheet" href="../assets/css/theme-treasure.css?v=20260809-1">
+  <script type="module" src="../assets/js/display-page-sync.js?v=20260803-1"></script>
+  <script type="module" src="../assets/js/theme-treasure-model.js?v=20260809-1"></script>
+</head>
+<body class="detail-page theme-treasure-page">
+  <div class="theme-treasure-shell">
+    <header class="theme-treasure-header">
+      <div>
+        <h1>题材宝典</h1>
+        <p id="themeStatus" aria-live="polite">读取实时题材快照</p>
+      </div>
+      <nav class="detail-actions" aria-label="题材宝典操作">
+        <button class="button button-primary" id="themeRefresh" type="button"><span aria-hidden="true">⟳</span><span>更新题材</span></button>
+        <a class="button" href="/app/">返回首页</a>
+        <fieldset class="theme-segment" aria-label="主题模式">
+          <legend class="visually-hidden">主题模式</legend>
+          <button type="button" data-theme-choice="system">跟随</button>
+          <button type="button" data-theme-choice="light">浅色</button>
+          <button type="button" data-theme-choice="dark">深色</button>
+        </fieldset>
+      </nav>
+    </header>
+
+    <section class="theme-toolbar" aria-label="题材排名条件">
+      <label class="theme-search" for="themeQuery">
+        <span>搜索题材</span>
+        <input id="themeQuery" type="search" autocomplete="off" placeholder="输入题材名称或 BK 代码">
+      </label>
+      <div class="theme-sort" id="themeSort" role="group" aria-label="题材排名方式">
+        <button type="button" data-sort="score" aria-pressed="true">综合排名</button>
+        <button type="button" data-sort="change" aria-pressed="false">涨幅排名</button>
+        <button type="button" data-sort="flow" aria-pressed="false">资金排名</button>
+        <button type="button" data-sort="breadth" aria-pressed="false">扩散排名</button>
+      </div>
+      <div class="theme-source-time" id="themeSourceTime">行情时间 --</div>
+    </section>
+
+    <main class="theme-treasure-main">
+      <section class="theme-ranking-panel" aria-labelledby="themeRankingTitle">
+        <div class="theme-section-heading">
+          <div><h2 id="themeRankingTitle">题材榜单</h2><p id="themeRankingMeta">等待真实行情</p></div>
+          <div class="theme-legend"><span>涨</span><span>跌</span></div>
+        </div>
+        <div class="theme-ranking-head" aria-hidden="true">
+          <span>排名 / 题材</span><span>涨跌</span><span>主力净额</span><span>综合分</span>
+        </div>
+        <div class="theme-ranking-list" id="themeRankingList" role="listbox" aria-label="题材榜单"></div>
+      </section>
+
+      <section class="theme-detail-panel" aria-labelledby="themeDetailTitle">
+        <div class="theme-detail-hero" id="themeDetailHero">
+          <div>
+            <span class="theme-code" id="themeCode">--</span>
+            <h2 id="themeDetailTitle">请选择题材</h2>
+            <p id="themeHeadline">从左侧榜单选择题材后查看解读和成分关系。</p>
+          </div>
+          <div class="theme-hero-rank"><span>综合排名</span><strong id="themeRank">--</strong></div>
+        </div>
+
+        <div class="theme-metrics" id="themeMetrics" aria-label="题材指标"></div>
+
+        <section class="theme-interpretation" aria-labelledby="themeInterpretationTitle">
+          <div class="theme-section-heading">
+            <div><h3 id="themeInterpretationTitle">题材解读</h3><p>按涨幅、主力资金、上涨覆盖与领涨股强度计算</p></div>
+          </div>
+          <ul id="themeEvidence" class="theme-evidence"></ul>
+          <div id="themeRisks" class="theme-risks"></div>
+        </section>
+
+        <section class="theme-map" aria-labelledby="themeMapTitle">
+          <div class="theme-section-heading">
+            <div><h3 id="themeMapTitle">题材图谱</h3><p id="themeMapMeta">题材与高成交活跃成分股关系</p></div>
+          </div>
+          <div id="themeMapContent" class="theme-map-content"></div>
+        </section>
+      </section>
+    </main>
+
+    <footer class="theme-treasure-footer">
+      <p id="themeMethodology">系统综合分仅用于应用内题材排序，不是行情源官方评级。</p>
+      <p>数据来自公开概念板块行情与成分股行情，仅作复盘信息整理，不构成投资建议。</p>
+    </footer>
+  </div>
+  <script type="module" src="../assets/js/membership-guard.js?v=20260809-1"></script>
+  <script type="module" src="../assets/js/theme-treasure-page.js?v=20260809-1"></script>
+</body>
+</html>

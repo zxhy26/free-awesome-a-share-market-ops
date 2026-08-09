@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "product": "复盘软件定制版-短线模型V1.0",
   "edition": "custom",
-  "version": "2.21.6",
-  "publishedAt": "2026-08-08T12:49:17.2213273Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.6/A-Share-Review-Custom-Shortline-v2.21.6.exe",
-  "sha256": "6977588C6665F09E6D1064AC52B5393CA056C273D2069AF66DD07070D9CF3529",
-  "size": 46737920,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.6",
+  "version": "2.21.7",
+  "publishedAt": "2026-08-09T11:38:27.2333538Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.7/A-Share-Review-Custom-Shortline-v2.21.7.exe",
+  "sha256": "37676D682833AC244445EC155462EFBB1F3B18D81BF480EAB9FD1C6AFB971B50",
+  "size": 41369088,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.7",
   "notes": [
-    "升级启动时会静默把全部后台同步任务切换到当前运行目录，不再继续向旧版本写入数据。",
-    "自动停止仍指向旧目录的复盘同步服务，再启动当前版本服务，全程不显示命令窗口。",
-    "内置数据更新至2026-08-07，量化全A扫描5302只并生成38个正式候选。",
-    "保留R13一字方向、Day2条件池及定制版独立custom软件内更新通道。"
+    "新增题材宝典，提供综合、涨幅、资金和扩散四种题材排名。",
+    "题材解读仅依据真实涨跌、主力净额、上涨覆盖和领涨股数据，不虚构消息原因。",
+    "题材图谱按领涨、核心、跟随和分歧展示最多80只高成交成分股，并支持日K跳转。",
+    "保留量化选股、R13一字方向、Day2条件池和独立custom软件内更新通道。"
   ]
 }

@@ -250,6 +250,12 @@
         amount: round(amountYuan / 100000000),
         amountYuan: Math.round(amountYuan),
         changePct: finite(raw?.f3),
+        upCount: finite(raw?.f104),
+        downCount: finite(raw?.f105),
+        leaderName: String(raw?.f128 || "").trim(),
+        leaderCode: String(raw?.f140 || "").trim(),
+        leaderMarket: finite(raw?.f141),
+        leaderChangePct: finite(raw?.f136),
         sourceTimestamp: finite(raw?.f124),
       });
     }
@@ -272,7 +278,7 @@
       invt: "2",
       fid: "f62",
       fs: fsCode,
-      fields: "f12,f14,f3,f62,f124",
+      fields: "f12,f14,f3,f62,f104,f105,f128,f136,f140,f141,f124",
       ut: EASTMONEY_TOKEN,
       _: String(Date.now()),
     }).forEach(([key, value]) => url.searchParams.set(key, value));
@@ -517,6 +523,55 @@
     };
   }
 
+  async function loadBoardConstituents(code) {
+    const normalizedCode = String(code || "").trim().toUpperCase();
+    if (!/^BK\d{4}$/.test(normalizedCode)) throw new Error("题材代码无效");
+    const hosts = ["https://push2delay.eastmoney.com", "https://push2.eastmoney.com"];
+    const errors = [];
+    for (const host of hosts) {
+      const url = new URL("/api/qt/clist/get", host);
+      Object.entries({
+        pn: "1",
+        pz: "80",
+        po: "1",
+        np: "1",
+        fltt: "2",
+        invt: "2",
+        fid: "f6",
+        fs: `b:${normalizedCode}`,
+        fields: "f12,f13,f14,f2,f3,f6,f8,f20,f21,f100,f103",
+        ut: EASTMONEY_TOKEN,
+        _: String(Date.now()),
+      }).forEach(([key, value]) => url.searchParams.set(key, value));
+      try {
+        const payload = await jsonp(url);
+        const rows = (Array.isArray(payload?.data?.diff) ? payload.data.diff : []).map((row) => {
+          const stockCode = String(row?.f12 || "").trim();
+          const name = String(row?.f14 || "").trim();
+          if (!/^\d{6}$/.test(stockCode) || !name || /^(ST|\*ST)|退市/u.test(name)) return null;
+          return {
+            code: stockCode,
+            name,
+            market: finite(row?.f13),
+            price: finite(row?.f2),
+            changePct: finite(row?.f3),
+            amount: finite(row?.f6) === null ? null : round(Number(row.f6) / 100000000, 4),
+            turnoverRate: finite(row?.f8),
+            totalMarketCap: finite(row?.f20),
+            floatMarketCap: finite(row?.f21),
+            industry: String(row?.f100 || "").trim(),
+            concepts: String(row?.f103 || "").split(/[，,、;]/u).map((item) => item.trim()).filter(Boolean),
+          };
+        }).filter(Boolean);
+        if (rows.length < 3) throw new Error(`只返回${rows.length}只有效成分股`);
+        return rows;
+      } catch (error) {
+        errors.push(error.message || String(error));
+      }
+    }
+    throw new Error(`题材成分股读取失败：${errors.join("；")}`);
+  }
+
   function dailyKSecid(target = {}) {
     const boardCode = String(target.boardCode || "").trim().toUpperCase();
     const code = String(target.code || "").trim().toUpperCase();
@@ -587,6 +642,7 @@
     loadLiveSectorFlows,
     loadBoardTrend,
     loadStockQuote,
+    loadBoardConstituents,
     loadDailyK,
     loadIndexCatalog,
     loadIndexTrend,

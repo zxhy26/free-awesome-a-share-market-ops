@@ -202,9 +202,20 @@ test("primary board funding rows publish the same-round percentage in display un
     f14: "银行Ⅱ",
     f62: 1527127040,
     f3: 104,
+    f104: 32,
+    f105: 11,
+    f128: "测试领涨股",
+    f140: "600001",
+    f141: 1,
+    f136: 1000,
   }], definition, {changePctScale: 100});
   assert.equal(result.rows[0].amount, 15.2713);
   assert.equal(result.rows[0].changePct, 1.04);
+  assert.equal(result.rows[0].upCount, 32);
+  assert.equal(result.rows[0].downCount, 11);
+  assert.equal(result.rows[0].leaderName, "测试领涨股");
+  assert.equal(result.rows[0].leaderCode, "600001");
+  assert.equal(result.rows[0].leaderChangePct, 10);
 });
 
 test("board coverage accepts a 500-of-504 provider cap but rejects materially incomplete data", () => {

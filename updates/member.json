@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "product": "大A后勤部",
   "edition": "member",
-  "version": "2.21.6",
-  "publishedAt": "2026-08-08T12:49:17.2213273Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.6/Da-A-Hou-Qin-Bu-v2.21.6.exe",
-  "sha256": "049791942EAB4D77B3DE88A52796776936D04AE50380F07AAB9465EC0B2F66A2",
-  "size": 45667840,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.6",
+  "version": "2.21.7",
+  "publishedAt": "2026-08-09T11:38:27.2333538Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.7/Da-A-Hou-Qin-Bu-v2.21.7.exe",
+  "sha256": "D1902BBD3EA5AC0E3A2254A94F4968740001AAB35A05422407B6A338166ED882",
+  "size": 44956160,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.7",
   "notes": [
-    "升级启动时会静默把全部后台同步任务切换到当前运行目录，不再继续向旧版本写入数据。",
-    "自动停止仍指向旧目录的复盘同步服务，再启动当前版本服务，全程不显示命令窗口。",
-    "内置数据更新至2026-08-07，包含20个近期交易日、最新指数贡献和8月10日至16日下周大事件。",
-    "Windows、macOS 与安卓苹果手机版发行包同步更新。"
+    "新增会员功能题材宝典，提供综合、涨幅、资金和扩散四种题材排名。",
+    "题材解读仅依据真实涨跌、主力净额、上涨覆盖和领涨股数据，不虚构消息原因。",
+    "题材图谱按领涨、核心、跟随和分歧展示最多80只高成交成分股，并支持日K跳转。",
+    "内置行情更新至2026-08-07，Windows、macOS 与安卓苹果手机版同步更新。"
   ]
 }

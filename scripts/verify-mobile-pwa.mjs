@@ -133,11 +133,16 @@ function validateEdition(edition) {
   );
   const requiredInternalDetailFiles = [
     "pages/content-detail.html",
+    "pages/theme-treasure.html",
     "assets/js/display-page-sync.js",
+    "assets/js/theme-treasure-model.js",
+    "assets/js/theme-treasure-page.js",
     "assets/js/mobile-trading-app.js",
     "assets/js/mobile-content-detail.js",
     "assets/js/mobile-internal-navigation.js",
     "assets/css/mobile-detail.css",
+    "assets/css/theme-treasure.css",
+    "data/theme-treasure.json",
   ];
   for (const requiredFile of requiredInternalDetailFiles) {
     assert(
@@ -280,6 +285,20 @@ function validateEdition(edition) {
       mobileLiveSource.includes("loadIndexCatalog") &&
       mobileLiveSource.includes("loadIndexTrend"),
     `${label}: 主要指数自选和真实分时接口不完整`,
+  );
+  assert(
+    mobileApiSource.includes("/api/v1/theme-treasure") &&
+      mobileApiSource.includes("themeAccessResponse") &&
+      mobileLiveSource.includes("loadBoardConstituents"),
+    `${label}: 题材宝典实时榜单、会员校验或成分股接口不完整`,
+  );
+  const themePageSource = fs.readFileSync(path.join(root, "pages", "theme-treasure.html"), "utf8");
+  assert(
+    themePageSource.includes("题材榜单") &&
+      themePageSource.includes("题材解读") &&
+      themePageSource.includes("题材图谱") &&
+      themePageSource.includes("membership-guard.js"),
+    `${label}: 题材宝典页面结构或会员校验缺失`,
   );
   assert(
     mobileLiveSource.includes("sh000852") &&

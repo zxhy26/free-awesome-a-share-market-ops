@@ -225,6 +225,12 @@ function normalizeBoardRows(diff, definition, options = {}) {
       amount: round(amountYuan / 100000000, 4),
       amountYuan: Math.round(amountYuan),
       changePct: finite(raw?.f3) === null ? null : round(finite(raw.f3) / changePctScale, 4),
+      upCount: finite(raw?.f104) === null ? null : Math.max(0, Math.round(finite(raw.f104))),
+      downCount: finite(raw?.f105) === null ? null : Math.max(0, Math.round(finite(raw.f105))),
+      leaderName: String(raw?.f128 || "").trim(),
+      leaderCode: String(raw?.f140 || "").trim(),
+      leaderMarket: finite(raw?.f141),
+      leaderChangePct: finite(raw?.f136) === null ? null : round(finite(raw.f136) / changePctScale, 4),
       sourceTimestamp: timestamp && timestamp > 1000000000
         ? Math.floor(timestamp)
         : fallbackTimestamp && fallbackTimestamp > 1000000000
@@ -258,11 +264,11 @@ async function defaultFetchBoardGroup(definition, options = {}) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const cacheBust = Number(options.nowMs) || Date.now();
   const primaryUrl = "https://data.eastmoney.com/dataapi/bkzj/getbkzj"
-    + `?key=${encodeURIComponent("f62,f3")}&code=${encodeURIComponent(definition.fsCode)}&_=${cacheBust}`;
+    + `?key=${encodeURIComponent("f62,f3,f104,f105,f128,f136,f140,f141")}&code=${encodeURIComponent(definition.fsCode)}&_=${cacheBust}`;
   const fallbackUrl = "https://push2.eastmoney.com/api/qt/clist/get"
     + "?pn=1&pz=1000&po=1&np=1&fltt=2&invt=2&fid=f62"
     + `&fs=${encodeURIComponent(definition.fsCode)}`
-    + `&fields=f12,f14,f3,f62,f124&_=${cacheBust}`;
+    + `&fields=f12,f14,f3,f62,f104,f105,f128,f136,f140,f141,f124&_=${cacheBust}`;
   const errors = [];
   for (const [url, route, changePctScale] of [
     [primaryUrl, "eastmoney-bkzj", 100],

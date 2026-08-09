@@ -16,6 +16,7 @@ const DATA_URLS = {
   config: new URL("../../data/config.json", import.meta.url),
   policyNews: new URL("../../data/policy-news.json", import.meta.url),
   nextWeekEvents: new URL("../../data/next-week-events.json", import.meta.url),
+  themeTreasure: new URL("../../data/theme-treasure.json", import.meta.url),
   quant: new URL("../../data/quant.json", import.meta.url),
   health: new URL("../../data/health.json", import.meta.url),
   historyIndex: new URL("../../data/history-index.json", import.meta.url),
@@ -32,6 +33,7 @@ const API_MODULE_NAMES = {
   config: "config",
   policyNews: "policy-news",
   nextWeekEvents: "next-week-events",
+  themeTreasure: "theme-treasure",
   quant: "quant",
   health: "health",
   historyIndex: "history-index",
@@ -325,6 +327,37 @@ export async function requestLiveSectorFlowRefresh() {
   return fetchJson(`${SERVICE_ORIGIN}/api/v1/live/sector-flows/refresh`, {
     label: "逐秒板块资金手动刷新",
     timeoutMs: 15000,
+    method: "POST",
+    allowSnapshot: false,
+  });
+}
+
+export async function loadThemeTreasure(options = {}) {
+  const parameters = new URLSearchParams({
+    sort: String(options.sort || "score"),
+    q: String(options.query || ""),
+    limit: String(options.limit || 120),
+  });
+  return fetchJson(`${SERVICE_ORIGIN}/api/v1/theme-treasure?${parameters}`, {
+    label: "题材榜单",
+    timeoutMs: 15000,
+    allowSnapshot: false,
+  });
+}
+
+export async function loadThemeTreasureDetail(code) {
+  const parameters = new URLSearchParams({code: String(code || "")});
+  return fetchJson(`${SERVICE_ORIGIN}/api/v1/theme-treasure/detail?${parameters}`, {
+    label: "题材解读",
+    timeoutMs: 18000,
+    allowSnapshot: false,
+  });
+}
+
+export async function refreshThemeTreasure() {
+  return fetchJson(`${SERVICE_ORIGIN}/api/v1/theme-treasure/refresh`, {
+    label: "题材宝典手动刷新",
+    timeoutMs: 20000,
     method: "POST",
     allowSnapshot: false,
   });

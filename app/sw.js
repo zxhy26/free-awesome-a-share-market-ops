@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v91-cross-platform";
+const CACHE_VERSION = "a-share-review-v92-theme-treasure";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [
@@ -21,6 +21,7 @@ const CORE_ASSETS = [
   "/app/assets/css/upgrade.css",
   "/app/assets/css/membership.css",
   "/app/assets/css/internal-detail.css",
+  "/app/assets/css/theme-treasure.css",
   "/app/assets/js/api.js",
   "/app/assets/js/internal-navigation.js",
   "/app/assets/js/mobile-live.js",
@@ -48,6 +49,8 @@ const CORE_ASSETS = [
   "/app/assets/js/history-page.js",
   "/app/assets/js/membership.js",
   "/app/assets/js/membership-guard.js",
+  "/app/assets/js/theme-treasure-model.js",
+  "/app/assets/js/theme-treasure-page.js",
   "/app/data/market.json",
   "/app/data/indices.json",
   "/app/data/sectors.json",
@@ -71,11 +74,13 @@ const PROTECTED_PATHS = new Set([
   "/app/pages/derivatives.html",
   "/app/pages/history.html",
   "/app/pages/stock-search.html",
+  "/app/pages/theme-treasure.html",
   "/app/data/policy-news.json",
   "/app/data/next-week-events.json",
   "/app/data/derivatives.json",
   "/app/data/history-index.json",
   "/app/data/index-contribution.json",
+  "/app/data/theme-treasure.json",
 ]);
 
 self.addEventListener("install", (event) => {

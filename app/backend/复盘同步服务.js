@@ -7,6 +7,7 @@ const { createStockAnalysisService } = require("./个股分析服务");
 const { applyLocalResponseHeaders, validateLocalRequest } = require("./local-request-security");
 const { derivativesPublicationState, mergeHealthModule } = require("./health-semantics");
 const { createLiveSectorFlowService } = require("./live-sector-flow");
+const { createThemeTreasureService } = require("./theme-treasure");
 const { createBoardMinuteFlowService } = require("./board-minute-flow");
 const { createBoardIntradayService } = require("./board-intraday");
 const { createIndexIntradayService } = require("./index-intraday");
@@ -17,7 +18,7 @@ const { createMacTradingAppService } = require("./macos-trading-app");
 
 const PORT = Number(process.env.A_SHARE_REVIEW_PORT) || 18765;
 const HOST = process.env.A_SHARE_REVIEW_HOST || "127.0.0.1";
-const SERVICE_VERSION = "3.23.0";
+const SERVICE_VERSION = "3.24.0";
 const ALLOW_REMOTE = process.env.A_SHARE_REVIEW_ALLOW_REMOTE === "1";
 const TEST_MODE = process.env.A_SHARE_REVIEW_TEST_MODE === "1";
 const DISABLE_SCHEDULES = process.env.A_SHARE_REVIEW_DISABLE_SCHEDULES === "1";
@@ -68,6 +69,11 @@ const stockAnalysis = createStockAnalysisService({
   log,
 });
 const liveSectorFlow = createLiveSectorFlowService({log});
+const themeTreasure = createThemeTreasureService({
+  liveSectorFlow,
+  dataDir: DATA_DIR,
+  log,
+});
 const boardMinuteFlow = createBoardMinuteFlowService({
   cachePaths: [
     PORTABLE_ROOT ? path.join(PORTABLE_ROOT, "缓存", "A股板块资金分时缓存.json") : "",
@@ -413,6 +419,7 @@ const API_DATASETS = {
   quant: "quant.json",
   "policy-news": "policy-news.json",
   "next-week-events": "next-week-events.json",
+  "theme-treasure": "theme-treasure.json",
   config: "config.json",
   health: "health.json",
   "history-index": "history-index.json",
@@ -1206,7 +1213,7 @@ const server = http.createServer(async (req, res) => {
       appData: appDataStatus(),
       flowData: flowDataStatus(),
       historyCount: listHistoryDates().length,
-      endpoints: ["/api/v1/market/snapshot", "/api/v1/preferences", "POST /api/v1/preferences", "/api/v1/index-catalog", "/api/v1/index-trend?key=sh000001", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/sector-trend?code=BK0000", "/api/v1/sector-flow?code=BK0000", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "/api/v1/membership/status", "POST /api/v1/membership/trial", "/api/v1/app-update/status", "/api/v1/app-update/check", "POST /api/v1/app-update/install", "POST /api/v1/sync", "POST /api/v1/index-contribution/refresh", "POST /stock-open", "POST /derivatives-refresh", "POST /next-week-events-refresh"],
+      endpoints: ["/api/v1/market/snapshot", "/api/v1/preferences", "POST /api/v1/preferences", "/api/v1/index-catalog", "/api/v1/index-trend?key=sh000001", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/theme-treasure", "/api/v1/theme-treasure/detail?code=BK0000", "POST /api/v1/theme-treasure/refresh", "/api/v1/sector-trend?code=BK0000", "/api/v1/sector-flow?code=BK0000", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "/api/v1/membership/status", "POST /api/v1/membership/trial", "/api/v1/app-update/status", "/api/v1/app-update/check", "POST /api/v1/app-update/install", "POST /api/v1/sync", "POST /api/v1/index-contribution/refresh", "POST /stock-open", "POST /derivatives-refresh", "POST /next-week-events-refresh"],
     });
     return;
   }
@@ -1282,6 +1289,53 @@ const server = http.createServer(async (req, res) => {
         errorCode: "LIVE_SECTOR_FLOW_REFRESH_FAILED",
         message: error.message || "逐秒板块资金手动刷新失败",
         service: liveSectorFlow.getState(),
+      });
+    }
+    return;
+  }
+
+  if (url.pathname === "/api/v1/theme-treasure" && req.method === "GET") {
+    try {
+      sendJson(res, 200, await themeTreasure.ranking({
+        sort: url.searchParams.get("sort") || "score",
+        query: url.searchParams.get("q") || "",
+        limit: url.searchParams.get("limit") || 120,
+      }));
+    } catch (error) {
+      sendJson(res, error.statusCode || 502, {
+        ok: false,
+        errorCode: error.code || "THEME_TREASURE_UNAVAILABLE",
+        message: error.message || "题材榜单暂不可用",
+      });
+    }
+    return;
+  }
+
+  if (url.pathname === "/api/v1/theme-treasure/detail" && req.method === "GET") {
+    try {
+      sendJson(res, 200, await themeTreasure.detail(url.searchParams.get("code") || ""));
+    } catch (error) {
+      sendJson(res, error.statusCode || 502, {
+        ok: false,
+        errorCode: error.code || "THEME_DETAIL_UNAVAILABLE",
+        message: error.message || "题材解读暂不可用",
+      });
+    }
+    return;
+  }
+
+  if (url.pathname === "/api/v1/theme-treasure/refresh") {
+    if (req.method !== "POST") {
+      methodNotAllowed(res);
+      return;
+    }
+    try {
+      sendJson(res, 200, await themeTreasure.ranking({force: true, sort: "score", limit: 120}));
+    } catch (error) {
+      sendJson(res, 502, {
+        ok: false,
+        errorCode: error.code || "THEME_TREASURE_REFRESH_FAILED",
+        message: error.message || "题材宝典手动刷新失败",
       });
     }
     return;
@@ -1374,7 +1428,7 @@ const server = http.createServer(async (req, res) => {
     const health = readJsonFile(path.join(DATA_DIR, "health.json"), {});
     const derivatives = derivativesStatus();
     const mergedHealth = mergeHealthModule(health, derivativesHealthModule(derivatives, new Date(), health.tradeDate));
-    sendJson(res, 200, {...mergedHealth, derivatives, indexContribution: indexContributionStatus(), liveSectorFlow: liveSectorFlow.getState(), service: apiServiceState()});
+    sendJson(res, 200, {...mergedHealth, derivatives, indexContribution: indexContributionStatus(), liveSectorFlow: liveSectorFlow.getState(), themeTreasure: themeTreasure.getState(), service: apiServiceState()});
     return;
   }
 
