@@ -1,21 +1,21 @@
 {
-  "tag": "v2.21.7",
-  "ready": true,
-  "assets": [
-    {
-      "name": "A-Share-Review-Custom-Shortline-v2.21.7.exe",
-      "sha256": "37676D682833AC244445EC155462EFBB1F3B18D81BF480EAB9FD1C6AFB971B50",
-      "size": 41369088,
-      "chunks": [
-        "custom-v2.21.7.part001",
-        "custom-v2.21.7.part002",
-        "custom-v2.21.7.part003",
-        "custom-v2.21.7.part004",
-        "custom-v2.21.7.part005",
-        "custom-v2.21.7.part006",
-        "custom-v2.21.7.part007",
-        "custom-v2.21.7.part008"
-      ]
-    }
-  ]
+    "tag":  "v2.21.8",
+    "ready":  true,
+    "assets":  [
+                   {
+                       "name":  "A-Share-Review-Custom-Shortline-v2.21.8.exe",
+                       "sha256":  "234B27DA0C615E83C267431A60D3AE6B1DC344979E3370241AFD870EE67477B5",
+                       "size":  41375744,
+                       "chunks":  [
+                                      "custom-v2.21.8.part001",
+                                      "custom-v2.21.8.part002",
+                                      "custom-v2.21.8.part003",
+                                      "custom-v2.21.8.part004",
+                                      "custom-v2.21.8.part005",
+                                      "custom-v2.21.8.part006",
+                                      "custom-v2.21.8.part007",
+                                      "custom-v2.21.8.part008"
+                                  ]
+                   }
+               ]
 }
