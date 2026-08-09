@@ -354,6 +354,18 @@ export async function loadThemeTreasureDetail(code) {
   });
 }
 
+export async function loadThemeStockProfile(themeCode, stockCode) {
+  const parameters = new URLSearchParams({
+    theme: String(themeCode || ""),
+    stock: String(stockCode || ""),
+  });
+  return fetchJson(`${SERVICE_ORIGIN}/api/v1/theme-treasure/company?${parameters}`, {
+    label: "公司与题材关联资料",
+    timeoutMs: 18000,
+    allowSnapshot: false,
+  });
+}
+
 export async function refreshThemeTreasure() {
   return fetchJson(`${SERVICE_ORIGIN}/api/v1/theme-treasure/refresh`, {
     label: "题材宝典手动刷新",

@@ -15,6 +15,10 @@
   let cachedDeviceCode = "";
   let publicKeyPromise = null;
   let stockDirectoryPromise = null;
+  const themeDetailCache = new Map();
+  const companySurveyCache = new Map();
+  const themeDetailCacheMs = 60 * 1000;
+  const companySurveyCacheMs = 24 * 60 * 60 * 1000;
 
   function jsonResponse(body, status = 200) {
     return new Response(JSON.stringify(body), {
@@ -406,6 +410,9 @@
 
   async function themeDetail(url) {
     const code = String(url.searchParams.get("code") || "").trim().toUpperCase();
+    if (!/^BK\d{4}$/.test(code)) throw new Error("题材代码无效");
+    const cached = themeDetailCache.get(code);
+    if (cached && Date.now() - cached.savedAt < themeDetailCacheMs) return cached.value;
     const rankingUrl = new URL(url.href);
     rankingUrl.searchParams.set("sort", "score");
     rankingUrl.searchParams.set("limit", "600");
@@ -413,10 +420,52 @@
     const theme = ranking.items.find((item) => item.code === code);
     if (!theme) throw new Error("当前题材快照中找不到该题材");
     const constituents = await globalThis.AShareMobileLive.loadBoardConstituents(code);
-    return globalThis.AShareThemeTreasureModel.buildThemeDetail(theme, constituents, {
+    const detail = globalThis.AShareThemeTreasureModel.buildThemeDetail(theme, constituents, {
       source: "东方财富概念板块成分股公开行情",
       fetchedAt: new Date().toISOString(),
     });
+    themeDetailCache.set(code, {savedAt: Date.now(), value: detail});
+    return detail;
+  }
+
+  async function themeCompany(url) {
+    const themeCode = String(url.searchParams.get("theme") || "").trim().toUpperCase();
+    const stockCode = String(url.searchParams.get("stock") || "").replace(/\D/g, "").slice(-6);
+    if (!/^BK\d{4}$/.test(themeCode)) throw new Error("题材代码无效");
+    if (!/^\d{6}$/.test(stockCode)) throw new Error("股票代码无效");
+    const detailUrl = new URL(url.href);
+    detailUrl.searchParams.set("code", themeCode);
+    const detail = await themeDetail(detailUrl);
+    const candidates = [
+      ...(Array.isArray(detail.constituents) ? detail.constituents : []),
+      ...(Array.isArray(detail.groups) ? detail.groups.flatMap((group) => group.items || []) : []),
+    ];
+    const stock = candidates.find((item) => String(item?.code || "") === stockCode);
+    if (!stock) throw new Error("该股票不在当前题材已核验的成分股中");
+
+    let profile = {};
+    let warning = "";
+    const cached = companySurveyCache.get(stockCode);
+    if (cached && Date.now() - cached.savedAt < companySurveyCacheMs) {
+      profile = cached.value;
+    } else {
+      try {
+        profile = await globalThis.AShareMobileLive.loadCompanySurvey(stockCode);
+        companySurveyCache.set(stockCode, {savedAt: Date.now(), value: profile});
+      } catch (error) {
+        warning = `公司F10资料暂未返回：${error.message || String(error)}`;
+      }
+    }
+    return globalThis.AShareThemeTreasureModel.buildCompanyThemeProfile(
+      detail.theme,
+      stock,
+      profile,
+      {
+        source: "东方财富F10公司资料与概念板块成分股公开行情",
+        fetchedAt: new Date().toISOString(),
+        warning,
+      },
+    );
   }
 
   async function routeFetch(input, init = {}) {
@@ -472,6 +521,15 @@
         return jsonResponse({ok: false, message: error.message || "题材榜单暂不可用"}, 502);
       }
     }
+    if (path.endsWith("/api/v1/theme-treasure/company") && method === "GET") {
+      const denied = await themeAccessResponse();
+      if (denied) return denied;
+      try {
+        return jsonResponse(await themeCompany(requestUrl));
+      } catch (error) {
+        return jsonResponse({ok: false, message: error.message || "公司题材简介暂不可用"}, 502);
+      }
+    }
     if (path.endsWith("/api/v1/theme-treasure/detail") && method === "GET") {
       const denied = await themeAccessResponse();
       if (denied) return denied;
@@ -485,6 +543,7 @@
       const denied = await themeAccessResponse();
       if (denied) return denied;
       try {
+        themeDetailCache.clear();
         return jsonResponse(await themeRanking(requestUrl, true));
       } catch (error) {
         return jsonResponse({ok: false, message: error.message || "题材更新失败"}, 502);

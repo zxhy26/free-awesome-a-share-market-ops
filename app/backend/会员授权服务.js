@@ -840,7 +840,7 @@ function createMembershipService(options = {}) {
     if (pathname === "/api/v1/history/dates" || pathname.startsWith("/api/v1/history/")) return "历史回放";
     if (pathname === "/derivatives-refresh") return "机构动向更新";
     if (pathname === "/api/v1/stocks/search" || pathname === "/api/v1/stocks/analyze") return "个股搜索";
-    if (pathname === "/api/v1/theme-treasure" || pathname === "/api/v1/theme-treasure/detail" || pathname === "/api/v1/data/theme-treasure") return "题材宝典";
+    if (pathname === "/api/v1/theme-treasure" || pathname === "/api/v1/theme-treasure/detail" || pathname === "/api/v1/theme-treasure/company" || pathname === "/api/v1/data/theme-treasure") return "题材宝典";
     if (pathname === "/api/v1/theme-treasure/refresh") return "题材宝典更新";
     if (pathname === "/api/v1/sector-flow" || pathname === "/api/v1/sector-trend") return "自选板块分时";
     if (pathname === "/api/v1/data/index-contribution" || pathname === "/api/v1/index-contribution/refresh") return "指数贡献";

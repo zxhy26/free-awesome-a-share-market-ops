@@ -45,6 +45,7 @@ test("theme treasure is membership-only in the member edition", () => {
   assert.equal(service.protectedFeatureForPath("/app/data/theme-treasure.json"), "题材宝典");
   assert.equal(service.protectedFeatureForApi("/api/v1/theme-treasure", "GET"), "题材宝典");
   assert.equal(service.protectedFeatureForApi("/api/v1/theme-treasure/detail", "GET"), "题材宝典");
+  assert.equal(service.protectedFeatureForApi("/api/v1/theme-treasure/company", "GET"), "题材宝典");
   assert.equal(service.protectedFeatureForApi("/api/v1/theme-treasure/refresh", "POST"), "题材宝典更新");
 });
 

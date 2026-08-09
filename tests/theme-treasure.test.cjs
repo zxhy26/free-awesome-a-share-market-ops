@@ -1,7 +1,9 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
+const {createThemeTreasureService} = require("../app/backend/theme-treasure");
 const modelPromise = import("../app/assets/js/theme-treasure-model.js");
 
 const snapshot = {
@@ -68,6 +70,75 @@ test("theme graph assigns factual stock roles and keeps complete relation text",
   });
 });
 
+test("company profile uses verified business text and direct topic evidence without invented claims", async () => {
+  const {buildCompanyThemeProfile} = await modelPromise;
+  const profile = buildCompanyThemeProfile(
+    {code: "BK1002", name: "交换机"},
+    {code: "000938", name: "紫光股份", role: "核心", changePct: 3.2, amount: 18, industry: "通信设备", concepts: ["交换机", "算力"]},
+    {jbzl: {
+      gsmc: "紫光股份有限公司",
+      sshy: "电子信息",
+      gsjj: "公司持续深耕信息通信领域。公司提供网络设备、服务器、存储产品和数字化解决方案。",
+    }},
+    {fetchedAt: "2026-08-10T10:00:00.000Z"},
+  );
+  assert.equal(profile.company.name, "紫光股份有限公司");
+  assert.deepEqual(profile.matchingConcepts, ["交换机"]);
+  assert.match(profile.relationReason, /公开概念标签中与该题材直接匹配的是“交换机”/);
+  assert.match(profile.businessSummary, /网络设备/);
+  assert.doesNotMatch(JSON.stringify(profile), /市占率|华为代工|\.\.\.|…/);
+});
+
+test("company profile API verifies membership and caches the F10 response", async (t) => {
+  const temporaryData = fs.mkdtempSync(path.join(os.tmpdir(), "theme-treasure-company-"));
+  t.after(() => fs.rmSync(temporaryData, {recursive: true, force: true}));
+  let boardRequests = 0;
+  let profileRequests = 0;
+  const fetchImpl = async (url) => {
+    const target = String(url);
+    if (target.includes("/api/qt/clist/get")) {
+      boardRequests += 1;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({data: {diff: [
+          {f12: "000938", f13: 0, f14: "紫光股份", f2: 31, f3: 3.2, f6: 1800000000, f8: 2.1, f20: 100, f21: 90, f100: "通信设备", f103: "交换机,算力"},
+          {f12: "000977", f13: 0, f14: "浪潮信息", f2: 51, f3: 2.1, f6: 1500000000, f8: 3.2, f20: 100, f21: 90, f100: "计算机设备", f103: "交换机,算力"},
+          {f12: "600498", f13: 1, f14: "烽火通信", f2: 22, f3: 1.1, f6: 900000000, f8: 1.8, f20: 100, f21: 90, f100: "通信设备", f103: "交换机,光通信"},
+        ]}}),
+      };
+    }
+    if (target.includes("CompanySurveyAjax")) {
+      profileRequests += 1;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({jbzl: {
+          gsmc: "紫光股份有限公司",
+          agjc: "紫光股份",
+          sshy: "电子信息",
+          gsjj: "公司提供网络设备、服务器、存储产品和数字化解决方案。",
+        }}),
+      };
+    }
+    throw new Error(`unexpected request: ${target}`);
+  };
+  const service = createThemeTreasureService({
+    dataDir: temporaryData,
+    fetchImpl,
+    now: () => new Date("2026-08-10T10:00:00.000Z"),
+    liveSectorFlow: {getSnapshot: async () => snapshot, forceRefresh: async () => snapshot},
+  });
+  const first = await service.company("BK1002", "000938");
+  const second = await service.company("BK1002", "000938");
+  assert.equal(first.company.name, "紫光股份有限公司");
+  assert.match(first.relationReason, /交换机/);
+  assert.equal(second.businessSummary, first.businessSummary);
+  assert.equal(boardRequests, 1);
+  assert.equal(profileRequests, 1);
+  await assert.rejects(() => service.company("BK1002", "000001"), /不在当前题材已核验的成分股中/);
+});
+
 test("theme page is a full-width no-horizontal-scroll workspace", () => {
   const root = path.resolve(__dirname, "..");
   const html = fs.readFileSync(path.join(root, "app", "pages", "theme-treasure.html"), "utf8");
@@ -76,10 +147,31 @@ test("theme page is a full-width no-horizontal-scroll workspace", () => {
   assert.match(html, /题材榜单/);
   assert.match(html, /题材解读/);
   assert.match(html, /题材图谱/);
+  assert.match(html, /id="themeCompanyDialog"/);
+  assert.match(html, /与题材最相关的公司说明/);
   assert.match(html, /membership-guard\.js/);
   assert.match(css, /grid-template-columns:\s*minmax\(430px/);
   assert.match(css, /@media \(max-width: 920px\)/);
   assert.match(page, /state\.ranking\?\.active \? 3000 : 30000/);
   assert.match(page, /refreshThemeTreasure/);
+  assert.match(page, /loadThemeStockProfile/);
+  assert.match(page, /openCompanyProfile/);
+  assert.match(page, /event\.stopPropagation\(\)/);
+  assert.match(page, /event\.key === "Escape"/);
   assert.match(page, /openTdxStock/);
+});
+
+test("mobile theme treasure verifies membership before loading company profile", () => {
+  const root = path.resolve(__dirname, "..");
+  const shim = fs.readFileSync(path.join(root, "mobile", "mobile-api-shim.js"), "utf8");
+  const live = fs.readFileSync(path.join(root, "mobile", "mobile-live.js"), "utf8");
+  assert.match(shim, /\/api\/v1\/theme-treasure\/company/);
+  assert.match(shim, /themeAccessResponse\(\)/);
+  assert.match(shim, /该股票不在当前题材已核验的成分股中/);
+  assert.match(shim, /buildCompanyThemeProfile/);
+  assert.match(shim, /companySurveyCacheMs\s*=\s*24\s*\*\s*60\s*\*\s*60\s*\*\s*1000/);
+  assert.match(live, /RPT_F10_BASIC_ORGINFO/);
+  assert.match(live, /loadCompanySurvey/);
+  assert.match(live, /ORG_PROFILE/);
+  assert.match(live, /BUSINESS_SCOPE/);
 });

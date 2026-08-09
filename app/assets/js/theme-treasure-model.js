@@ -25,6 +25,10 @@ const AShareThemeTreasureModel = (function createThemeTreasureModel() {
     return String(value || "").replace(/\s+/g, " ").trim().slice(0, maximum);
   }
 
+  function cleanLongText(value, maximum = 6000) {
+    return String(value || "").replace(/\s+/g, " ").trim().slice(0, maximum);
+  }
+
   function marketFromCode(code, explicitMarket = null) {
     const normalized = String(code || "").replace(/\D/g, "").slice(-6);
     const market = finite(explicitMarket);
@@ -231,6 +235,116 @@ const AShareThemeTreasureModel = (function createThemeTreasureModel() {
     };
   }
 
+  function normalizeCompanyProfile(raw) {
+    const profile = raw?.jbzl || raw || {};
+    return {
+      companyName: cleanText(profile.companyName || profile.gsmc, 120),
+      stockName: cleanText(profile.stockName || profile.agjc, 40),
+      listingMarket: cleanText(profile.listingMarket || profile.ssjys || profile.zqlb, 80),
+      industry: cleanText(profile.industry || profile.sshy || profile.sszjhhy, 120),
+      businessIntro: cleanLongText(profile.businessIntro || profile.gsjj, 6000),
+      businessScope: cleanLongText(profile.businessScope || profile.jyfw, 6000),
+      website: cleanText(profile.website || profile.gswz, 160),
+    };
+  }
+
+  function canonicalTopic(value) {
+    return String(value || "")
+      .replace(/[\s·・\-—_（）()]/gu, "")
+      .replace(/(概念板块|概念|题材|板块|产业链)$/u, "")
+      .toLowerCase();
+  }
+
+  function topicMatches(left, right) {
+    const first = canonicalTopic(left);
+    const second = canonicalTopic(right);
+    if (!first || !second) return false;
+    if (first === second) return true;
+    if (Math.min(first.length, second.length) < 3) return false;
+    return first.includes(second) || second.includes(first);
+  }
+
+  function sentences(value) {
+    return cleanLongText(value, 6000)
+      .match(/[^。！？；]+[。！？；]?/gu)
+      ?.map((item) => item.trim())
+      .filter(Boolean) || [];
+  }
+
+  function selectBusinessSummary(theme, stock, profile) {
+    const source = profile.businessIntro || profile.businessScope;
+    const parts = sentences(source);
+    if (!parts.length) return {text: "", themeMatched: false};
+    const themeName = cleanText(theme?.name, 40);
+    const relatedConcepts = (stock?.concepts || []).filter((item) => topicMatches(item, themeName));
+    const topicKeywords = [themeName, ...relatedConcepts]
+      .map(canonicalTopic)
+      .filter((item, index, rows) => item.length >= 2 && rows.indexOf(item) === index);
+    const industryKeyword = canonicalTopic(stock?.industry || profile.industry);
+    const ranked = parts.map((text, index) => {
+      const normalized = canonicalTopic(text);
+      const topicHits = topicKeywords.filter((keyword) => normalized.includes(keyword)).length;
+      const industryHit = industryKeyword.length >= 3 && normalized.includes(industryKeyword) ? 1 : 0;
+      const businessHit = /(主营|业务|产品|服务|研发|生产|制造|提供|布局|解决方案)/u.test(text) ? 1 : 0;
+      return {text, index, topicHits, score: topicHits * 10 + industryHit * 3 + businessHit};
+    }).sort((left, right) => right.score - left.score || left.index - right.index);
+    const selected = ranked.slice(0, Math.min(2, ranked.length)).sort((left, right) => left.index - right.index);
+    return {
+      text: selected.map((item) => item.text).join(""),
+      themeMatched: selected.some((item) => item.topicHits > 0),
+    };
+  }
+
+  function buildCompanyThemeProfile(themeInput, stockInput, profileInput, options = {}) {
+    const theme = themeInput?.code ? themeInput : normalizeThemeRow(themeInput || {});
+    const stock = {...normalizeConstituent(stockInput || {}), role: cleanText(stockInput?.role, 20)};
+    const profile = normalizeCompanyProfile(profileInput);
+    const matchingConcepts = stock.concepts.filter((item) => topicMatches(item, theme?.name));
+    const relevantConcepts = [...matchingConcepts, ...stock.concepts]
+      .filter((item, index, rows) => item && rows.indexOf(item) === index)
+      .slice(0, 8);
+    const summary = selectBusinessSummary(theme, stock, profile);
+    const membershipSentence = matchingConcepts.length
+      ? `${stock.name}已由公开板块成分接口核验为“${theme.name}”成分股，公开概念标签中与该题材直接匹配的是“${matchingConcepts.join("、")}”。`
+      : `${stock.name}已由公开板块成分接口核验为“${theme.name}”成分股。`;
+    let relationReason = membershipSentence;
+    if (summary.text) {
+      relationReason += summary.themeMatched
+        ? "公司公开主营资料中包含与该题材直接相关的业务表述，具体业务简介见下方。"
+        : "公司公开主营资料未出现与题材同名的业务表述，当前仅按公开成分关系展示。";
+    } else {
+      relationReason += "公司主营资料当前未返回，因此不补写未经公开资料验证的业务关系。";
+    }
+    const evidence = [`题材成分：${theme.name}`];
+    if (matchingConcepts.length) evidence.push(`直接匹配概念：${matchingConcepts.join("、")}`);
+    if (stock.industry || profile.industry) evidence.push(`所属行业：${stock.industry || profile.industry}`);
+    if (stock.role) evidence.push(`盘面角色：${stock.role}`);
+    if (stock.changePct !== null) evidence.push(`当日涨跌：${stock.changePct > 0 ? "+" : ""}${stock.changePct.toFixed(2)}%`);
+    if (stock.amount !== null) evidence.push(`成交额：${stock.amount.toFixed(2)}亿元`);
+    return {
+      ok: true,
+      version: 1,
+      theme: {code: cleanText(theme?.code, 16), name: cleanText(theme?.name, 40)},
+      stock,
+      company: {
+        name: profile.companyName || stock.name,
+        stockName: profile.stockName || stock.name,
+        listingMarket: profile.listingMarket,
+        industry: profile.industry || stock.industry,
+        website: profile.website,
+      },
+      businessSummary: summary.text || "暂无可核验的公司主营简介。",
+      relationReason,
+      matchingConcepts,
+      relevantConcepts,
+      evidence,
+      source: cleanText(options.source || "东方财富F10公司资料与概念板块成分股公开行情", 180),
+      fetchedAt: cleanText(options.fetchedAt || new Date().toISOString(), 40),
+      warning: cleanText(options.warning, 240),
+      disclaimer: "题材关联仅依据公开板块成分关系、公开概念标签和公司主营资料整理；客户、订单、份额等信息仅在公开资料明确披露时展示。",
+    };
+  }
+
   function constituentRole(stock, theme, index) {
     if (stock.code && stock.code === theme?.leader?.code) return "领涨";
     if ((finite(stock.changePct) ?? -Infinity) >= 9.5) return "领涨";
@@ -288,9 +402,11 @@ const AShareThemeTreasureModel = (function createThemeTreasureModel() {
 
   return {
     GENERIC_TOPIC_RE,
+    buildCompanyThemeProfile,
     buildThemeDetail,
     buildThemeRanking,
     interpretationFor,
+    normalizeCompanyProfile,
     normalizeConstituent,
     normalizeThemeRow,
   };
@@ -300,9 +416,11 @@ globalThis.AShareThemeTreasureModel = AShareThemeTreasureModel;
 
 export const {
   GENERIC_TOPIC_RE,
+  buildCompanyThemeProfile,
   buildThemeDetail,
   buildThemeRanking,
   interpretationFor,
+  normalizeCompanyProfile,
   normalizeConstituent,
   normalizeThemeRow,
 } = AShareThemeTreasureModel;

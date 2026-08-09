@@ -10,6 +10,7 @@ const BOARD_API_HOSTS = Object.freeze([
 ]);
 const EASTMONEY_TOKEN = "bd1d9ddb04089700cf9c27f6f7426281";
 const DETAIL_CACHE_MS = 60 * 1000;
+const PROFILE_CACHE_MS = 24 * 60 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 12000;
 const A_SHARE_CODE_RE = /^\d{6}$/;
 
@@ -105,6 +106,24 @@ async function fetchBoardConstituents(fetchImpl, boardCode) {
   throw new Error(`题材成分股接口失败：${errors.join("；")}`);
 }
 
+function f10MarketPrefix(stockCode) {
+  const code = String(stockCode || "").trim();
+  if (/^(430|83[0-9]|87[0-9]|920)/.test(code)) return "BJ";
+  if (/^(6|9)/.test(code)) return "SH";
+  return "SZ";
+}
+
+async function fetchCompanySurvey(fetchImpl, stockCode) {
+  const normalizedCode = String(stockCode || "").trim();
+  if (!A_SHARE_CODE_RE.test(normalizedCode)) throw new Error("股票代码无效");
+  const securityCode = `${f10MarketPrefix(normalizedCode)}${normalizedCode}`;
+  const url = new URL("https://emweb.securities.eastmoney.com/PC_HSF10/CompanySurvey/CompanySurveyAjax");
+  url.searchParams.set("code", securityCode);
+  const payload = await fetchJson(fetchImpl, url, REQUEST_TIMEOUT_MS);
+  if (!payload?.jbzl || typeof payload.jbzl !== "object") throw new Error("公司F10资料为空");
+  return payload;
+}
+
 function createThemeTreasureService(options = {}) {
   if (!options.liveSectorFlow) throw new Error("题材宝典需要实时板块服务");
   const liveSectorFlow = options.liveSectorFlow;
@@ -114,6 +133,7 @@ function createThemeTreasureService(options = {}) {
   const now = typeof options.now === "function" ? options.now : () => new Date();
   const log = typeof options.log === "function" ? options.log : () => {};
   const detailCache = new Map();
+  const profileCache = new Map();
 
   async function ranking(parameters = {}) {
     const {buildThemeRanking} = await themeModelPromise;
@@ -189,11 +209,60 @@ function createThemeTreasureService(options = {}) {
     }
   }
 
+  async function company(themeCode, stockCode, parameters = {}) {
+    const {buildCompanyThemeProfile} = await themeModelPromise;
+    const normalizedThemeCode = String(themeCode || "").trim().toUpperCase();
+    const normalizedStockCode = String(stockCode || "").trim();
+    if (!/^BK\d{4}$/.test(normalizedThemeCode)) {
+      const error = new Error("题材代码无效");
+      error.statusCode = 400;
+      throw error;
+    }
+    if (!A_SHARE_CODE_RE.test(normalizedStockCode)) {
+      const error = new Error("股票代码无效");
+      error.statusCode = 400;
+      throw error;
+    }
+    const themeDetail = await detail(normalizedThemeCode);
+    const visibleStocks = [
+      ...(Array.isArray(themeDetail?.constituents) ? themeDetail.constituents : []),
+      ...(Array.isArray(themeDetail?.groups) ? themeDetail.groups.flatMap((group) => group.items || []) : []),
+    ];
+    const stock = visibleStocks.find((item) => item?.code === normalizedStockCode);
+    if (!stock) {
+      const error = new Error("该股票不在当前题材已核验的成分股中");
+      error.statusCode = 404;
+      error.code = "THEME_STOCK_NOT_VERIFIED";
+      throw error;
+    }
+    const cached = profileCache.get(normalizedStockCode);
+    const cacheFresh = cached && now().getTime() - cached.savedAt < PROFILE_CACHE_MS;
+    let profile = cacheFresh && !parameters.force ? cached.profile : null;
+    let warning = "";
+    if (!profile) {
+      try {
+        profile = await fetchCompanySurvey(fetchImpl, normalizedStockCode);
+        profileCache.set(normalizedStockCode, {savedAt: now().getTime(), profile});
+      } catch (error) {
+        warning = `公司F10资料刷新失败：${error.message}`;
+        profile = cached?.profile || {};
+        log(`题材宝典 ${normalizedThemeCode}/${normalizedStockCode} 公司资料读取失败：${error.message}`);
+      }
+    }
+    return buildCompanyThemeProfile(themeDetail.theme, stock, profile, {
+      source: "东方财富F10公司资料与概念板块成分股公开行情",
+      fetchedAt: now().toISOString(),
+      warning,
+    });
+  }
+
   return {
+    company,
     detail,
     ranking,
     getState: () => ({
       cachedDetails: detailCache.size,
+      cachedProfiles: profileCache.size,
       snapshotAvailable: Boolean(readJson(snapshotPath, null)?.items?.length),
     }),
   };
@@ -202,4 +271,6 @@ function createThemeTreasureService(options = {}) {
 module.exports = {
   createThemeTreasureService,
   fetchBoardConstituents,
+  fetchCompanySurvey,
+  f10MarketPrefix,
 };

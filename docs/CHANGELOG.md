@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.21.9 - 2026-08-10
+
+- Made every constituent in the thematic-topic handbook open an in-app company profile while retaining a separate local trading-application daily-chart action.
+- Added theme-and-stock membership verification, 24-hour company-profile caching, and public Eastmoney F10 company introductions with explicit source and retrieval time.
+- Built concise topic relationships only from verified board membership, public concept labels, and disclosed business text; unverified clients, orders, market shares, and supplier relationships are never inferred.
+- Added keyboard and backdrop closing, global font scaling, and overflow-free desktop and narrow-screen layouts for the company detail dialog.
+
 ## 2.21.8 - 2026-08-09
 
 - Added persistent thematic-concept labels to confirmed major turning points in every selected industry or concept intraday chart.

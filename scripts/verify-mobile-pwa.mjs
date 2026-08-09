@@ -288,8 +288,10 @@ function validateEdition(edition) {
   );
   assert(
     mobileApiSource.includes("/api/v1/theme-treasure") &&
+      mobileApiSource.includes("/api/v1/theme-treasure/company") &&
       mobileApiSource.includes("themeAccessResponse") &&
-      mobileLiveSource.includes("loadBoardConstituents"),
+      mobileLiveSource.includes("loadBoardConstituents") &&
+      mobileLiveSource.includes("loadCompanySurvey"),
     `${label}: 题材宝典实时榜单、会员校验或成分股接口不完整`,
   );
   const themePageSource = fs.readFileSync(path.join(root, "pages", "theme-treasure.html"), "utf8");
@@ -297,8 +299,18 @@ function validateEdition(edition) {
     themePageSource.includes("题材榜单") &&
       themePageSource.includes("题材解读") &&
       themePageSource.includes("题材图谱") &&
+      themePageSource.includes("themeCompanyDialog") &&
       themePageSource.includes("membership-guard.js"),
     `${label}: 题材宝典页面结构或会员校验缺失`,
+  );
+  const themePageScriptSource = fs.readFileSync(
+    path.join(root, "assets", "js", "theme-treasure-page.js"),
+    "utf8",
+  );
+  assert(
+    themePageScriptSource.includes("loadThemeStockProfile") &&
+      themePageScriptSource.includes("openCompanyProfile"),
+    `${label}: 个股公司与题材关联简介交互未完整打包`,
   );
   assert(
     mobileLiveSource.includes("sh000852") &&

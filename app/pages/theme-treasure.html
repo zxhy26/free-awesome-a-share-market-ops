@@ -9,9 +9,9 @@
   <link rel="stylesheet" href="../assets/css/variables.css">
   <link rel="stylesheet" href="../assets/css/layout.css">
   <link rel="stylesheet" href="../assets/css/components.css">
-  <link rel="stylesheet" href="../assets/css/theme-treasure.css?v=20260809-1">
+  <link rel="stylesheet" href="../assets/css/theme-treasure.css?v=20260810-1">
   <script type="module" src="../assets/js/display-page-sync.js?v=20260803-1"></script>
-  <script type="module" src="../assets/js/theme-treasure-model.js?v=20260809-1"></script>
+  <script type="module" src="../assets/js/theme-treasure-model.js?v=20260810-1"></script>
 </head>
 <body class="detail-page theme-treasure-page">
   <div class="theme-treasure-shell">
@@ -92,7 +92,44 @@
       <p>数据来自公开概念板块行情与成分股行情，仅作复盘信息整理，不构成投资建议。</p>
     </footer>
   </div>
-  <script type="module" src="../assets/js/membership-guard.js?v=20260809-1"></script>
-  <script type="module" src="../assets/js/theme-treasure-page.js?v=20260809-1"></script>
+
+  <dialog class="theme-company-dialog" id="themeCompanyDialog" aria-labelledby="themeCompanyName">
+    <article class="theme-company-sheet">
+      <header class="theme-company-header">
+        <div>
+          <span class="theme-company-eyebrow" id="themeCompanyEyebrow">题材成分股</span>
+          <h2 id="themeCompanyName">公司资料</h2>
+          <p><span id="themeCompanyCode">--</span><strong class="theme-company-change" id="themeCompanyChange">--</strong></p>
+        </div>
+        <button class="theme-company-close" id="themeCompanyClose" type="button" aria-label="关闭公司详情" title="关闭">×</button>
+      </header>
+      <div class="theme-company-body" aria-live="polite">
+        <section>
+          <h3>与题材最相关的公司说明</h3>
+          <p id="themeCompanyRelation">正在读取公开资料。</p>
+        </section>
+        <section>
+          <h3>公司主营</h3>
+          <p id="themeCompanyBusiness">正在读取公司公开主营资料。</p>
+        </section>
+        <section>
+          <h3>关联证据</h3>
+          <div class="theme-company-chips" id="themeCompanyFacts"></div>
+        </section>
+        <section>
+          <h3>公开概念标签</h3>
+          <div class="theme-company-chips" id="themeCompanyConcepts"></div>
+        </section>
+        <p class="theme-company-warning" id="themeCompanyWarning" hidden></p>
+      </div>
+      <footer class="theme-company-footer">
+        <p id="themeCompanySource">资料来源读取中</p>
+        <button class="button button-primary" id="themeCompanyOpenK" type="button">打开日K</button>
+      </footer>
+    </article>
+  </dialog>
+
+  <script type="module" src="../assets/js/membership-guard.js?v=20260810-1"></script>
+  <script type="module" src="../assets/js/theme-treasure-page.js?v=20260810-1"></script>
 </body>
 </html>

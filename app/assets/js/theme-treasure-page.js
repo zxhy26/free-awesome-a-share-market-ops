@@ -1,6 +1,7 @@
 import {
   loadThemeTreasure,
   loadThemeTreasureDetail,
+  loadThemeStockProfile,
   logTechnicalError,
   openTdxStock,
   refreshThemeTreasure,
@@ -25,6 +26,19 @@ const dom = {
   mapMeta: document.querySelector("#themeMapMeta"),
   map: document.querySelector("#themeMapContent"),
   methodology: document.querySelector("#themeMethodology"),
+  companyDialog: document.querySelector("#themeCompanyDialog"),
+  companyClose: document.querySelector("#themeCompanyClose"),
+  companyEyebrow: document.querySelector("#themeCompanyEyebrow"),
+  companyName: document.querySelector("#themeCompanyName"),
+  companyCode: document.querySelector("#themeCompanyCode"),
+  companyChange: document.querySelector("#themeCompanyChange"),
+  companyRelation: document.querySelector("#themeCompanyRelation"),
+  companyBusiness: document.querySelector("#themeCompanyBusiness"),
+  companyFacts: document.querySelector("#themeCompanyFacts"),
+  companyConcepts: document.querySelector("#themeCompanyConcepts"),
+  companySource: document.querySelector("#themeCompanySource"),
+  companyWarning: document.querySelector("#themeCompanyWarning"),
+  companyOpenK: document.querySelector("#themeCompanyOpenK"),
 };
 
 const state = {
@@ -33,8 +47,11 @@ const state = {
   ranking: null,
   selectedCode: "",
   detailCache: new Map(),
+  companyCache: new Map(),
+  activeStock: null,
   loadId: 0,
   detailLoadId: 0,
+  companyLoadId: 0,
   timer: null,
 };
 
@@ -60,6 +77,12 @@ function amountText(value) {
   const number = finite(value);
   if (number === null) return "--";
   return `${number > 0 ? "+" : ""}${number.toFixed(Math.abs(number) >= 100 ? 1 : 2)}亿`;
+}
+
+function dateTimeText(value) {
+  if (!value) return "--";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString("zh-CN", {hour12: false});
 }
 
 function tone(value) {
@@ -142,17 +165,22 @@ function renderBaseDetail(theme) {
 
 function stockNode(stock) {
   const row = element("div", "theme-stock-row");
+  const profile = element("button", "theme-stock-profile");
+  profile.type = "button";
+  profile.title = `查看${stock.name}的公司主营与题材关联`;
   const identity = element("div", "theme-stock-identity");
   identity.append(
     element("strong", "", `${stock.name} ${stock.code}`),
     element("small", "", stock.relationReason || stock.industry || "题材成分股"),
   );
-  const quote = element("div", "theme-stock-quote");
-  quote.append(element("span", tone(stock.changePct), signed(stock.changePct, "%")));
-  const open = element("button", "", "日K");
+  const quote = element("span", `theme-stock-change ${tone(stock.changePct)}`, signed(stock.changePct, "%"));
+  profile.append(identity, quote);
+  profile.addEventListener("click", () => openCompanyProfile(stock));
+  const open = element("button", "theme-stock-k", "日K");
   open.type = "button";
   open.title = `在本机交易软件中打开${stock.name}日K`;
-  open.addEventListener("click", async () => {
+  open.addEventListener("click", async (event) => {
+    event.stopPropagation();
     open.disabled = true;
     try {
       await openTdxStock(stock);
@@ -163,9 +191,75 @@ function stockNode(stock) {
       open.disabled = false;
     }
   });
-  quote.append(open);
-  row.append(identity, quote);
+  row.append(profile, open);
   return row;
+}
+
+function renderCompanyLoading(theme, stock) {
+  dom.companyEyebrow.textContent = `${theme.name} · ${stock.role || "成分股"}`;
+  dom.companyName.textContent = stock.name;
+  dom.companyCode.textContent = stock.code;
+  dom.companyChange.textContent = signed(stock.changePct, "%");
+  dom.companyChange.className = `theme-company-change ${tone(stock.changePct)}`;
+  dom.companyRelation.textContent = stock.relationReason || `${stock.name}属于“${theme.name}”公开成分股。`;
+  dom.companyBusiness.textContent = "正在读取公司公开主营资料。";
+  dom.companyFacts.replaceChildren();
+  dom.companyConcepts.replaceChildren();
+  dom.companySource.textContent = "资料来源读取中";
+  dom.companyWarning.hidden = true;
+  dom.companyWarning.textContent = "";
+}
+
+function renderCompanyProfile(profile) {
+  const stock = profile?.stock || state.activeStock || {};
+  dom.companyEyebrow.textContent = `${profile?.theme?.name || "题材"} · ${stock.role || "成分股"}`;
+  dom.companyName.textContent = profile?.company?.name || stock.name || "公司资料";
+  dom.companyCode.textContent = `${stock.name || ""} ${stock.code || ""}`.trim();
+  dom.companyChange.textContent = signed(stock.changePct, "%");
+  dom.companyChange.className = `theme-company-change ${tone(stock.changePct)}`;
+  dom.companyRelation.textContent = profile?.relationReason || "当前仅确认该股属于所选公开题材成分股。";
+  dom.companyBusiness.textContent = profile?.businessSummary || "暂无可核验的公司主营简介。";
+  dom.companyFacts.replaceChildren(...(profile?.evidence || []).map((item) => element("span", "theme-company-chip", item)));
+  const concepts = Array.isArray(profile?.relevantConcepts) ? profile.relevantConcepts : [];
+  dom.companyConcepts.replaceChildren(...(concepts.length ? concepts : ["暂无更多公开概念标签"])
+    .map((item) => element("span", "theme-company-chip theme-company-concept", item)));
+  dom.companySource.textContent = `${profile?.source || "公开公司资料"} · ${dateTimeText(profile?.fetchedAt)} · ${profile?.disclaimer || "仅作信息整理，不构成投资建议。"}`;
+  dom.companyWarning.hidden = !profile?.warning;
+  dom.companyWarning.textContent = profile?.warning || "";
+}
+
+async function openCompanyProfile(stock) {
+  const theme = selectedTheme();
+  if (!theme || !stock?.code) return;
+  state.activeStock = {...stock, themeCode: theme.code, themeName: theme.name};
+  const requestId = ++state.companyLoadId;
+  renderCompanyLoading(theme, stock);
+  if (!dom.companyDialog.open) dom.companyDialog.showModal();
+  const cacheKey = `${theme.code}:${stock.code}`;
+  if (state.companyCache.has(cacheKey)) {
+    renderCompanyProfile(state.companyCache.get(cacheKey));
+    return;
+  }
+  try {
+    const profile = await loadThemeStockProfile(theme.code, stock.code);
+    if (requestId !== state.companyLoadId) return;
+    state.companyCache.set(cacheKey, profile);
+    renderCompanyProfile(profile);
+  } catch (error) {
+    if (requestId !== state.companyLoadId) return;
+    renderCompanyProfile({
+      theme: {code: theme.code, name: theme.name},
+      stock,
+      company: {name: stock.name},
+      relationReason: stock.relationReason || `${stock.name}属于“${theme.name}”公开成分股。`,
+      businessSummary: "公司F10资料暂时无法读取，已保留可核验的题材成分关系。",
+      evidence: [`题材成分：${theme.name}`, stock.industry ? `所属行业：${stock.industry}` : ""].filter(Boolean),
+      relevantConcepts: stock.concepts || [],
+      warning: error.message || "公司资料读取失败",
+      disclaimer: "仅展示已核验的题材成分关系，不补写未经公开资料验证的业务信息。",
+    });
+    logTechnicalError(error, "题材个股公司详情");
+  }
 }
 
 function renderDetail(detail) {
@@ -191,7 +285,7 @@ function renderDetail(detail) {
     dom.map.append(tree);
   }
   dom.mapMeta.textContent = detail?.constituentCount
-    ? `已核验 ${detail.constituentCount} 只高成交活跃成分股 · 点击日K打开本机交易软件`
+    ? `已核验 ${detail.constituentCount} 只高成交活跃成分股 · 点击个股查看公司主营与题材关联`
     : "成分股接口暂未形成可核验样本";
 }
 
@@ -290,12 +384,42 @@ dom.refresh.addEventListener("click", async () => {
   try {
     await refreshThemeTreasure();
     state.detailCache.clear();
+    state.companyCache.clear();
     await loadRanking({forceDetail: true});
   } catch (error) {
     dom.status.textContent = error.message || "题材更新失败";
     logTechnicalError(error, "题材宝典手动刷新");
   } finally {
     dom.refresh.disabled = false;
+  }
+});
+
+dom.companyClose.addEventListener("click", () => dom.companyDialog.close());
+dom.companyDialog.addEventListener("click", (event) => {
+  if (event.target === dom.companyDialog) dom.companyDialog.close();
+});
+dom.companyDialog.addEventListener("close", () => {
+  state.companyLoadId += 1;
+  state.activeStock = null;
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && dom.companyDialog.open) {
+    event.preventDefault();
+    dom.companyDialog.close();
+  }
+});
+dom.companyOpenK.addEventListener("click", async () => {
+  const stock = state.activeStock;
+  if (!stock) return;
+  dom.companyOpenK.disabled = true;
+  try {
+    await openTdxStock(stock);
+  } catch (error) {
+    dom.companyWarning.hidden = false;
+    dom.companyWarning.textContent = error.message || "日K打开失败";
+    logTechnicalError(error, "题材公司详情日K");
+  } finally {
+    dom.companyOpenK.disabled = false;
   }
 });
 

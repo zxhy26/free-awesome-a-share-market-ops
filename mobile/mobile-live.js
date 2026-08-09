@@ -572,6 +572,55 @@
     throw new Error(`题材成分股读取失败：${errors.join("；")}`);
   }
 
+  function companySecurityCode(code) {
+    const normalized = String(code || "").replace(/\D/g, "").slice(-6);
+    if (!/^\d{6}$/.test(normalized)) return "";
+    if (/^(430|83|87|920)/.test(normalized)) return `${normalized}.BJ`;
+    if (/^(5|6|9)/.test(normalized)) return `${normalized}.SH`;
+    return `${normalized}.SZ`;
+  }
+
+  async function loadCompanySurvey(code) {
+    const securityCode = companySecurityCode(code);
+    if (!securityCode) throw new Error("股票代码无效");
+    const url = new URL("https://datacenter.eastmoney.com/securities/api/data/v1/get");
+    Object.entries({
+      reportName: "RPT_F10_BASIC_ORGINFO",
+      columns: "ALL",
+      filter: `(SECUCODE=\"${securityCode}\")`,
+      pageNumber: "1",
+      pageSize: "1",
+      source: "WEB",
+      client: "WEB",
+    }).forEach(([key, value]) => url.searchParams.set(key, value));
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), JSONP_TIMEOUT_MS);
+    try {
+      const response = await nativeFetch(url, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error(`公司资料接口返回 HTTP ${response.status}`);
+      const payload = await response.json();
+      const row = Array.isArray(payload?.result?.data) ? payload.result.data[0] : null;
+      if (!row) throw new Error("公司资料接口未返回有效记录");
+      return {
+        companyName: String(row.ORG_NAME || "").trim(),
+        stockName: String(row.SECURITY_NAME_ABBR || "").trim(),
+        listingMarket: String(row.TRADE_MARKET || row.SECURITY_TYPE || "").trim(),
+        industry: String(row.BOARD_NAME_LEVEL || row.EM2016 || row.INDUSTRYCSRC1 || "").trim(),
+        businessIntro: String(row.ORG_PROFILE || "").trim(),
+        businessScope: String(row.BUSINESS_SCOPE || "").trim(),
+        website: String(row.ORG_WEB || "").trim(),
+      };
+    } catch (error) {
+      if (error?.name === "AbortError") throw new Error("公司资料读取超时");
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   function dailyKSecid(target = {}) {
     const boardCode = String(target.boardCode || "").trim().toUpperCase();
     const code = String(target.code || "").trim().toUpperCase();
@@ -643,6 +692,7 @@
     loadBoardTrend,
     loadStockQuote,
     loadBoardConstituents,
+    loadCompanySurvey,
     loadDailyK,
     loadIndexCatalog,
     loadIndexTrend,

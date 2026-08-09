@@ -18,8 +18,7 @@
 .theme-section-heading,
 .theme-detail-hero,
 .theme-ranking-head,
-.theme-row,
-.theme-stock-row {
+.theme-row {
   display: flex;
   align-items: center;
 }
@@ -217,22 +216,104 @@
 .theme-role-label { min-height: 31px; padding: 7px 4px; color: var(--accent); font-weight: 700; }
 .theme-stock-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
 .theme-stock-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
   min-width: 0;
-  min-height: 50px;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 7px 8px;
+  min-height: 56px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-raised);
+  overflow: hidden;
 }
+.theme-stock-profile {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.theme-stock-profile:hover { background: var(--surface-hover); }
+.theme-stock-profile:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .theme-stock-identity { min-width: 0; }
 .theme-stock-identity strong { display: block; }
 .theme-stock-identity small { display: block; margin-top: 2px; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
-.theme-stock-quote { flex: 0 0 auto; text-align: right; }
-.theme-stock-quote span { display: block; font-weight: 700; }
-.theme-stock-quote button { margin-top: 3px; padding: 2px 5px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); cursor: pointer; }
+.theme-stock-change { flex: 0 0 auto; font-weight: 700; white-space: nowrap; }
+.theme-stock-change.gain { color: var(--gain); }
+.theme-stock-change.loss { color: var(--loss); }
+.theme-stock-k {
+  width: 42px;
+  padding: 0 6px;
+  border: 0;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-soft);
+  font: inherit;
+  cursor: pointer;
+}
+.theme-stock-k:hover { background: var(--surface-hover); color: var(--accent); }
+.theme-stock-k:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .theme-empty { padding: 28px 16px; color: var(--muted); text-align: center; }
+
+.theme-company-dialog {
+  width: min(780px, calc(100vw - 32px));
+  max-width: none;
+  max-height: min(820px, calc(100vh - 32px));
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 28%);
+}
+.theme-company-dialog::backdrop { background: rgb(17 24 39 / 48%); }
+.theme-company-sheet { display: flex; max-height: inherit; flex-direction: column; }
+.theme-company-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border-strong);
+}
+.theme-company-eyebrow { color: var(--accent); font-size: calc(12px + var(--app-font-unit)); font-weight: 700; }
+.theme-company-header h2 { margin: 5px 0 0; font-size: calc(25px + 2 * var(--app-font-unit)); letter-spacing: 0; }
+.theme-company-header p { display: flex; align-items: center; gap: 12px; margin: 5px 0 0; color: var(--muted); }
+.theme-company-change { color: var(--text); font-variant-numeric: tabular-nums; }
+.theme-company-change.gain { color: var(--gain); }
+.theme-company-change.loss { color: var(--loss); }
+.theme-company-close {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: calc(22px + var(--app-font-unit));
+  line-height: 1;
+  cursor: pointer;
+}
+.theme-company-close:hover { background: var(--surface-hover); }
+.theme-company-body { overflow: auto; padding: 2px 20px 8px; }
+.theme-company-body section { padding: 14px 0; border-bottom: 1px solid var(--border); }
+.theme-company-body h3 { margin: 0 0 7px; font-size: calc(15px + var(--app-font-unit)); letter-spacing: 0; }
+.theme-company-body p { margin: 0; line-height: 1.75; overflow-wrap: anywhere; }
+.theme-company-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.theme-company-chip { padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-soft); color: var(--text-soft); }
+.theme-company-concept { border-color: color-mix(in srgb, var(--accent) 38%, var(--border)); color: var(--text); }
+.theme-company-warning { margin: 10px 0 0; padding: 9px 10px; border-left: 3px solid var(--warning); background: var(--surface-soft); color: var(--text-soft); }
+.theme-company-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 20px; border-top: 1px solid var(--border-strong); }
+.theme-company-footer p { min-width: 0; margin: 0; color: var(--muted); font-size: calc(11px + var(--app-font-unit)); line-height: 1.55; }
+.theme-company-footer .button { flex: 0 0 auto; }
 
 .theme-treasure-footer { display: flex; justify-content: space-between; gap: 20px; padding: 10px 2px 0; font-size: calc(11px + var(--app-font-unit)); }
 
@@ -254,7 +335,21 @@
   .theme-treasure-main { grid-template-columns: 1fr; }
   .theme-ranking-panel { border-right: 0; border-bottom: 1px solid var(--border-strong); }
   .theme-ranking-list { height: 420px; }
+  .theme-ranking-head,
+  .theme-row {
+    grid-template-columns: minmax(0, 1fr) 52px 72px 50px;
+    gap: 4px;
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+  .theme-row-main { grid-template-columns: 24px minmax(0, 1fr); gap: 4px; }
   .theme-search { width: 100%; min-width: 0; }
   .theme-search input { flex: 1; width: auto; }
   .theme-treasure-footer { flex-direction: column; gap: 4px; }
+  .theme-company-dialog { width: calc(100vw - 16px); max-height: calc(100vh - 16px); }
+  .theme-company-header,
+  .theme-company-body,
+  .theme-company-footer { padding-left: 14px; padding-right: 14px; }
+  .theme-company-footer { align-items: stretch; flex-direction: column; }
+  .theme-company-footer .button { width: 100%; }
 }
