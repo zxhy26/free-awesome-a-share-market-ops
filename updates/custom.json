@@ -2,16 +2,16 @@
     "schemaVersion":  1,
     "product":  "复盘软件定制版-短线模型V1.0",
     "edition":  "custom",
-    "version":  "2.21.8",
-    "publishedAt":  "2026-08-09T16:01:52.9765132Z",
-    "downloadUrl":  "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.8/A-Share-Review-Custom-Shortline-v2.21.8.exe",
-    "sha256":  "234B27DA0C615E83C267431A60D3AE6B1DC344979E3370241AFD870EE67477B5",
-    "size":  41375744,
-    "releasePage":  "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.8",
+    "version":  "2.21.9",
+    "publishedAt":  "2026-08-09T16:47:36.250Z",
+    "downloadUrl":  "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.9/A-Share-Review-Custom-Shortline-v2.21.9.exe",
+    "sha256":  "B283B33EF477F4719D40DD71461BE334B65F4327AE2A2FE3C01CB1F0D466F031",
+    "size":  41379328,
+    "releasePage":  "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.9",
     "notes":  [
-                  "自选行业与题材概念分时图在确认后的主要拐点标注同时间窗主导题材概念。",
-                  "标注只使用同一交易日、确认时刻以前的真实概念板块分钟资金，不使用个股、行业名、插值、未来样本或跨日数据。",
-                  "每张紧凑分时图保留六至十个最强且间隔清晰的拐点，向上红色、向下绿色，出现后持续保留。",
-                  "Windows、macOS 与安卓苹果手机版同步更新至 2.21.8。"
+                  "题材宝典内每只成分股都可点开查看公司全称、主营简介与当前题材的最相关说明，并保留独立日K按钮。",
+                  "关联关系先核验题材成分股，再结合公开概念标签和东方财富F10公司资料整理，不推断未披露客户、订单或市场份额。",
+                  "公司详情支持缓存、键盘和遮罩关闭，并修复窄屏横向溢出。",
+                  "Windows、macOS 与安卓苹果手机版同步更新至 2.21.9。"
               ]
 }
