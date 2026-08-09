@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.21.8 - 2026-08-09
+
+- Added persistent thematic-concept labels to confirmed major turning points in every selected industry or concept intraday chart.
+- Matched each turn only against same-session concept capital-flow momentum available by its confirmation time, excluding stocks, industries, generic market tags, cross-day samples, interpolation, and future backfilling.
+- Added prioritized real minute-flow retrieval for leading inflow, outflow, and high-movement concepts when the bundled session snapshot contains only the closing sample.
+- Limited each compact chart to the strongest six-to-ten spaced turns, with red upward and green downward labels, so six charts remain readable without horizontal overflow.
+
 ## 2.21.7 - 2026-08-09
 
 - Added a real-time thematic-topic handbook with composite, price-change, main-capital, and breadth rankings sourced from the full public concept-board snapshot.

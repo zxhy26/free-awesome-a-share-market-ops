@@ -295,7 +295,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 
 .custom-sector-card {
   min-width: 0;
-  min-height: 180px;
+  min-height: 208px;
   display: grid;
   grid-template-rows: 43px minmax(0, 1fr) 24px;
   padding: 0;
@@ -343,20 +343,47 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .custom-sector-remove { min-width: 25px; padding: 0; color: var(--muted); font-size: calc(15 * var(--app-font-unit)); }
 .custom-sector-k:hover, .custom-sector-remove:hover { background: var(--surface-hover); }
 .custom-sector-chart-wrap { min-height: 0; padding: 5px 7px 0; }
-.custom-sector-chart { width: 100%; height: calc(100% - 15px); min-height: 76px; display: block; overflow: hidden; }
+.custom-sector-chart { width: 100%; height: calc(100% - 15px); min-height: 104px; display: block; overflow: hidden; }
 .custom-sector-chart-grid, .custom-sector-zero { stroke: var(--border); stroke-width: .8; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; }
 .custom-sector-zero { stroke: var(--border-strong); stroke-dasharray: none; }
 .custom-sector-line { fill: none; stroke: var(--gain); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .custom-sector-line.loss-line { stroke: var(--loss); }
 .custom-sector-cursor { fill: var(--surface); stroke: var(--gain); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
-.custom-sector-line.loss-line + .custom-sector-cursor { stroke: var(--loss); }
+.custom-sector-cursor.loss-cursor { stroke: var(--loss); }
+.custom-sector-annotation { color: var(--text-soft); }
+.custom-sector-annotation.turn-up { color: var(--gain); }
+.custom-sector-annotation.turn-down { color: var(--loss); }
+.custom-sector-annotation-stem {
+  stroke: currentColor;
+  stroke-width: .75;
+  stroke-opacity: .72;
+  vector-effect: non-scaling-stroke;
+}
+.custom-sector-annotation-dot {
+  fill: var(--surface);
+  stroke: currentColor;
+  stroke-width: 1.25;
+  vector-effect: non-scaling-stroke;
+}
+.custom-sector-annotation-bg {
+  fill: color-mix(in srgb, var(--surface) 90%, currentColor 10%);
+  stroke: currentColor;
+  stroke-width: .45;
+  vector-effect: non-scaling-stroke;
+}
+.custom-sector-annotation-label {
+  fill: currentColor;
+  font-family: inherit;
+  font-weight: 800;
+  letter-spacing: 0;
+}
 .custom-sector-axis { height: 15px; display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: calc(8 * var(--app-font-unit)); }
 .custom-sector-card-footer { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 7px; color: var(--muted); font-size: calc(9 * var(--app-font-unit)); }
 .custom-sector-source { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .custom-sector-time { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
 .custom-sector-empty {
   grid-column: 1 / -1;
-  min-height: 180px;
+  min-height: 208px;
   display: grid;
   place-content: center;
   gap: 5px;

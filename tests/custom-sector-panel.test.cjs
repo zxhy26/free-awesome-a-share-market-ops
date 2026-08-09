@@ -8,6 +8,7 @@ const read = (...parts) => fs.readFileSync(path.join(root, ...parts), "utf8");
 const indexHtml = read("app", "index.html");
 const appSource = read("app", "assets", "js", "app.js");
 const workspaceSource = read("app", "assets", "js", "custom-sector-workspace.js");
+const turningSource = read("app", "assets", "js", "concept-turning-annotations.js");
 const chartsSource = read("app", "assets", "js", "charts.js");
 const clsInjectionSource = read("scripts", "inject-cls-index-annotations.mjs");
 const layoutSource = read("app", "assets", "css", "layout.css");
@@ -52,6 +53,27 @@ test("index labels render only original CLS industry and theme plate annotations
   assert.match(clsInjectionSource, /已排除\$\{feed\.excludedStockCount \|\| 0\}条个股/);
   const createIndexChartsSource = chartsSource.slice(chartsSource.indexOf("export function createIndexCharts"));
   assert.doesNotMatch(createIndexChartsSource, /buildSectorAttributionCandidates|buildPersistentSectorAttributions/);
+});
+
+test("custom sector turns keep persistent labels from real concept-board flow only", () => {
+  assert.match(workspaceSource, /concept-turning-annotations\.js/);
+  assert.match(workspaceSource, /class="custom-sector-annotations"/);
+  assert.match(workspaceSource, /conceptSeries:\s*new Map\(\)/);
+  assert.match(workspaceSource, /selectVisibleConceptAnnotations/);
+  assert.match(workspaceSource, /selectSignificantConceptAnnotations/);
+  assert.match(appSource, /loadBoardMinuteFlow/);
+  assert.match(workspaceSource, /loadFlowTimeline/);
+  assert.match(workspaceSource, /selectConceptHistoryCandidates/);
+  assert.match(workspaceSource, /MAX_CONCEPT_HISTORY_CONCURRENCY\s*=\s*6/);
+  assert.match(workspaceSource, /result\.tradeDate\s*!==\s*task\.tradeDate/);
+  assert.match(appSource, /tradeDate:\s*state\.data\.sectors\?\.tradeDate/);
+  assert.match(workspaceSource, /groups\?\.tradeDate\s*\|\|\s*groups\?\.industry\?\.tradeDate/);
+  assert.match(workspaceSource, /tradeDate:\s*snapshot\.tradeDate\s*\|\|\s*state\.tradeDate/);
+  assert.match(turningSource, /buildIndexTurningPoints/);
+  assert.match(turningSource, /group === "concept"/);
+  assert.match(turningSource, /GENERIC_CONCEPT_PATTERN/);
+  assert.match(turningSource, /end\.minute > start\.minute/);
+  assert.match(turningSource, /不使用个股、行业名称或未来样本/);
 });
 
 test("desktop index layout supports automatic one-row and two-row grids while the flow column fills its stack", () => {

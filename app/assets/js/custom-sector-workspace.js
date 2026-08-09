@@ -1,5 +1,20 @@
+import {
+  buildConceptTurningAnnotations,
+  GENERIC_CONCEPT_PATTERN,
+  selectSignificantConceptAnnotations,
+  selectVisibleConceptAnnotations,
+} from "./concept-turning-annotations.js?v=20260809-1";
+
 const MAX_CUSTOM_SECTORS = 6;
+const MAX_CONCEPT_HISTORY_ROWS = 36;
+const MAX_CONCEPT_HISTORY_CONCURRENCY = 6;
+const CONCEPT_HISTORY_RETRY_MS = 60 * 1000;
 const STORAGE_KEY = "a-share-review:custom-sectors:v1";
+const SVG_NS = "http://www.w3.org/2000/svg";
+const CHART_WIDTH = 300;
+const PLOT_TOP = 39;
+const PLOT_BOTTOM = 118;
+const ANNOTATION_LANES = [6.5, 15.5, 24.5, 33.5];
 
 function finite(value) {
   if (value === null || value === undefined || value === "") return null;
@@ -75,20 +90,53 @@ function uniquePoints(points, tradeDate = "") {
   return [...byMinute.values()].sort((left, right) => left.minute - right.minute);
 }
 
+function selectConceptHistoryCandidates(rows, limit = MAX_CONCEPT_HISTORY_ROWS) {
+  const eligible = (rows || []).filter((row) => {
+    const code = String(row?.code || row?.tdxCode || "").trim().toUpperCase();
+    const name = String(row?.name || row?.tdxName || "").trim();
+    return /^BK\d{4}$/.test(code) && name && !GENERIC_CONCEPT_PATTERN.test(name);
+  });
+  const selected = new Map();
+  const append = (items) => items.forEach((row) => {
+    const code = String(row?.code || row?.tdxCode || "").trim().toUpperCase();
+    if (!selected.has(code) && selected.size < limit) selected.set(code, row);
+  });
+  const byAmount = eligible.filter((row) => finite(row.amount) !== null);
+  const perDirection = Math.max(1, Math.floor(limit / 3));
+  append([...byAmount].sort((left, right) => finite(right.amount) - finite(left.amount)).slice(0, perDirection));
+  append([...byAmount].sort((left, right) => finite(left.amount) - finite(right.amount)).slice(0, perDirection));
+  append([...eligible].sort((left, right) => (
+    Math.abs(finite(right.changePct) || 0) - Math.abs(finite(left.changePct) || 0)
+  )).slice(0, limit - selected.size));
+  append([...byAmount].sort((left, right) => (
+    Math.abs(finite(right.amount) || 0) - Math.abs(finite(left.amount) || 0)
+  )).slice(0, limit - selected.size));
+  return [...selected.values()].slice(0, limit);
+}
+
 function lineGeometry(points, minute) {
   const visible = (points || []).filter((point) => point.minute <= minute);
   const percentages = (points || []).map((point) => point.changePct).filter(Number.isFinite);
-  if (!visible.length || !percentages.length) return {path: "", zeroY: 42, latest: null, latestX: 0, latestY: 42};
+  const emptyY = (PLOT_TOP + PLOT_BOTTOM) / 2;
+  if (!visible.length || !percentages.length) {
+    return {
+      path: "",
+      zeroY: emptyY,
+      latest: null,
+      latestX: 0,
+      latestY: emptyY,
+      xForMinute: () => 0,
+      yForChangePct: () => emptyY,
+    };
+  }
   const rawMin = Math.min(0, ...percentages);
   const rawMax = Math.max(0, ...percentages);
   const spread = Math.max(rawMax - rawMin, Math.max(Math.abs(rawMax), Math.abs(rawMin)) * .08, .1);
   const padding = spread * .08;
   const min = rawMin - padding;
   const max = rawMax + padding;
-  const width = 300;
-  const height = 84;
-  const x = (value) => Math.max(0, Math.min(width, (value / 240) * width));
-  const y = (value) => height - ((value - min) / (max - min)) * height;
+  const x = (value) => Math.max(0, Math.min(CHART_WIDTH, (value / 240) * CHART_WIDTH));
+  const y = (value) => PLOT_BOTTOM - ((value - min) / (max - min)) * (PLOT_BOTTOM - PLOT_TOP);
   const latest = visible.at(-1);
   return {
     path: visible.map((point, index) => `${index ? "L" : "M"}${x(point.minute).toFixed(2)},${y(point.changePct).toFixed(2)}`).join(" "),
@@ -96,7 +144,116 @@ function lineGeometry(points, minute) {
     latest,
     latestX: x(latest.minute),
     latestY: y(latest.changePct),
+    xForMinute: x,
+    yForChangePct: y,
   };
+}
+
+function flowEvidenceText(event) {
+  const delta = finite(event?.flowDelta);
+  const amount = finite(event?.flowAmount);
+  const change = finite(event?.conceptChangeDelta);
+  const parts = [];
+  if (delta !== null) parts.push(`资金增量${delta > 0 ? "+" : ""}${delta.toFixed(2)}亿`);
+  else if (amount !== null) parts.push(`累计净额${amount > 0 ? "+" : ""}${amount.toFixed(2)}亿`);
+  if (change !== null) parts.push(`题材同期${change > 0 ? "+" : ""}${change.toFixed(2)}%`);
+  return parts.join("，") || "真实题材资金样本方向一致";
+}
+
+function labelMetrics(label) {
+  const length = Math.max(1, [...String(label || "")].length);
+  const fontSize = Math.max(6.2, Math.min(8.2, 96 / length));
+  return {fontSize, width: Math.max(30, Math.min(122, length * fontSize + 8)), height: 9};
+}
+
+function overlaps(left, right) {
+  return !(left.right + 2 <= right.left || right.right + 2 <= left.left);
+}
+
+function layoutAnnotations(events, geometry) {
+  const laneBoxes = ANNOTATION_LANES.map(() => []);
+  return [...events].sort((left, right) => left.minute - right.minute).map((event, eventIndex) => {
+    const metrics = labelMetrics(event.label);
+    const pivotX = geometry.xForMinute(event.minute);
+    const naturalCenter = Math.max(metrics.width / 2 + 2, Math.min(CHART_WIDTH - metrics.width / 2 - 2, pivotX));
+    let placement = null;
+    for (let laneOffset = 0; laneOffset < ANNOTATION_LANES.length && !placement; laneOffset += 1) {
+      const lane = (eventIndex + laneOffset) % ANNOTATION_LANES.length;
+      const boxes = laneBoxes[lane];
+      const centers = [naturalCenter];
+      if (boxes.length) {
+        centers.push(
+          Math.max(metrics.width / 2 + 2, boxes.at(-1).right + 3 + metrics.width / 2),
+          Math.min(CHART_WIDTH - metrics.width / 2 - 2, boxes[0].left - 3 - metrics.width / 2),
+        );
+      }
+      for (const center of [...new Set(centers)].sort((left, right) => Math.abs(left - naturalCenter) - Math.abs(right - naturalCenter))) {
+        const box = {left: center - metrics.width / 2, right: center + metrics.width / 2};
+        if (box.left < 2 || box.right > CHART_WIDTH - 2 || boxes.some((other) => overlaps(box, other))) continue;
+        placement = {event, lane, center, pivotX, metrics, box};
+        boxes.push(box);
+        boxes.sort((left, right) => left.left - right.left);
+        break;
+      }
+    }
+    if (placement) return placement;
+    const lane = eventIndex % ANNOTATION_LANES.length;
+    const center = naturalCenter;
+    return {
+      event,
+      lane,
+      center,
+      pivotX,
+      metrics,
+      box: {left: center - metrics.width / 2, right: center + metrics.width / 2},
+    };
+  });
+}
+
+function renderConceptAnnotations(card, events, geometry) {
+  const layer = card.querySelector(".custom-sector-annotations");
+  if (!layer) return;
+  const nodes = layoutAnnotations(events, geometry).map((placement) => {
+    const {event, lane, center, pivotX, metrics} = placement;
+    const targetChangePct = finite(event.targetChangePct) ?? 0;
+    const pivotY = geometry.yForChangePct(targetChangePct);
+    const labelY = ANNOTATION_LANES[lane];
+    const group = document.createElementNS(SVG_NS, "g");
+    group.classList.add("custom-sector-annotation", event.direction > 0 ? "turn-up" : "turn-down");
+    group.dataset.conceptCode = event.conceptCode || "";
+    group.dataset.turnMinute = String(event.minute);
+    const title = document.createElementNS(SVG_NS, "title");
+    title.textContent = `${event.sampleTime || "--"}｜${event.directionName}｜主导题材：${event.label}｜${flowEvidenceText(event)}｜置信度${event.confidenceLabel}`;
+    const stem = document.createElementNS(SVG_NS, "line");
+    stem.classList.add("custom-sector-annotation-stem");
+    stem.setAttribute("x1", pivotX.toFixed(2));
+    stem.setAttribute("y1", pivotY.toFixed(2));
+    stem.setAttribute("x2", center.toFixed(2));
+    stem.setAttribute("y2", (labelY + 3).toFixed(2));
+    const dot = document.createElementNS(SVG_NS, "circle");
+    dot.classList.add("custom-sector-annotation-dot");
+    dot.setAttribute("cx", pivotX.toFixed(2));
+    dot.setAttribute("cy", pivotY.toFixed(2));
+    dot.setAttribute("r", "1.7");
+    const background = document.createElementNS(SVG_NS, "rect");
+    background.classList.add("custom-sector-annotation-bg");
+    background.setAttribute("x", (center - metrics.width / 2).toFixed(2));
+    background.setAttribute("y", (labelY - metrics.height / 2).toFixed(2));
+    background.setAttribute("width", metrics.width.toFixed(2));
+    background.setAttribute("height", metrics.height.toFixed(2));
+    background.setAttribute("rx", "1.8");
+    const text = document.createElementNS(SVG_NS, "text");
+    text.classList.add("custom-sector-annotation-label");
+    text.setAttribute("x", center.toFixed(2));
+    text.setAttribute("y", (labelY + .2).toFixed(2));
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("dominant-baseline", "middle");
+    text.setAttribute("font-size", metrics.fontSize.toFixed(2));
+    text.textContent = event.label;
+    group.append(title, stem, dot, background, text);
+    return group;
+  });
+  layer.replaceChildren(...nodes);
 }
 
 function createCard(selection) {
@@ -115,12 +272,13 @@ function createCard(selection) {
       </div>
     </header>
     <div class="custom-sector-chart-wrap">
-      <svg class="custom-sector-chart" viewBox="0 0 300 84" preserveAspectRatio="none" role="img">
+      <svg class="custom-sector-chart" viewBox="0 0 300 120" preserveAspectRatio="none" role="img">
         <title></title>
-        <line class="custom-sector-chart-grid" x1="0" x2="300" y1="21" y2="21"></line>
-        <line class="custom-sector-zero" x1="0" x2="300" y1="42" y2="42"></line>
-        <line class="custom-sector-chart-grid" x1="0" x2="300" y1="63" y2="63"></line>
+        <line class="custom-sector-chart-grid" x1="0" x2="300" y1="59" y2="59"></line>
+        <line class="custom-sector-zero" x1="0" x2="300" y1="76" y2="76"></line>
+        <line class="custom-sector-chart-grid" x1="0" x2="300" y1="98" y2="98"></line>
         <path class="custom-sector-line"></path>
+        <g class="custom-sector-annotations"></g>
         <circle class="custom-sector-cursor" r="3"></circle>
       </svg>
       <div class="custom-sector-axis"><span>09:30:00</span><span>11:30:00 / 13:00:00</span><span>15:00:00</span></div>
@@ -146,6 +304,7 @@ function createCustomSectorWorkspace(options) {
     closeButton,
     count,
     loadTimeline,
+    loadFlowTimeline,
     openDayK,
     showNotice,
   } = options;
@@ -160,7 +319,128 @@ function createCustomSectorWorkspace(options) {
     latestMarketMinute: null,
     tradeDate: "",
     latestSourceTime: "",
+    conceptSeries: new Map(),
+    conceptRevision: 0,
+    conceptHistoryDate: "",
+    conceptHistoryLoads: new Map(),
+    conceptHistoryQueue: [],
+    conceptHistoryActive: 0,
   };
+
+  function ingestConceptRows(rows, tradeDate = state.tradeDate, fallbackMinute = null, fallbackTime = "") {
+    const normalizedTradeDate = String(tradeDate || state.tradeDate || "");
+    let changed = false;
+    for (const row of rows || []) {
+      const code = String(row?.code || row?.tdxCode || "").trim().toUpperCase();
+      const name = String(row?.name || row?.tdxName || "").trim();
+      if (!/^BK\d{4}$/.test(code) || !name) continue;
+      const previous = state.conceptSeries.get(code);
+      const reset = previous?.tradeDate && normalizedTradeDate && previous.tradeDate !== normalizedTradeDate;
+      const byMinute = new Map((reset ? [] : previous?.points || []).map((point) => [point.minute, point]));
+      const additions = [...(row.points || [])];
+      if (finite(row.amount) !== null && finite(fallbackMinute) !== null) {
+        additions.push({
+          minute: fallbackMinute,
+          time: fallbackTime,
+          amount: row.amount,
+          changePct: row.changePct,
+          source: row.source || "eastmoney-live-board-ranking",
+        });
+      }
+      for (const raw of additions) {
+        const minute = finite(raw?.minute);
+        const amount = finite(raw?.amount);
+        if (minute === null || amount === null || minute < 0 || minute > 240) continue;
+        const bucket = Math.max(0, Math.min(240, Math.floor(minute)));
+        const next = {
+          tradeDate: String(raw.tradeDate || normalizedTradeDate),
+          minute: bucket,
+          time: String(raw.time || fallbackTime || ""),
+          amount,
+          changePct: finite(raw.changePct),
+          source: String(raw.source || row.source || "真实概念板块资金样本"),
+        };
+        const current = byMinute.get(bucket);
+        if (!current || current.amount !== next.amount || current.changePct !== next.changePct || current.time !== next.time) {
+          byMinute.set(bucket, next);
+          changed = true;
+        }
+      }
+      state.conceptSeries.set(code, {
+        code,
+        name,
+        group: "concept",
+        tradeDate: normalizedTradeDate,
+        points: [...byMinute.values()].sort((left, right) => left.minute - right.minute).slice(-241),
+      });
+    }
+    if (changed) state.conceptRevision += 1;
+  }
+
+  function drainConceptHistoryQueue() {
+    if (typeof loadFlowTimeline !== "function") return;
+    while (state.conceptHistoryActive < MAX_CONCEPT_HISTORY_CONCURRENCY && state.conceptHistoryQueue.length) {
+      const task = state.conceptHistoryQueue.shift();
+      const key = `${task.tradeDate}:${task.code}`;
+      state.conceptHistoryActive += 1;
+      state.conceptHistoryLoads.set(key, {status: "loading", updatedAt: Date.now()});
+      Promise.resolve(loadFlowTimeline(task.code, task.name)).then((result) => {
+        if (!result?.ok || result.tradeDate !== task.tradeDate || state.tradeDate !== task.tradeDate) {
+          throw new Error("题材分钟资金交易日不一致");
+        }
+        ingestConceptRows([{
+          code: task.code,
+          name: result.name || task.name,
+          points: result.points || [],
+          source: result.source || "真实题材概念分钟资金",
+        }], task.tradeDate);
+        state.conceptHistoryLoads.set(key, {status: "done", updatedAt: Date.now()});
+        render(state.currentMinute);
+      }).catch(() => {
+        state.conceptHistoryLoads.set(key, {status: "failed", updatedAt: Date.now()});
+      }).finally(() => {
+        state.conceptHistoryActive = Math.max(0, state.conceptHistoryActive - 1);
+        drainConceptHistoryQueue();
+      });
+    }
+  }
+
+  function queueConceptHistories(rows, tradeDate) {
+    const normalizedTradeDate = String(tradeDate || state.tradeDate || "");
+    if (typeof loadFlowTimeline !== "function" || !/^\d{4}-\d{2}-\d{2}$/.test(normalizedTradeDate)) return;
+    if (state.conceptHistoryDate !== normalizedTradeDate) {
+      state.conceptHistoryDate = normalizedTradeDate;
+      state.conceptHistoryLoads.clear();
+      state.conceptHistoryQueue = [];
+    }
+    const now = Date.now();
+    for (const row of selectConceptHistoryCandidates(rows)) {
+      const code = String(row?.code || row?.tdxCode || "").trim().toUpperCase();
+      const name = String(row?.name || row?.tdxName || "").trim();
+      const key = `${normalizedTradeDate}:${code}`;
+      const existing = state.conceptHistoryLoads.get(key);
+      if (existing?.status === "queued" || existing?.status === "loading" || existing?.status === "done") continue;
+      if (existing?.status === "failed" && now - existing.updatedAt < CONCEPT_HISTORY_RETRY_MS) continue;
+      state.conceptHistoryLoads.set(key, {status: "queued", updatedAt: now});
+      state.conceptHistoryQueue.push({code, name, tradeDate: normalizedTradeDate});
+    }
+    drainConceptHistoryQueue();
+  }
+
+  function annotationsFor(selection, record, points) {
+    const latestPoint = points.at(-1);
+    const signature = `${state.conceptRevision}:${record.tradeDate || state.tradeDate}:${points.length}:${latestPoint?.minute ?? ""}:${latestPoint?.changePct ?? ""}`;
+    if (record.annotationSignature === signature) return record.annotations || [];
+    record.annotations = selectSignificantConceptAnnotations(buildConceptTurningAnnotations({
+      code: selection.code,
+      name: selection.name,
+      tradeDate: record.tradeDate || state.tradeDate,
+      preClose: record.preClose,
+      points,
+    }, [...state.conceptSeries.values()], {visibleMinute: 240}));
+    record.annotationSignature = signature;
+    return record.annotations;
+  }
 
   function save() {
     writeSelections(storage, state.selections);
@@ -180,6 +460,10 @@ function createCustomSectorWorkspace(options) {
     const record = state.series.get(selection.code) || {points: [], loading: false, error: ""};
     const points = uniquePoints(record.points, state.tradeDate || record.tradeDate);
     const geometry = lineGeometry(points, state.currentMinute);
+    const visibleAnnotations = selectVisibleConceptAnnotations(
+      annotationsFor(selection, record, points),
+      state.currentMinute,
+    );
     const current = geometry.latest?.changePct ?? finite(record.currentChangePct);
     const amount = card.querySelector(".custom-sector-amount");
     amount.className = `custom-sector-amount ${valueClass(current)}`;
@@ -187,6 +471,7 @@ function createCustomSectorWorkspace(options) {
     const path = card.querySelector(".custom-sector-line");
     path.setAttribute("d", geometry.path);
     path.classList.toggle("loss-line", finite(current) < 0);
+    renderConceptAnnotations(card, visibleAnnotations, geometry);
     const zero = card.querySelector(".custom-sector-zero");
     zero.setAttribute("y1", geometry.zeroY.toFixed(2));
     zero.setAttribute("y2", geometry.zeroY.toFixed(2));
@@ -194,6 +479,7 @@ function createCustomSectorWorkspace(options) {
     if (geometry.latest) {
       cursor.setAttribute("cx", geometry.latestX.toFixed(2));
       cursor.setAttribute("cy", geometry.latestY.toFixed(2));
+      cursor.classList.toggle("loss-cursor", finite(current) < 0);
       cursor.hidden = false;
     } else {
       cursor.hidden = true;
@@ -207,7 +493,7 @@ function createCustomSectorWorkspace(options) {
         : record.error
           ? "真实板块指数分时连接中"
         : points.length
-          ? `${record.source || "真实指数分时"} · ${points.length}点`
+          ? `${record.source || "真实指数分时"} · ${points.length}点 · ${visibleAnnotations.length}个题材拐点`
           : "等待真实指数样本";
     card.querySelector(".custom-sector-time").textContent = geometry.latest?.time || "--";
     return card;
@@ -345,7 +631,9 @@ function createCustomSectorWorkspace(options) {
   }
 
   function setDirectory(groups) {
-    const directoryTradeDate = String(groups?.industry?.tradeDate || groups?.concept?.tradeDate || "").trim();
+    const directoryTradeDate = String(
+      groups?.tradeDate || groups?.industry?.tradeDate || groups?.concept?.tradeDate || "",
+    ).trim();
     const tradeDateChanged = /^\d{4}-\d{2}-\d{2}$/.test(directoryTradeDate) && directoryTradeDate !== state.tradeDate;
     if (tradeDateChanged) {
       state.tradeDate = directoryTradeDate;
@@ -357,6 +645,13 @@ function createCustomSectorWorkspace(options) {
         });
       });
     }
+    ingestConceptRows(
+      groups?.concept?.rows || [],
+      directoryTradeDate || state.tradeDate,
+      finite(groups?.concept?.flowSampleMinute),
+      String(groups?.concept?.liveSnapshot?.sourceTime || ""),
+    );
+    queueConceptHistories(groups?.concept?.rows || [], directoryTradeDate || state.tradeDate);
     const unique = new Map();
     for (const group of ["industry", "concept"]) {
       for (const row of groups?.[group]?.rows || []) {
@@ -385,6 +680,12 @@ function createCustomSectorWorkspace(options) {
     state.tradeDate = snapshot.tradeDate || state.tradeDate;
     state.latestSourceTime = snapshot.sourceTime || state.latestSourceTime;
     state.latestMarketMinute = finite(snapshot.marketMinute) ?? state.latestMarketMinute;
+    ingestConceptRows(
+      snapshot.groups?.concept?.rows || [],
+      snapshot.tradeDate || state.tradeDate,
+      finite(snapshot.marketMinute),
+      snapshot.sourceTime || "",
+    );
     const rows = [...(snapshot.groups?.industry?.rows || []).map((row) => ({...row, group: "industry"})),
       ...(snapshot.groups?.concept?.rows || []).map((row) => ({...row, group: "concept"}))];
     const byCode = new Map(rows.map((row) => [String(row.code || "").toUpperCase(), row]));
@@ -408,6 +709,7 @@ function createCustomSectorWorkspace(options) {
       });
     }
     setDirectory({
+      tradeDate: snapshot.tradeDate || state.tradeDate,
       industry: {rows: snapshot.groups?.industry?.rows || []},
       concept: {rows: snapshot.groups?.concept?.rows || []},
     });
@@ -481,7 +783,9 @@ function createCustomSectorWorkspace(options) {
 }
 
 export {
+  MAX_CONCEPT_HISTORY_ROWS,
   MAX_CUSTOM_SECTORS,
   STORAGE_KEY,
   createCustomSectorWorkspace,
+  selectConceptHistoryCandidates,
 };

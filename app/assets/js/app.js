@@ -1,4 +1,4 @@
-import {checkAppUpdate, getAppUpdateStatus, getHealth, installAppUpdate, loadBoardIntradayTrend, loadCoreData, loadIndexCatalog, loadIndexContributionData, loadIndexTrend, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260730-3";
+import {checkAppUpdate, getAppUpdateStatus, getHealth, installAppUpdate, loadBoardIntradayTrend, loadBoardMinuteFlow, loadCoreData, loadIndexCatalog, loadIndexContributionData, loadIndexTrend, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260809-1";
 import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNumber, formatPercent, formatYi, signed, summarizeMoneyEffect, valueClass} from "./analysis.js?v=20260730-1";
 import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260731-3";
 import {createSummaryDialog} from "./dialog.js";
@@ -6,7 +6,7 @@ import {createDisplaySettings} from "./display-settings.js?v=20260803-1";
 import {createIndexWorkspace, resolveIndexGridLayout} from "./index-workspace.js?v=20260731-1";
 import {initializePwa} from "./pwa.js?v=20260719-2";
 import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260727-2";
-import {createCustomSectorWorkspace} from "./custom-sector-workspace.js?v=20260728-5";
+import {createCustomSectorWorkspace} from "./custom-sector-workspace.js?v=20260809-1";
 import {initializeTheme} from "./theme.js";
 import {inTradingWindow, shouldAppendRegularSessionSample} from "./market-session.js?v=20260730-1";
 import {createPersistentSettingsStorage} from "./persistent-settings.js?v=20260801-1";
@@ -895,6 +895,7 @@ function renderAll() {
   renderFlow("industry", Number(dom.timeline.value));
   renderFlow("concept", Number(dom.timeline.value));
   state.customSectorWorkspace?.setDirectory({
+    tradeDate: state.data.sectors?.tradeDate || state.data.market?.tradeDate || "",
     industry: state.liveFlowGroups.industry || state.data.sectors?.industry,
     concept: state.liveFlowGroups.concept || state.data.sectors?.concept,
   });
@@ -1124,6 +1125,7 @@ function setupInteractions(preferenceStorage) {
     closeButton: dom.customSectorPickerClose,
     count: dom.customSectorCount,
     loadTimeline: loadBoardIntradayTrend,
+    loadFlowTimeline: loadBoardMinuteFlow,
     showNotice,
     storage,
     openDayK: async (selection) => {

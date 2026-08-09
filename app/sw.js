@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v92-theme-treasure";
+const CACHE_VERSION = "a-share-review-v93-concept-turning";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [
@@ -29,6 +29,7 @@ const CORE_ASSETS = [
   "/app/assets/js/theme.js",
   "/app/assets/js/analysis.js",
   "/app/assets/js/charts.js",
+  "/app/assets/js/concept-turning-annotations.js",
   "/app/assets/js/sector-flow-chart.js",
   "/app/assets/js/custom-sector-workspace.js",
   "/app/assets/js/display-settings.js",

@@ -28,8 +28,8 @@ using System.Windows.Forms;
 #endif
 [assembly: AssemblyCompany("Free & Awesome A-Share Market Ops")]
 [assembly: AssemblyCopyright("Copyright 2026")]
-[assembly: AssemblyVersion("2.21.7.0")]
-[assembly: AssemblyFileVersion("2.21.7.0")]
+[assembly: AssemblyVersion("2.21.8.0")]
+[assembly: AssemblyFileVersion("2.21.8.0")]
 
 internal static class Program
 {
@@ -38,31 +38,31 @@ internal static class Program
     private const string EditionCode = "basic";
     private const string ReleaseEditionCode = "basic";
     private const string CanonicalLauncherName = "复盘软件基础版.exe";
-    private const string RuntimeTag = "版本_20260809-2.21.7-基础版-跨平台";
-    private const string MutexName = "Local\\AshareReviewLauncher_Basic_22170";
+    private const string RuntimeTag = "版本_20260809-2.21.8-基础版-跨平台";
+    private const string MutexName = "Local\\AshareReviewLauncher_Basic_22180";
 #elif SELF_EDITION
     private const string EditionName = "自用版";
     private const string EditionCode = "self";
     private const string ReleaseEditionCode = "self";
     private const string CanonicalLauncherName = "复盘软件自用版.exe";
-    private const string RuntimeTag = "版本_20260809-2.21.7-自用版-跨平台";
-    private const string MutexName = "Local\\AshareReviewLauncher_Self_22170";
+    private const string RuntimeTag = "版本_20260809-2.21.8-自用版-跨平台";
+    private const string MutexName = "Local\\AshareReviewLauncher_Self_22180";
 #elif CUSTOM_EDITION
     private const string EditionName = "定制版";
     private const string EditionCode = "basic";
     private const string ReleaseEditionCode = "custom";
     private const string CanonicalLauncherName = "复盘软件定制版-短线模型V1.0.exe";
-    private const string RuntimeTag = "版本_20260809-2.21.7-定制版-跨平台";
-    private const string MutexName = "Local\\AshareReviewLauncher_Custom_22170";
+    private const string RuntimeTag = "版本_20260809-2.21.8-定制版-跨平台";
+    private const string MutexName = "Local\\AshareReviewLauncher_Custom_22180";
 #else
     private const string EditionName = "会员版";
     private const string EditionCode = "member";
     private const string ReleaseEditionCode = "member";
     private const string CanonicalLauncherName = "大a后勤部.exe";
     private const string RuntimeTag = "版本_自动更新-会员版";
-    private const string MutexName = "Local\\AshareReviewLauncher_Member_22170";
+    private const string MutexName = "Local\\AshareReviewLauncher_Member_22180";
 #endif
-    private const string LauncherVersion = "2.21.7";
+    private const string LauncherVersion = "2.21.8";
 #if CUSTOM_EDITION
     private const string UpdateManifestUrl = "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/custom.json";
 #else
