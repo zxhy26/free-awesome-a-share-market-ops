@@ -39,6 +39,13 @@ jobs:
           tag = str(manifest.get("tag", ""))
           if not re.fullmatch(r"v\d+\.\d+\.\d+", tag):
               raise SystemExit("invalid release tag")
+          ready = manifest.get("ready", True) is True
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
+              handle.write(f"RELEASE_TAG={tag}\n")
+              handle.write(f"RELEASE_READY={'1' if ready else '0'}\n")
+          if not ready:
+              print(f"staged chunks for {tag}; publication deferred until ready=true")
+              raise SystemExit(0)
           for asset in manifest.get("assets", []):
               name = str(asset.get("name", ""))
               if not name or Path(name).name != name:
@@ -58,11 +65,10 @@ jobs:
               if target.stat().st_size != int(asset.get("size", -1)):
                   raise SystemExit(f"asset size mismatch: {name}")
               print(f"verified {name}: {actual_hash}")
-          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
-              handle.write(f"RELEASE_TAG={tag}\n")
           PY
 
       - name: Upload verified assets to the release
+        if: env.RELEASE_READY == '1'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.RELEASE_TAG }}
@@ -72,6 +78,7 @@ jobs:
           preserve_order: true
 
       - name: Verify published asset names
+        if: env.RELEASE_READY == '1'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
