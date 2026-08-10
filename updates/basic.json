@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "product": "复盘软件基础版",
+  "edition": "basic",
+  "version": "2.21.10",
+  "publishedAt": "2026-08-10T03:05:31.238Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.10/A-Share-Review-Basic-v2.21.10.exe",
+  "sha256": "51A27A3BA88A7E6A2E69F0EEC82EC2CCB890DC0C82D548C9CED53F31CD6DE6DB",
+  "size": 44989952,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.10",
+  "notes": [
+    "基础版新增独立的 GitHub 应用内更新通道，与会员版和定制版完全隔离。",
+    "软件启动后、每 30 分钟及手动点击更新时都会检查基础版最新版本。",
+    "安装前会校验文件大小、SHA-256 和 Windows 可执行文件格式，并在后台完成替换。",
+    "2.21.10 以前的基础版需要本次手动替换一次，之后即可直接在软件内更新。"
+  ]
+}
