@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.21.10 - 2026-08-10
+
+- Added a dedicated GitHub in-application update channel for the Basic Windows edition.
+- Isolated Basic updates through `updates/basic.json`, an edition-specific release asset, strict manifest matching, SHA-256 and file-size verification.
+- Kept launcher replacement and old-file cleanup scoped to Basic artifacts so Member, Self, and Custom editions cannot be overwritten.
+
 ## 2.21.9 - 2026-08-10
 
 - Made every constituent in the thematic-topic handbook open an in-app company profile while retaining a separate local trading-application daily-chart action.

@@ -5,8 +5,9 @@ const path = require("path");
 const {spawn} = require("child_process");
 
 const DEFAULT_MANIFEST_URL = "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/member.json";
+const BASIC_MANIFEST_URL = "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/basic.json";
 const CUSTOM_MANIFEST_URL = "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/custom.json";
-const UPDATE_RELEASE_EDITIONS = new Set(["member", "custom"]);
+const UPDATE_RELEASE_EDITIONS = new Set(["member", "basic", "custom"]);
 const MAX_MANIFEST_BYTES = 256 * 1024;
 const MAX_DOWNLOAD_BYTES = 160 * 1024 * 1024;
 const ALLOWED_MANIFEST_HOSTS = new Set([
@@ -27,7 +28,8 @@ const RELEASE_PROFILES = Object.freeze({
   }),
   basic: Object.freeze({
     canonicalName: "复盘软件基础版.exe",
-    artifactPrefixes: Object.freeze(["复盘软件基础版"]),
+    artifactPrefixes: Object.freeze(["复盘软件基础版", "A-Share-Review-Basic-v"]),
+    manifestUrl: BASIC_MANIFEST_URL,
   }),
   self: Object.freeze({
     canonicalName: "复盘软件自用版.exe",

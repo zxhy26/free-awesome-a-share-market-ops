@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v94-theme-company-profile";
+const CACHE_VERSION = "a-share-review-v95-basic-updater";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [

@@ -52,8 +52,15 @@ test("portable executable version reader finds the version resource near the fil
   }
 });
 
-test("manifest enforces the requested member or custom GitHub HTTPS update channel", () => {
+test("manifest enforces the requested member, basic or custom GitHub HTTPS update channel", () => {
   assert.equal(validManifest().version, "2.18.1");
+  const basic = validManifest({
+    product: "复盘软件基础版",
+    edition: "basic",
+    version: "2.21.10",
+    downloadUrl: "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.10/A-Share-Review-Basic-v2.21.10.exe",
+  }, "basic");
+  assert.equal(basic.edition, "basic");
   const custom = validManifest({
     product: "复盘软件定制版-短线模型V1.0",
     edition: "custom",
@@ -61,11 +68,59 @@ test("manifest enforces the requested member or custom GitHub HTTPS update chann
     downloadUrl: "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.2/A-Share-Review-Custom-Shortline-v2.21.2.exe",
   }, "custom");
   assert.equal(custom.edition, "custom");
+  assert.throws(() => validateManifest(basic, "member"), /版本类型不匹配/);
   assert.throws(() => validateManifest(custom, "member"), /版本类型不匹配/);
   assert.throws(() => validateManifest(validManifest(), "custom"), /版本类型不匹配/);
   assert.throws(() => validManifest({downloadUrl: "http://github.com/file.exe"}), /GitHub HTTPS/);
   assert.throws(() => validManifest({downloadUrl: "https://example.com/file.exe"}), /GitHub HTTPS/);
   assert.throws(() => validManifest({sha256: "1234"}), /SHA-256/);
+});
+
+test("basic updater uses its independent manifest and canonical launcher", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "a-share-basic-update-status-"));
+  try {
+    const appDir = path.join(root, "程序", "应用");
+    fs.mkdirSync(appDir, {recursive: true});
+    const launcherPath = path.join(root, "复盘软件基础版.exe");
+    fs.writeFileSync(launcherPath, "old-basic");
+    fs.writeFileSync(path.join(root, ".launcher.json"), JSON.stringify({
+      edition: "basic",
+      releaseEdition: "basic",
+      version: "2.21.9",
+      launcherPath,
+      manifestUrl: "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/basic.json",
+      appPid: 0,
+    }));
+    const calls = [];
+    const service = createAppUpdateService({
+      edition: "basic",
+      appDir,
+      runtimeRoot: root,
+      fetchManifest: async (url, expectedEdition) => {
+        calls.push({url, expectedEdition});
+        return validManifest({
+          product: "复盘软件基础版",
+          edition: "basic",
+          version: "2.21.10",
+          downloadUrl: "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.10/A-Share-Review-Basic-v2.21.10.exe",
+        }, "basic");
+      },
+      disableExit: true,
+    });
+    const status = await service.checkForUpdates({force: true});
+    assert.equal(status.supported, true);
+    assert.equal(status.launcherReady, true);
+    assert.equal(status.releaseEdition, "basic");
+    assert.equal(status.canonicalLauncherName, "复盘软件基础版.exe");
+    assert.equal(status.latestVersion, "2.21.10");
+    assert.equal(status.updateAvailable, true);
+    assert.deepEqual(calls, [{
+      url: "https://raw.githubusercontent.com/zxhy26/free-awesome-a-share-market-ops/main/updates/basic.json",
+      expectedEdition: "basic",
+    }]);
+  } finally {
+    fs.rmSync(root, {recursive: true, force: true});
+  }
 });
 
 test("member updater reports an available GitHub version from launcher metadata", async () => {
@@ -296,6 +351,36 @@ test("custom cleanup removes only custom launchers and preserves the other three
     assert.equal(result.edition, "custom");
     assert.equal(fs.readFileSync(customCanonical, "utf8"), "latest-custom");
     assert.equal(fs.existsSync(customAlias), false);
+    otherLaunchers.forEach((filePath) => assert.equal(fs.existsSync(filePath), true));
+  } finally {
+    fs.rmSync(root, {recursive: true, force: true});
+  }
+});
+
+test("basic cleanup removes only basic launchers and preserves the other three editions", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "a-share-basic-update-cleanup-"));
+  try {
+    const basicAlias = path.join(root, "A-Share-Review-Basic-v2.21.10.exe");
+    const basicCanonical = path.join(root, "复盘软件基础版.exe");
+    const otherLaunchers = [
+      path.join(root, "大a后勤部.exe"),
+      path.join(root, "复盘软件自用版.exe"),
+      path.join(root, "复盘软件定制版-短线模型V1.0.exe"),
+    ];
+    fs.writeFileSync(basicAlias, "latest-basic");
+    fs.writeFileSync(basicCanonical, "old-basic");
+    otherLaunchers.forEach((filePath) => fs.writeFileSync(filePath, path.basename(filePath)));
+    const metadataPath = path.join(root, ".launcher.json");
+    fs.writeFileSync(metadataPath, JSON.stringify({
+      edition: "basic",
+      releaseEdition: "basic",
+      version: "2.21.10",
+      launcherPath: basicAlias,
+    }));
+    const result = cleanupLauncherArtifacts({platform: "win32", metadataPath});
+    assert.equal(result.edition, "basic");
+    assert.equal(fs.readFileSync(basicCanonical, "utf8"), "latest-basic");
+    assert.equal(fs.existsSync(basicAlias), false);
     otherLaunchers.forEach((filePath) => assert.equal(fs.existsSync(filePath), true));
   } finally {
     fs.rmSync(root, {recursive: true, force: true});

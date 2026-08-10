@@ -50,12 +50,14 @@ test("desktop launcher metadata carries canonical edition cleanup identity", () 
   assert.match(launcher, /CanonicalLauncherName = "复盘软件自用版\.exe"/);
   assert.match(launcher, /CanonicalLauncherName = "复盘软件定制版-短线模型V1\.0\.exe"/);
   assert.match(launcher, /CUSTOM_EDITION[\s\S]*updates\/custom\.json/u);
+  assert.match(launcher, /BASIC_EDITION[\s\S]*updates\/basic\.json/u);
   assert.match(launcher, /A_SHARE_REVIEW_UPDATE_MANIFEST_URL/u);
 });
 
-test("update service enables member and custom channels but keeps their manifests isolated", () => {
+test("update service enables member, basic and custom channels but keeps their manifests isolated", () => {
   const updater = read("app/backend/app-update.js");
-  assert.match(updater, /UPDATE_RELEASE_EDITIONS = new Set\(\["member", "custom"\]\)/u);
+  assert.match(updater, /UPDATE_RELEASE_EDITIONS = new Set\(\["member", "basic", "custom"\]\)/u);
+  assert.match(updater, /BASIC_MANIFEST_URL[\s\S]*updates\/basic\.json/u);
   assert.match(updater, /CUSTOM_MANIFEST_URL[\s\S]*updates\/custom\.json/u);
   assert.match(updater, /validateManifest\(fetchedManifest, profile\.edition\)/u);
   assert.match(updater, /metadata\.manifestUrl/u);
