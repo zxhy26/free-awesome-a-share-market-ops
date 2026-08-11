@@ -1,17 +1,17 @@
 {
-    "schemaVersion":  1,
-    "product":  "复盘软件定制版-短线模型V1.0",
-    "edition":  "custom",
-    "version":  "2.21.9",
-    "publishedAt":  "2026-08-09T16:47:36.250Z",
-    "downloadUrl":  "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.9/A-Share-Review-Custom-Shortline-v2.21.9.exe",
-    "sha256":  "B283B33EF477F4719D40DD71461BE334B65F4327AE2A2FE3C01CB1F0D466F031",
-    "size":  41379328,
-    "releasePage":  "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.9",
-    "notes":  [
-                  "题材宝典内每只成分股都可点开查看公司全称、主营简介与当前题材的最相关说明，并保留独立日K按钮。",
-                  "关联关系先核验题材成分股，再结合公开概念标签和东方财富F10公司资料整理，不推断未披露客户、订单或市场份额。",
-                  "公司详情支持缓存、键盘和遮罩关闭，并修复窄屏横向溢出。",
-                  "Windows、macOS 与安卓苹果手机版同步更新至 2.21.9。"
-              ]
+  "schemaVersion": 1,
+  "product": "复盘软件定制版-短线模型V1.0",
+  "edition": "custom",
+  "version": "2.21.11",
+  "publishedAt": "2026-08-11T03:38:02Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.11/A-Share-Review-Custom-Shortline-v2.21.11.exe",
+  "sha256": "FDA3CDFF36DBB579624858EFBC8C2E0CDF8732E1C46653A05C7E265C7A4E4816",
+  "size": 45560320,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.11",
+  "notes": [
+    "修复同步市场按钮：旧版单页模板缺失时，结构化桌面数据仍会正常更新。",
+    "手动同步遇到后台任务时会等待并自动接管，不再把跳过任务误报为同步成功。",
+    "同步进度统一使用 UTF-8，并明确显示等待、繁忙、超时和失败状态。",
+    "发行载荷统一包含截至 2026-08-11 的 21 个近期交易日历史。"
+  ]
 }
