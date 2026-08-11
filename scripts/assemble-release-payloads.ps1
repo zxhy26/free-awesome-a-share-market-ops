@@ -88,6 +88,18 @@ function Overlay-LatestRuntimeData([string]$Target) {
   Copy-Item -LiteralPath (Join-Path $RepoRoot "app\data\theme-treasure.json") -Destination (Join-Path $TargetData "theme-treasure.json") -Force
 }
 
+function Overlay-LatestHistory([string]$Target) {
+  $SourceHistory = Join-Path $SelfBase "数据历史"
+  $TargetHistory = Join-Path $Target "数据历史"
+  if (-not (Test-Path -LiteralPath $SourceHistory -PathType Container)) {
+    throw "最新公共历史目录不存在：$SourceHistory"
+  }
+  if (Test-Path -LiteralPath $TargetHistory) {
+    Remove-Item -LiteralPath $TargetHistory -Recurse -Force
+  }
+  Copy-Item -LiteralPath $SourceHistory -Destination $TargetHistory -Recurse -Force
+}
+
 function Remove-PathIfPresent([string]$Path) {
   if (Test-Path -LiteralPath $Path) {
     Remove-Item -LiteralPath $Path -Recurse -Force
@@ -158,6 +170,7 @@ foreach ($Profile in $Profiles) {
   Copy-BasePayload $Profile.Source $Target
   Overlay-PublicApp $Target
   Overlay-LatestRuntimeData $Target
+  Overlay-LatestHistory $Target
   Set-EditionBoundary $Profile.Edition $Target
   $Results += [ordered]@{
     edition = $Profile.Edition

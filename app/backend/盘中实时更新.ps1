@@ -3,10 +3,18 @@
 )
 
 $ErrorActionPreference = "Stop"
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding = $utf8NoBom
+$OutputEncoding = $utf8NoBom
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $logPath = Join-Path $scriptDir "自动更新日志.txt"
 $lockPath = Join-Path $scriptDir "盘中实时更新.lock"
 $lockStream = $null
+$lockWaitSeconds = 180
+$configuredLockWait = 0
+if ([int]::TryParse($env:A_SHARE_REVIEW_SYNC_LOCK_WAIT_SECONDS, [ref]$configuredLockWait)) {
+  $lockWaitSeconds = [Math]::Max(1, [Math]::Min(600, $configuredLockWait))
+}
 
 function Write-RunLog($message) {
   $line = "[{0}] {1}" -f (Get-Date -Format "yyyy/MM/dd HH:mm:ss"), $message
@@ -57,11 +65,31 @@ try {
     exit 0
   }
 
-  try {
-    $lockStream = [System.IO.File]::Open($lockPath, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
-  } catch {
-    Write-RunLog "盘中实时更新跳过：已有更新任务在运行。"
-    exit 0
+  $lockWaitDeadline = (Get-Date).AddSeconds($lockWaitSeconds)
+  $reportedLockWait = $false
+  while (-not $lockStream) {
+    try {
+      $lockStream = [System.IO.File]::Open($lockPath, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+    } catch {
+      if (-not $Force) {
+        Write-RunLog "盘中实时更新跳过：已有更新任务在运行。"
+        Write-Output "A_SHARE_REVIEW_SYNC_BUSY"
+        exit 75
+      }
+      if (-not $reportedLockWait) {
+        $reportedLockWait = $true
+        Write-RunLog "手动同步等待已有后台任务结束。"
+        Write-Output "正在等待已有同步任务结束，随后自动执行手动同步。"
+      }
+      if ((Get-Date) -ge $lockWaitDeadline) {
+        throw "手动同步等待已有任务超时，请稍后重试。"
+      }
+      Start-Sleep -Milliseconds 500
+    }
+  }
+  if ($reportedLockWait) {
+    Write-RunLog "已有后台任务结束，手动同步已接管。"
+    Write-Output "已有同步任务结束，正在执行手动同步。"
   }
 
   $nodeExe = Get-NodeExe

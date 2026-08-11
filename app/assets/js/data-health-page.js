@@ -1,4 +1,4 @@
-import {loadDataHealth, logTechnicalError, requestMarketSync} from "./api.js?v=20260719-2";
+import {loadDataHealth, logTechnicalError, requestMarketSync} from "./api.js?v=20260811-1";
 import {initializeTheme} from "./theme.js?v=20260719-2";
 
 function node(tag, className = "", text = "") {

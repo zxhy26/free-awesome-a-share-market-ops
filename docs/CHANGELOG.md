@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.21.11 - 2026-08-11
+
+- Fixed the `同步市场` action so a missing legacy single-file template can no longer block structured desktop data updates.
+- Made forced manual synchronization wait for an active background job and then take over instead of falsely reporting a skipped refresh as successful.
+- Added UTF-8 progress output, explicit busy-state handling, longer bounded polling, and regression coverage for template loss and Windows lock contention.
+
 ## 2.21.10 - 2026-08-10
 
 - Added a dedicated GitHub in-application update channel for the Basic Windows edition.

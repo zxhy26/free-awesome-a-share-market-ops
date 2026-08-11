@@ -17,6 +17,7 @@ const {
   reconcileLimitDownPool,
 } = require("./market-extremes");
 const {hydrateHistoryCacheFromStructuredArchive} = require("./recent-market-history");
+const {resolveLegacyTemplatePath, runOptionalOutput} = require("./sync-output-policy");
 const {
   CLS_INDEX_ANNOTATION_ENDPOINTS,
   fallbackClsAnnotationFeed,
@@ -6870,27 +6871,27 @@ function cleanupOldDistributions() {
   }
 }
 
-function writeHtml(marketData, quantData, policyNews) {
-  const templatePath = fs.existsSync(CONFIG.outputPath) ? CONFIG.outputPath : CONFIG.seedPath;
-  if (!fs.existsSync(templatePath)) {
-    throw new Error(`找不到页面模板：${templatePath}`);
+function writeLegacyMainHtml(marketData) {
+  const templatePath = resolveLegacyTemplatePath({
+    outputPath: CONFIG.outputPath,
+    seedPath: CONFIG.seedPath,
+  });
+  if (!templatePath) {
+    log(`旧版单页模板不存在，已跳过兼容页面输出；结构化桌面应用继续更新：${CONFIG.seedPath}`);
+    return false;
   }
   let html = fs.readFileSync(templatePath, "utf8");
   const json = JSON.stringify(marketData).replace(/<\//g, "<\\/");
-  html = html.replace(
+  const replaced = html.replace(
     /const MARKET_DATA = \{[\s\S]*?\};\s*const DAY_MINUTES/,
     `const MARKET_DATA = ${json};\n    const DAY_MINUTES`,
   );
+  if (replaced === html) throw new Error("页面模板中没有找到 MARKET_DATA");
+  html = replaced;
   html = ensureMainPageControls(html);
-  if (!/const MARKET_DATA = /.test(html)) {
-    throw new Error("页面模板中没有找到 MARKET_DATA");
-  }
   if (dryRun) {
     log(`演练模式：不会写入 ${CONFIG.outputPath}`);
-    writeSummaryHtml(marketData);
-    writeLimitDetailHtml(marketData);
-    if (!skipQuant && quantData) writeQuantHtml(quantData);
-    return;
+    return true;
   }
   const wasHidden = prepareWritableFile(CONFIG.outputPath);
   try {
@@ -6907,14 +6908,22 @@ function writeHtml(marketData, quantData, policyNews) {
       log(`已同步桌面 App 服务跳转入口：${CONFIG.legacyOutputPath}`);
     } catch (error) {
       log(`旧入口兼容文件同步跳过：${error.message}`);
-    } finally {
     }
   }
-  writeSummaryHtml(marketData);
-  writeLimitDetailHtml(marketData);
-  if (!skipQuant && quantData) writeQuantHtml(quantData);
-  syncOptimizedDesktopApp(marketData, quantData, policyNews);
-  cleanupOldDistributions();
+  return true;
+}
+
+function writeHtml(marketData, quantData, policyNews) {
+  // The structured desktop app is the primary product. Legacy single-file outputs
+  // are best-effort and must never block a real market-data refresh.
+  if (!dryRun) syncOptimizedDesktopApp(marketData, quantData, policyNews);
+  runOptionalOutput("旧版单页复盘", () => writeLegacyMainHtml(marketData), log);
+  runOptionalOutput("旧版市场总结", () => writeSummaryHtml(marketData), log);
+  runOptionalOutput("旧版涨跌停明细", () => writeLimitDetailHtml(marketData), log);
+  if (!skipQuant && quantData) {
+    runOptionalOutput("旧版量化选股", () => writeQuantHtml(quantData), log);
+  }
+  if (!dryRun) runOptionalOutput("旧发行文件清理", cleanupOldDistributions, log);
 }
 
 function archiveCompleteMarketData(marketData) {

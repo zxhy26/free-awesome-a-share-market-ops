@@ -411,6 +411,7 @@ function syncErrorMessage(payload) {
     TIMEOUT: "同步超时，后台任务已经停止。",
     FILE_WRITE_FAILED: "数据文件写入失败，可能正被其他程序占用。",
     DATA_SOURCE_ERROR: "行情数据接口暂时异常，现有数据没有被覆盖。",
+    SYNC_BUSY: "后台已有同步任务，手动同步会在当前任务结束后自动接管。",
     INCOMPLETE_DATA: "新数据完整性校验未通过，已保留上一份完整结果，后台会继续补采。",
     GENERATE_FAILED: "复盘结果生成失败，现有数据没有被覆盖。",
   };
@@ -448,7 +449,7 @@ export function requestMarketSync(onProgress) {
       throw new AppError(syncErrorMessage(response), {code: response.errorCode || "SYNC_REJECTED"});
     }
     onProgress?.(response.progress || {stage: "starting", message: response.message || "正在同步", percent: 5});
-    return pollSync(onProgress, 6 * 60 * 1000);
+    return pollSync(onProgress, 11 * 60 * 1000);
   })().finally(() => {
     syncPromise = null;
   });

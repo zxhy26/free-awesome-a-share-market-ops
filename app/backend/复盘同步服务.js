@@ -18,7 +18,7 @@ const { createMacTradingAppService } = require("./macos-trading-app");
 
 const PORT = Number(process.env.A_SHARE_REVIEW_PORT) || 18765;
 const HOST = process.env.A_SHARE_REVIEW_HOST || "127.0.0.1";
-const SERVICE_VERSION = "3.26.0";
+const SERVICE_VERSION = "3.27.0";
 const ALLOW_REMOTE = process.env.A_SHARE_REVIEW_ALLOW_REMOTE === "1";
 const TEST_MODE = process.env.A_SHARE_REVIEW_TEST_MODE === "1";
 const DISABLE_SCHEDULES = process.env.A_SHARE_REVIEW_DISABLE_SCHEDULES === "1";
@@ -508,7 +508,8 @@ function setProgress(stage, message, percent) {
 
 function updateProgressFromOutput(chunk) {
   const text = String(chunk || "");
-  if (/完成：|已更新：|同步完成/.test(text)) setProgress("writing", "正在生成复盘结果", 90);
+  if (/等待已有同步任务|已有同步任务结束/.test(text)) setProgress("waiting", "正在等待后台任务结束并接管同步", 8);
+  else if (/完成：|已更新：|同步完成/.test(text)) setProgress("writing", "正在生成复盘结果", 90);
   else if (/涨停|跌停|炸板|市场强度/.test(text)) setProgress("market", "正在统计涨停跌停", 68);
   else if (/板块|资金流/.test(text)) setProgress("sectors", "正在获取板块", 45);
   else if (/指数|上证|深证|创业板/.test(text)) setProgress("indices", "正在获取指数", 22);
@@ -517,6 +518,7 @@ function updateProgressFromOutput(chunk) {
 function classifySyncFailure(result) {
   if (result?.ok) return "";
   const text = [result?.message, result?.stdout, result?.stderr].filter(Boolean).join(" ");
+  if (result?.code === 75 || /A_SHARE_REVIEW_SYNC_BUSY|已有更新任务正在运行/.test(text)) return "SYNC_BUSY";
   if (/超时|timed?\s*out/i.test(text)) return "TIMEOUT";
   if (/写入|EACCES|EPERM|EROFS|rename|文件.*占用/i.test(text)) return "FILE_WRITE_FAILED";
   if (/接口|curl|fetch|行情|DNS|连接|网络/i.test(text)) return "DATA_SOURCE_ERROR";
@@ -717,7 +719,7 @@ function runNodeScript(scriptPath, extraArgs, timeoutMs, onProgress) {
 async function runRefresh(options = {}) {
   const source = options.source || "manual";
   const force = options.force !== false;
-  const timeoutMs = options.timeoutMs || 5 * 60 * 1000;
+  const timeoutMs = options.timeoutMs || (source === "auto" ? 5 * 60 * 1000 : 10 * 60 * 1000);
   if (running) {
     return {
       ok: false,
