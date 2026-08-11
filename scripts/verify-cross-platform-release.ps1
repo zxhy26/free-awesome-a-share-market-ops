@@ -131,6 +131,22 @@ try {
         throw "$Edition 版 Mac 载荷边界错误：$Boundary=$($Boundaries[$Boundary])"
       }
     }
+    if ($Edition -eq "Custom") {
+      $ServiceSource = Read-EntryText $ServiceEntry
+      foreach ($RequiredAnchor in @(
+        'createShortlineService',
+        'createShortlineRouteHandler',
+        'createShortlineMonitor',
+        'await\s+handleShortlineRequest',
+        'shortlineMonitor\.start\(\)',
+        'server\.on\("upgrade"',
+        'shortlineRuntimeStatus\(\)'
+      )) {
+        if ($ServiceSource -notmatch $RequiredAnchor) {
+          throw "定制版跨平台包短线实时集成不完整，缺少锚点：$RequiredAnchor"
+        }
+      }
+    }
 
     [ordered]@{
       ok = $true

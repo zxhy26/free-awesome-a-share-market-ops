@@ -16,9 +16,23 @@ const { createAppUpdateService } = require("./app-update");
 const { createUserPreferencesService } = require("./用户设置");
 const { createMacTradingAppService } = require("./macos-trading-app");
 
+const RELEASE_EDITION = String(process.env.A_SHARE_REVIEW_RELEASE_EDITION || "").trim().toLowerCase();
+const SHORTLINE_ENABLED = RELEASE_EDITION === "custom"
+  || process.env.A_SHARE_REVIEW_SHORTLINE_FORCE === "1";
+let createShortlineService;
+let createShortlineRouteHandler;
+let createShortlineWebSocketHub;
+let createShortlineMonitor;
+if (SHORTLINE_ENABLED) {
+  ({createShortlineService} = require("./shortline-service"));
+  ({createShortlineRouteHandler} = require("./shortline-routes"));
+  ({createShortlineWebSocketHub} = require("./shortline-websocket"));
+  ({createShortlineMonitor} = require("./shortline-monitor"));
+}
+
 const PORT = Number(process.env.A_SHARE_REVIEW_PORT) || 18765;
 const HOST = process.env.A_SHARE_REVIEW_HOST || "127.0.0.1";
-const SERVICE_VERSION = "3.27.0";
+const SERVICE_VERSION = "3.27.1-shortline-recovery";
 const ALLOW_REMOTE = process.env.A_SHARE_REVIEW_ALLOW_REMOTE === "1";
 const TEST_MODE = process.env.A_SHARE_REVIEW_TEST_MODE === "1";
 const DISABLE_SCHEDULES = process.env.A_SHARE_REVIEW_DISABLE_SCHEDULES === "1";
@@ -45,6 +59,21 @@ const DERIVATIVES_SCRIPT = path.join(WORK_DIR, "更新机构衍生品.ps1");
 const DERIVATIVES_NODE_SCRIPT = path.join(WORK_DIR, "更新机构衍生品.js");
 const STOCK_APP_SCRIPT = path.join(WORK_DIR, "打开通达信日K.ps1");
 const APP_EDITION = resolveAppEdition();
+const SHORTLINE_PERSISTENT_DIR = process.env.A_SHARE_REVIEW_SHORTLINE_DATA_DIR
+  || (process.env.LOCALAPPDATA
+    ? path.join(process.env.LOCALAPPDATA, "A股复盘软件运行文件", "定制版", "短线模型")
+    : path.join(WORK_DIR, ".shortline-data"));
+const SHORTLINE_ENDPOINTS = [
+  "/api/v1/shortline/review",
+  "POST /api/v1/shortline/day1",
+  "POST /api/v1/shortline/day2",
+  "POST /api/v1/shortline/day3",
+  "/api/v1/shortline/day2/live",
+  "/api/v1/shortline/config",
+  "/api/v1/shortline/alerts/history",
+  "/api/v1/shortline/export",
+  "WS /api/v1/shortline/ws",
+];
 const appUpdate = createAppUpdateService({
   edition: APP_EDITION,
   appDir: APP_DIR,
@@ -86,6 +115,44 @@ const boardIntraday = createBoardIntradayService();
 const indexIntraday = createIndexIntradayService({
   marketDataPath: path.join(DATA_DIR, "market.json"),
 });
+const shortlineHub = SHORTLINE_ENABLED
+  ? createShortlineWebSocketHub({log})
+  : {
+      clientCount: () => 0,
+      handleUpgrade: () => false,
+      close: () => {},
+    };
+const shortlineService = SHORTLINE_ENABLED
+  ? createShortlineService({
+      persistentDir: SHORTLINE_PERSISTENT_DIR,
+      dataDir: DATA_DIR,
+      historyDir: STRUCTURED_HISTORY_DIR,
+      listHistoryDates,
+      loadHistory,
+      hub: shortlineHub,
+      log,
+      liveData: process.env.A_SHARE_REVIEW_SHORTLINE_LIVE_DATA !== "0",
+    })
+  : null;
+const handleShortlineRequest = SHORTLINE_ENABLED
+  ? createShortlineRouteHandler(shortlineService, {log})
+  : async () => false;
+const shortlineMonitor = SHORTLINE_ENABLED
+  ? createShortlineMonitor({
+      service: shortlineService,
+      stateFile: path.join(SHORTLINE_PERSISTENT_DIR, "monitor-state.json"),
+      disableSchedules: DISABLE_SCHEDULES,
+      testMode: TEST_MODE,
+      getMarketRegime: async () => currentShortlineMarketRegime(),
+      getAStockUniverse: async () => currentAStockUniverse(),
+      getCurrentLimitUpRows: async (tradeDate) => currentShortlineLimitUpRows(tradeDate),
+      log,
+    })
+  : {
+      start: () => {},
+      stop: () => {},
+      status: () => ({enabled: false, running: false, releaseEdition: RELEASE_EDITION || "unknown"}),
+    };
 
 let running = false;
 let lastRunAt = "";
@@ -145,6 +212,51 @@ function resolveAppEdition() {
   const hasQuantRuntime = fs.existsSync(QUANT_SCRIPT)
     && fs.existsSync(path.join(APP_DIR, "pages", "quant.html"));
   return hasQuantRuntime ? "basic" : "member";
+}
+
+function currentShortlineMarketRegime() {
+  const analysis = readJsonFile(path.join(DATA_DIR, "analysis.json"), {});
+  const raw = analysis?.marketRegime?.state ?? analysis?.regime ?? "";
+  if (/主升|main(?:up|line)/iu.test(String(raw))) return "mainUp";
+  return raw ? "chaos" : null;
+}
+
+function currentAStockUniverse() {
+  const payload = readJsonFile(path.join(DATA_DIR, "a-share-stock-universe.json"), {});
+  const items = Array.isArray(payload?.items) ? payload.items : [];
+  return items
+    .map((item) => ({
+      code: String(item?.code || "").trim(),
+      prefix: String(item?.prefix || "").trim(),
+    }))
+    .filter((item) => /^\d{6}$/u.test(item.code));
+}
+
+function currentShortlineLimitUpRows(tradeDate) {
+  const stocks = readJsonFile(path.join(DATA_DIR, "stocks.json"), {});
+  if (stocks?.tradeDate !== tradeDate) return null;
+  const limitUpRows = stocks?.groups?.limitUp?.rows;
+  const brokenRows = stocks?.groups?.broken?.rows;
+  if (!Array.isArray(limitUpRows) && !Array.isArray(brokenRows)) return null;
+  const seen = new Set();
+  return [
+    ...(Array.isArray(limitUpRows) ? limitUpRows : []),
+    ...(Array.isArray(brokenRows) ? brokenRows : []),
+  ].filter((row) => {
+    const symbol = String(row?.symbol || row?.code || "").trim();
+    if (!symbol || seen.has(symbol)) return false;
+    seen.add(symbol);
+    return true;
+  });
+}
+
+function shortlineRuntimeStatus() {
+  return {
+    enabled: SHORTLINE_ENABLED,
+    releaseEdition: RELEASE_EDITION || "standard",
+    ...shortlineMonitor.status(),
+    websocketClients: shortlineHub.clientCount(),
+  };
 }
 
 function appDataStatus() {
@@ -1190,6 +1302,8 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (await handleShortlineRequest(req, res, url)) return;
+
   if (url.pathname === "/" && (req.method === "GET" || req.method === "HEAD")) {
     res.writeHead(302, { Location: "/app/", "Cache-Control": "no-store" });
     res.end();
@@ -1212,10 +1326,12 @@ const server = http.createServer(async (req, res) => {
       apiVersion: "v1",
       serviceVersion: SERVICE_VERSION,
       edition: APP_EDITION,
+      releaseEdition: RELEASE_EDITION || "standard",
+      capabilities: SHORTLINE_ENABLED ? ["shortline"] : [],
       appData: appDataStatus(),
       flowData: flowDataStatus(),
       historyCount: listHistoryDates().length,
-      endpoints: ["/api/v1/market/snapshot", "/api/v1/preferences", "POST /api/v1/preferences", "/api/v1/index-catalog", "/api/v1/index-trend?key=sh000001", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/theme-treasure", "/api/v1/theme-treasure/detail?code=BK0000", "/api/v1/theme-treasure/company?theme=BK0000&stock=000001", "POST /api/v1/theme-treasure/refresh", "/api/v1/sector-trend?code=BK0000", "/api/v1/sector-flow?code=BK0000", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "/api/v1/membership/status", "POST /api/v1/membership/trial", "/api/v1/app-update/status", "/api/v1/app-update/check", "POST /api/v1/app-update/install", "POST /api/v1/sync", "POST /api/v1/index-contribution/refresh", "POST /stock-open", "POST /derivatives-refresh", "POST /next-week-events-refresh"],
+      endpoints: ["/api/v1/market/snapshot", "/api/v1/preferences", "POST /api/v1/preferences", "/api/v1/index-catalog", "/api/v1/index-trend?key=sh000001", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/theme-treasure", "/api/v1/theme-treasure/detail?code=BK0000", "/api/v1/theme-treasure/company?theme=BK0000&stock=000001", "POST /api/v1/theme-treasure/refresh", "/api/v1/sector-trend?code=BK0000", "/api/v1/sector-flow?code=BK0000", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "/api/v1/membership/status", "POST /api/v1/membership/trial", "/api/v1/app-update/status", "/api/v1/app-update/check", "POST /api/v1/app-update/install", "POST /api/v1/sync", "POST /api/v1/index-contribution/refresh", "POST /stock-open", "POST /derivatives-refresh", "POST /next-week-events-refresh", ...(SHORTLINE_ENABLED ? SHORTLINE_ENDPOINTS : [])],
     });
     return;
   }
@@ -1446,7 +1562,7 @@ const server = http.createServer(async (req, res) => {
     const health = readJsonFile(path.join(DATA_DIR, "health.json"), {});
     const derivatives = derivativesStatus();
     const mergedHealth = mergeHealthModule(health, derivativesHealthModule(derivatives, new Date(), health.tradeDate));
-    sendJson(res, 200, {...mergedHealth, derivatives, indexContribution: indexContributionStatus(), liveSectorFlow: liveSectorFlow.getState(), themeTreasure: themeTreasure.getState(), service: apiServiceState()});
+    sendJson(res, 200, {...mergedHealth, derivatives, indexContribution: indexContributionStatus(), liveSectorFlow: liveSectorFlow.getState(), themeTreasure: themeTreasure.getState(), shortline: shortlineRuntimeStatus(), service: apiServiceState()});
     return;
   }
 
@@ -1473,6 +1589,7 @@ const server = http.createServer(async (req, res) => {
       ...apiServiceState(),
       appData: appDataStatus(),
       liveSectorFlow: liveSectorFlow.getState(),
+      shortline: shortlineRuntimeStatus(),
       policyNews: policyNewsStatus(),
       nextWeekEvents: nextWeekEventsStatus(),
       derivatives: derivativesStatus(),
@@ -1517,6 +1634,7 @@ const server = http.createServer(async (req, res) => {
       appData: appDataStatus(),
       flowData: flowDataStatus(),
       liveSectorFlow: liveSectorFlow.getState(),
+      shortline: shortlineRuntimeStatus(),
       policyNewsRunning,
       policyNews: policyNewsStatus(),
       nextWeekEventsRunning,
@@ -1552,6 +1670,7 @@ const server = http.createServer(async (req, res) => {
       appData: appDataStatus(),
       flowData: flowDataStatus(),
       liveSectorFlow: liveSectorFlow.getState(),
+      shortline: shortlineRuntimeStatus(),
       derivatives: {
         running: derivativesRunning,
         intervalMs: DERIVATIVES_INTERVAL_MS,
@@ -1659,10 +1778,26 @@ server.on("error", (error) => {
   process.exitCode = 1;
 });
 
-server.on("close", () => liveSectorFlow.stopPolling());
+server.on("upgrade", (req, socket, head) => {
+  const security = validateLocalRequest(req, {port: PORT, allowRemote: ALLOW_REMOTE});
+  if (!security.ok) {
+    socket.write(`HTTP/1.1 ${security.statusCode || 403} Forbidden\r\nConnection: close\r\n\r\n`);
+    socket.destroy();
+    return;
+  }
+  if (!SHORTLINE_ENABLED || !shortlineHub.handleUpgrade(req, socket, head)) socket.destroy();
+});
+
+server.on("close", () => {
+  liveSectorFlow.stopPolling();
+  shortlineMonitor.stop();
+  shortlineHub.close();
+});
 
 server.listen(PORT, HOST, () => {
   log(`复盘同步服务已启动：http://${HOST}:${PORT}；A股复盘应用：http://${HOST}:${PORT}/app/`);
+  shortlineMonitor.start();
+  if (SHORTLINE_ENABLED) log("短线实时服务已挂载：REST、WebSocket、监控调度均已启用");
   if (!TEST_MODE) {
     appUpdate.scheduleLauncherCleanup();
     liveSectorFlow.startPolling();

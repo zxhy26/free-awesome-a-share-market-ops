@@ -210,7 +210,7 @@ function patchCustomService(servicePath) {
   );
   source = source.replace(
     /const SERVICE_VERSION = "[^"]+";/,
-    'const SERVICE_VERSION = "3.23.1-shortline-macos-v1";',
+    'const SERVICE_VERSION = "3.27.1-shortline-recovery";',
   );
   if (!source.includes("const AUTO_UPDATE_SCRIPT")) {
     source = source.replace(

@@ -2,16 +2,18 @@
   "schemaVersion": 1,
   "product": "复盘软件定制版-短线模型V1.0",
   "edition": "custom",
-  "version": "2.21.11",
-  "publishedAt": "2026-08-11T03:38:02Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.11/A-Share-Review-Custom-Shortline-v2.21.11.exe",
-  "sha256": "FDA3CDFF36DBB579624858EFBC8C2E0CDF8732E1C46653A05C7E265C7A4E4816",
-  "size": 45560320,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.11",
+  "capabilities": ["shortline"],
+  "version": "2.21.12",
+  "publishedAt": "2026-08-11T07:13:10Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.12/A-Share-Review-Custom-Shortline-v2.21.12.exe",
+  "sha256": "087C6BDE09B83A6C0779A0BDA3352D6B233F726B9F31BB5C71A654E7EF6747D3",
+  "size": 45868032,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.12",
   "notes": [
-    "修复同步市场按钮：旧版单页模板缺失时，结构化桌面数据仍会正常更新。",
-    "手动同步遇到后台任务时会等待并自动接管，不再把跳过任务误报为同步成功。",
-    "同步进度统一使用 UTF-8，并明确显示等待、繁忙、超时和失败状态。",
-    "发行载荷统一包含截至 2026-08-11 的 21 个近期交易日历史。"
+    "修复定制版更新后短线页面存在但后端路由、实时监控和WebSocket未挂载，导致‘实时失败’的问题。",
+    "恢复09:15开始的一字方向实时预览、09:25冻结、Day2实时条件与短线数据统计；全A行情采用100只一批、12路并发。",
+    "WebSocket增加心跳和自动重连，短线监控状态加入健康接口，便于立即识别服务异常。",
+    "新增成品级防回退门禁：最终EXE必须通过短线REST 200、WebSocket 101和Monitor状态验证，否则禁止发版。",
+    "本次只更新定制版，基础版、自用版和大a后勤部保持原文件不变。"
   ]
 }

@@ -166,7 +166,10 @@ for (const edition of EDITIONS) {
   if (edition.mode === "custom") {
     assert(service.includes("createShortlineService"), "定制版短线服务丢失");
     assert(service.includes("handleShortlineRequest"), "定制版短线路由丢失");
-    assert(service.includes("3.23.1-shortline-macos-v1"), "定制版服务版本未升级");
+    assert(service.includes("createShortlineMonitor"), "定制版短线监控丢失");
+    assert(service.includes('server.on("upgrade"'), "定制版短线WebSocket丢失");
+    assert(service.includes("shortlineMonitor.start()"), "定制版短线监控未启动");
+    assert(service.includes("3.27.1-shortline-recovery"), "定制版服务版本未升级");
   }
   assert(
     serviceWorker.includes(`a-share-review-v91-cross-platform-${edition.mode}`),

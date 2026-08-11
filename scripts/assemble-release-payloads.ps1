@@ -120,11 +120,24 @@ function Set-EditionBoundary([string]$Edition, [string]$Target) {
     (Join-Path $AppRoot "assets\js\quant-page.js"),
     (Join-Path $AppRoot "backend\运行量化选股.ps1")
   )
+  $ShortlineFiles = @(
+    (Join-Path $AppRoot "pages\shortline.html"),
+    (Join-Path $AppRoot "assets\js\shortline-page.js"),
+    (Join-Path $AppRoot "assets\css\shortline.css"),
+    (Join-Path $AppRoot "data\shortline-holidays.json"),
+    (Join-Path $AppRoot "backend\shortline-excel.js"),
+    (Join-Path $AppRoot "backend\shortline-market-data.js"),
+    (Join-Path $AppRoot "backend\shortline-monitor.js"),
+    (Join-Path $AppRoot "backend\shortline-routes.js"),
+    (Join-Path $AppRoot "backend\shortline-service.js"),
+    (Join-Path $AppRoot "backend\shortline-websocket.js"),
+    (Join-Path $AppRoot "backend\shortline-model")
+  )
 
   $Links = @()
   switch ($Edition) {
     "Member" {
-      foreach ($Path in @($PrivateKey) + $AdminFiles + $QuantFiles + @(
+      foreach ($Path in @($PrivateKey) + $AdminFiles + $QuantFiles + $ShortlineFiles + @(
         (Join-Path $AppRoot "data\quant.json"),
         (Join-Path $AppRoot "data\quant-data.json")
       )) {
@@ -132,10 +145,11 @@ function Set-EditionBoundary([string]$Edition, [string]$Target) {
       }
     }
     "Basic" {
-      foreach ($Path in @($PrivateKey) + $AdminFiles) { Remove-PathIfPresent $Path }
+      foreach ($Path in @($PrivateKey) + $AdminFiles + $ShortlineFiles) { Remove-PathIfPresent $Path }
       $Links += '      <a class="button" href="/app/pages/quant.html"><span aria-hidden="true">⌁</span><span>量化选股</span></a>'
     }
     "Self" {
+      foreach ($Path in $ShortlineFiles) { Remove-PathIfPresent $Path }
       $Links += '      <a class="button" href="/app/pages/quant.html"><span aria-hidden="true">⌁</span><span>量化选股</span></a>'
       $Links += '      <a class="button" href="/app/pages/member-admin.html"><span aria-hidden="true">◇</span><span>会员管理</span></a>'
     }

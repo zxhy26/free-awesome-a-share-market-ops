@@ -109,6 +109,26 @@ try {
     $HasQuant = $Index -match "quant\.html"
     $HasAdmin = $Index -match "member-admin\.html"
     $HasShortline = $Index -match "shortline\.html"
+    $MainServiceFile = Get-ChildItem -LiteralPath (Join-Path $AppRoot "backend") -File -Filter "*.js" |
+      Where-Object {
+        $Content = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8
+        $Content -match 'http\.createServer' -and $Content -match 'api/v1/status'
+      } |
+      Select-Object -First 1
+    $MainService = if ($MainServiceFile) {
+      Get-Content -LiteralPath $MainServiceFile.FullName -Raw -Encoding UTF8
+    } else {
+      ""
+    }
+    $ShortlineIntegrationOk = -not $Target.Shortline -or (
+      $MainService -match 'createShortlineService' -and
+      $MainService -match 'createShortlineRouteHandler' -and
+      $MainService -match 'createShortlineMonitor' -and
+      $MainService -match 'await\s+handleShortlineRequest' -and
+      $MainService -match 'shortlineMonitor\.start\(\)' -and
+      $MainService -match 'server\.on\("upgrade"' -and
+      $MainService -match 'shortlineRuntimeStatus\(\)'
+    )
     $HasPrivateKey = @(
       Get-ChildItem -LiteralPath (Join-Path $AppRoot "backend") -Recurse -File -Filter "*.pem" |
         Where-Object {
@@ -142,7 +162,8 @@ try {
     $BoundaryOk = $HasQuant -eq $Target.Quant -and
       $HasAdmin -eq $Target.Admin -and
       $HasPrivateKey -eq $Target.PrivateKey -and
-      $HasShortline -eq $Target.Shortline
+      $HasShortline -eq $Target.Shortline -and
+      $ShortlineIntegrationOk
     if (-not $HasLiveModule -or -not $HasIndexCatalog -or -not $HasIndexWorkspace -or
       -not $HasDisplaySettings -or -not $HasDisplayPageSync -or -not $IndependentPagesSynced -or
       -not $HasPersistentSettings -or -not $HasUserPreferences -or
@@ -160,6 +181,7 @@ try {
         userPreferencesRoute = $HasUserPreferencesRoute
         displayControls = $HasDisplayControls
         boundaryOk = $BoundaryOk
+        shortlineIntegration = $ShortlineIntegrationOk
       } | ConvertTo-Json -Compress
       throw "$($Target.Name) payload feature boundary is invalid: $FeatureState"
     }
@@ -175,6 +197,7 @@ try {
       admin = $HasAdmin
       privateKey = $HasPrivateKey
       shortline = $HasShortline
+      shortlineIntegration = $ShortlineIntegrationOk
       indexCatalog = $HasIndexCatalog
       indexWorkspace = $HasIndexWorkspace
       displaySettings = $HasDisplaySettings

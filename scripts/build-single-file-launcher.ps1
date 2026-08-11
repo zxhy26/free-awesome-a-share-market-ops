@@ -82,6 +82,30 @@ switch ($Edition) {
         throw "定制版载荷缺少必要文件：$RequiredPath"
       }
     }
+    $MainServiceFile = Get-ChildItem -LiteralPath (Join-Path $PayloadRoot "程序\应用\backend") -File -Filter "*.js" |
+      Where-Object {
+        $Content = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8
+        $Content -match 'http\.createServer' -and $Content -match 'api/v1/status'
+      } |
+      Select-Object -First 1
+    $MainService = if ($MainServiceFile) {
+      Get-Content -LiteralPath $MainServiceFile.FullName -Raw -Encoding UTF8
+    } else {
+      ""
+    }
+    foreach ($RequiredAnchor in @(
+      'createShortlineService',
+      'createShortlineRouteHandler',
+      'createShortlineMonitor',
+      'await\s+handleShortlineRequest',
+      'shortlineMonitor\.start\(\)',
+      'server\.on\("upgrade"',
+      'shortlineRuntimeStatus\(\)'
+    )) {
+      if ($MainService -notmatch $RequiredAnchor) {
+        throw "定制版主服务未完整挂载短线实时能力，缺少锚点：$RequiredAnchor"
+      }
+    }
     foreach ($ForbiddenPath in @($PrivateKey, $AdminPage, $AdminScript, $AdminStyle)) {
       if (Test-Path -LiteralPath $ForbiddenPath) {
         throw "定制版载荷不得包含激活码签发文件：$ForbiddenPath"

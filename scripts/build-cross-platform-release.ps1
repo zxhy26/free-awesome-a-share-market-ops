@@ -71,6 +71,32 @@ foreach ($Boundary in @("Quant", "Admin", "PrivateKey", "Shortline")) {
     throw "$Edition 版功能边界不正确：$Boundary=$($ActualBoundaries[$Boundary])，预期=$($Profile[$Boundary])"
   }
 }
+if ($Edition -eq "Custom") {
+  $MainServiceFile = Get-ChildItem -LiteralPath (Join-Path $AppRoot "backend") -File -Filter "*.js" |
+    Where-Object {
+      $Content = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8
+      $Content -match 'http\.createServer' -and $Content -match 'api/v1/status'
+    } |
+    Select-Object -First 1
+  $MainService = if ($MainServiceFile) {
+    Get-Content -LiteralPath $MainServiceFile.FullName -Raw -Encoding UTF8
+  } else {
+    ""
+  }
+  foreach ($RequiredAnchor in @(
+    'createShortlineService',
+    'createShortlineRouteHandler',
+    'createShortlineMonitor',
+    'await\s+handleShortlineRequest',
+    'shortlineMonitor\.start\(\)',
+    'server\.on\("upgrade"',
+    'shortlineRuntimeStatus\(\)'
+  )) {
+    if ($MainService -notmatch $RequiredAnchor) {
+      throw "定制版跨平台载荷未完整挂载短线实时能力，缺少锚点：$RequiredAnchor"
+    }
+  }
+}
 
 $BuildRoot = Join-Path $WorkRoot ("AshareCrossPlatform-" + [Guid]::NewGuid().ToString("N"))
 $ReleaseFolder = Join-Path $BuildRoot ($Profile.DisplayName + "_" + $Version)
