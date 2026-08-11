@@ -226,4 +226,20 @@ try {
   }
 }
 
+$CustomRuntimeSmoke = $null
+if ($CustomExe) {
+  $RuntimeGateScript = Join-Path $PSScriptRoot "verify-custom-exe-runtime.ps1"
+  if (-not (Test-Path -LiteralPath $RuntimeGateScript -PathType Leaf)) {
+    throw "Custom real-EXE runtime gate is missing: $RuntimeGateScript"
+  }
+  $RuntimeSmokeRoot = Join-Path $TestParent ((Split-Path -Leaf $TestRoot) + "-custom-runtime")
+  $RuntimeSmokeJson = & $RuntimeGateScript -CustomExe $CustomExe -TestRoot $RuntimeSmokeRoot
+  $CustomRuntimeSmoke = ($RuntimeSmokeJson -join "`n") | ConvertFrom-Json
+  $CustomResult = @($Results | Where-Object { $_.edition -eq "Custom" }) | Select-Object -First 1
+  if (-not $CustomResult) {
+    throw "Custom extraction result is missing before the runtime gate."
+  }
+  $CustomResult | Add-Member -NotePropertyName runtimeSmoke -NotePropertyValue $CustomRuntimeSmoke -Force
+}
+
 $Results | ConvertTo-Json -Depth 4

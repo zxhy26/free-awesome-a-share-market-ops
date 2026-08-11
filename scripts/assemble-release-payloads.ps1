@@ -170,6 +170,43 @@ function Set-EditionBoundary([string]$Edition, [string]$Target) {
   [IO.File]::WriteAllText($IndexPath, $Index, [Text.UTF8Encoding]::new($false))
 }
 
+function Build-CustomReviewHost([string]$Target) {
+  $Source = Join-Path $RepoRoot "windows-launcher\custom-review-host.cs"
+  $Output = Join-Path $Target "A股复盘Windows版.exe"
+  $Core = Join-Path $Target "Microsoft.Web.WebView2.Core.dll"
+  $WinForms = Join-Path $Target "Microsoft.Web.WebView2.WinForms.dll"
+  $CscCandidates = @(
+    (Join-Path $env:WINDIR "Microsoft.NET\Framework64\v4.0.30319\csc.exe"),
+    (Join-Path $env:WINDIR "Microsoft.NET\Framework\v4.0.30319\csc.exe")
+  )
+  $Csc = $CscCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+  foreach ($Required in @($Source, $Core, $WinForms)) {
+    if (-not (Test-Path -LiteralPath $Required -PathType Leaf)) {
+      throw "定制版单服务窗口构建依赖缺失：$Required"
+    }
+  }
+  if (-not $Csc) { throw "找不到 .NET Framework C# 编译器，无法构建定制版单服务窗口。" }
+
+  $Arguments = @(
+    "/nologo",
+    "/target:winexe",
+    "/platform:anycpu",
+    "/optimize+",
+    "/codepage:65001",
+    "/out:$Output",
+    "/reference:System.dll",
+    "/reference:System.Drawing.dll",
+    "/reference:System.Windows.Forms.dll",
+    "/reference:$Core",
+    "/reference:$WinForms",
+    $Source
+  )
+  & $Csc @Arguments
+  if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $Output -PathType Leaf)) {
+    throw "定制版单服务窗口编译失败，退出码：$LASTEXITCODE"
+  }
+}
+
 [IO.Directory]::CreateDirectory($OutputRoot) | Out-Null
 $Profiles = @(
   @{ Edition = "Member"; Source = $SelfBase; Folder = "会员版" },
@@ -186,6 +223,9 @@ foreach ($Profile in $Profiles) {
   Overlay-LatestRuntimeData $Target
   Overlay-LatestHistory $Target
   Set-EditionBoundary $Profile.Edition $Target
+  if ($Profile.Edition -eq "Custom") {
+    Build-CustomReviewHost $Target
+  }
   $Results += [ordered]@{
     edition = $Profile.Edition
     target = $Target

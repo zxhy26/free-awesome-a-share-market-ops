@@ -48,7 +48,34 @@ function Get-NodeExe {
   return $nodeExe
 }
 
+function Import-LauncherEnvironment {
+  $runtimeRoot = [System.IO.Path]::GetFullPath((Join-Path $scriptDir "..\..\.."))
+  $metadataPath = Join-Path $runtimeRoot ".launcher.json"
+  if (-not (Test-Path -LiteralPath $metadataPath -PathType Leaf)) {
+    Write-RunLog "未找到启动器元数据，后台服务将按普通版兼容模式启动。"
+    return
+  }
+
+  try {
+    $metadata = Get-Content -LiteralPath $metadataPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $edition = [string]$metadata.edition
+    $releaseEdition = [string]$metadata.releaseEdition
+    $launcherVersion = [string]$metadata.version
+    $manifestUrl = [string]$metadata.manifestUrl
+
+    if ($edition) { $env:A_SHARE_REVIEW_EDITION = $edition }
+    if ($releaseEdition) { $env:A_SHARE_REVIEW_RELEASE_EDITION = $releaseEdition }
+    if ($launcherVersion) { $env:A_SHARE_REVIEW_LAUNCHER_VERSION = $launcherVersion }
+    if ($manifestUrl) { $env:A_SHARE_REVIEW_UPDATE_MANIFEST_URL = $manifestUrl }
+
+    Write-RunLog ("已载入启动器版本身份：edition={0}，releaseEdition={1}，version={2}" -f $edition, $releaseEdition, $launcherVersion)
+  } catch {
+    throw "启动器版本身份读取失败：$($_.Exception.Message)"
+  }
+}
+
 try {
+  Import-LauncherEnvironment
   if (Test-ServicePort) {
     Write-RunLog "复盘同步服务已在运行"
     exit 0
