@@ -1,0 +1,54 @@
+{
+  "tag": "v2.21.15",
+  "ready": true,
+  "assets": [
+    {
+      "name": "Da-A-Hou-Qin-Bu-v2.21.15.exe",
+      "sha256": "44D50845BC1DADB6ADDF0FDA5DD854FC4518599117652723F1564B2613CCB450",
+      "size": 45421056,
+      "chunks": [
+        "member-v2.21.15.part001",
+        "member-v2.21.15.part002",
+        "member-v2.21.15.part003",
+        "member-v2.21.15.part004",
+        "member-v2.21.15.part005",
+        "member-v2.21.15.part006",
+        "member-v2.21.15.part007",
+        "member-v2.21.15.part008",
+        "member-v2.21.15.part009"
+      ]
+    },
+    {
+      "name": "A-Share-Review-Basic-v2.21.15.exe",
+      "sha256": "3A345F1DA07FB8EAC35C45927DF58B39971212DE3B41961C2DC3B868620E5BE8",
+      "size": 45444608,
+      "chunks": [
+        "basic-v2.21.15.part001",
+        "basic-v2.21.15.part002",
+        "basic-v2.21.15.part003",
+        "basic-v2.21.15.part004",
+        "basic-v2.21.15.part005",
+        "basic-v2.21.15.part006",
+        "basic-v2.21.15.part007",
+        "basic-v2.21.15.part008",
+        "basic-v2.21.15.part009"
+      ]
+    },
+    {
+      "name": "A-Share-Review-Custom-Shortline-v2.21.15.exe",
+      "sha256": "DB50B938E9DA8870B175D05146F0AD9C6079781C71CFBB4B77DB387CB9B61434",
+      "size": 45596160,
+      "chunks": [
+        "custom-v2.21.15.part001",
+        "custom-v2.21.15.part002",
+        "custom-v2.21.15.part003",
+        "custom-v2.21.15.part004",
+        "custom-v2.21.15.part005",
+        "custom-v2.21.15.part006",
+        "custom-v2.21.15.part007",
+        "custom-v2.21.15.part008",
+        "custom-v2.21.15.part009"
+      ]
+    }
+  ]
+}
