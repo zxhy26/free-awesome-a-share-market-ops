@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "product": "复盘软件基础版",
   "edition": "basic",
-  "version": "2.21.11",
-  "publishedAt": "2026-08-11T03:38:02Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.11/A-Share-Review-Basic-v2.21.11.exe",
-  "sha256": "E18FAD6A71C95AA1F3D1EAC1BE13CEDEA8E0C21BE90455B404614597017EEB8B",
-  "size": 45436928,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.11",
+  "version": "2.21.14",
+  "publishedAt": "2026-08-12T05:34:17Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.14/A-Share-Review-Basic-v2.21.14.exe",
+  "sha256": "62628F07428AC96C6F0CEFD3185AB12A33F6E292C199E05C33BCF44F82E4D2AB",
+  "size": 45437440,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.14",
   "notes": [
-    "修复同步市场按钮：旧版单页模板缺失时，结构化桌面数据仍会正常更新。",
-    "手动同步遇到后台任务时会等待并自动接管，不再把跳过任务误报为同步成功。",
-    "同步进度统一使用 UTF-8，并明确显示等待、繁忙、超时和失败状态。",
-    "发行载荷统一包含截至 2026-08-11 的 21 个近期交易日历史。"
+    "题材宝典按公开成分总数逐页完整读取，不再只取接口首批数据。",
+    "取消角色分组和页面展示数量上限，所有已核验成分股均可查看。",
+    "页面明确显示公开总数、实际展示数和过滤的 ST、退市或无效记录数。",
+    "增加超过 100 只成分股的大题材分页回归测试。"
   ]
 }

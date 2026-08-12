@@ -3,18 +3,16 @@
   "product": "复盘软件定制版-短线模型V1.0",
   "edition": "custom",
   "capabilities": ["shortline"],
-  "version": "2.21.13",
-  "publishedAt": "2026-08-11T07:48:00Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.13/A-Share-Review-Custom-Shortline-v2.21.13.exe",
-  "sha256": "42878E874D09B7FDEE9C1573FA5664220EC5523B730ED11FE503BDF6B477815A",
-  "size": 45867520,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.13",
+  "version": "2.21.14",
+  "publishedAt": "2026-08-12T05:34:17Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.14/A-Share-Review-Custom-Shortline-v2.21.14.exe",
+  "sha256": "5D6A911D1F306DBC7A3145CCA3A34B448E0FA186A51E8D25F9804F5E36E238F9",
+  "size": 45592576,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.14",
   "notes": [
-    "修复定制版更新后短线页面存在但后端路由、实时监控和WebSocket未挂载，导致‘实时失败’的问题。",
-    "恢复09:15开始的一字方向实时预览、09:25冻结、Day2实时条件与短线数据统计；全A行情采用100只一批、12路并发。",
-    "WebSocket增加心跳和自动重连，短线监控状态加入健康接口，便于立即识别服务异常。",
-    "修复计划任务未继承定制版身份导致后台服务按普通版启动的问题，后台常驻与桌面界面现在使用同一套短线能力。",
-    "新增真实EXE启动门禁：默认后台端口必须是定制版、短线REST与WebSocket可用，且禁止产生身份不同的双后台。",
-    "本次只更新定制版，基础版、自用版和大a后勤部保持原文件不变。"
+    "题材宝典按公开成分总数逐页完整读取，并取消角色分组和页面展示数量上限。",
+    "页面明确显示公开总数、实际展示数和过滤的 ST、退市或无效记录数。",
+    "保留 2.21.13 的定制版单后台、短线 REST、实时监控和 WebSocket 修复。",
+    "09:15 一字方向预览、09:25 冻结、Day2 条件及短线统计继续使用最新版逻辑。"
   ]
 }
