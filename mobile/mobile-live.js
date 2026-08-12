@@ -1,6 +1,8 @@
 (function installMobileLiveData() {
   const JSONP_TIMEOUT_MS = 12000;
   const EASTMONEY_TOKEN = "bd1d9ddb04089700cf9c27f6f7426281";
+  const CONSTITUENT_PAGE_SIZE = 100;
+  const MAX_CONSTITUENT_PAGES = 60;
   const nativeFetch = globalThis.fetch.bind(globalThis);
   const INDEX_DEFINITIONS = [
     {key: "sh000001", name: "上证指数", code: "000001", symbol: "sh000001", group: "shanghai"},
@@ -527,12 +529,14 @@
     const normalizedCode = String(code || "").trim().toUpperCase();
     if (!/^BK\d{4}$/.test(normalizedCode)) throw new Error("题材代码无效");
     const hosts = ["https://push2delay.eastmoney.com", "https://push2.eastmoney.com"];
-    const errors = [];
-    for (const host of hosts) {
+    const loadPage = async (pageNumber, preferredHost = "") => {
+      const errors = [];
+      const orderedHosts = preferredHost ? [preferredHost, ...hosts.filter((host) => host !== preferredHost)] : hosts;
+      for (const host of orderedHosts) {
       const url = new URL("/api/qt/clist/get", host);
       Object.entries({
-        pn: "1",
-        pz: "80",
+        pn: String(pageNumber),
+        pz: String(CONSTITUENT_PAGE_SIZE),
         po: "1",
         np: "1",
         fltt: "2",
@@ -545,7 +549,28 @@
       }).forEach(([key, value]) => url.searchParams.set(key, value));
       try {
         const payload = await jsonp(url);
-        const rows = (Array.isArray(payload?.data?.diff) ? payload.data.diff : []).map((row) => {
+          const rows = Array.isArray(payload?.data?.diff) ? payload.data.diff : [];
+          if (!rows.length) throw new Error("返回空页");
+          return {host, payload, rows};
+        } catch (error) {
+          errors.push(`${host}: 第${pageNumber}页 ${error.message || String(error)}`);
+        }
+      }
+      throw new Error(errors.join("；"));
+    };
+
+    try {
+      const firstPage = await loadPage(1);
+      const reportedTotal = Math.max(0, Math.trunc(finite(firstPage.payload?.data?.total) || 0));
+      const pageCount = Math.max(1, Math.ceil(reportedTotal / CONSTITUENT_PAGE_SIZE));
+      if (pageCount > MAX_CONSTITUENT_PAGES) throw new Error(`公开成分股${reportedTotal}只，超过完整读取上限`);
+      const rawRows = [...firstPage.rows];
+      for (let pageNumber = 2; pageNumber <= pageCount; pageNumber += 1) {
+        const page = await loadPage(pageNumber, firstPage.host);
+        rawRows.push(...page.rows);
+      }
+      const uniqueRows = [...new Map(rawRows.map((row) => [String(row?.f12 || "").trim(), row])).values()];
+      const rows = uniqueRows.map((row) => {
           const stockCode = String(row?.f12 || "").trim();
           const name = String(row?.f14 || "").trim();
           if (!/^\d{6}$/.test(stockCode) || !name || /^(ST|\*ST)|退市/u.test(name)) return null;
@@ -562,14 +587,21 @@
             industry: String(row?.f100 || "").trim(),
             concepts: String(row?.f103 || "").split(/[，,、;]/u).map((item) => item.trim()).filter(Boolean),
           };
-        }).filter(Boolean);
-        if (rows.length < 3) throw new Error(`只返回${rows.length}只有效成分股`);
-        return rows;
-      } catch (error) {
-        errors.push(error.message || String(error));
+      }).filter(Boolean);
+      if (rows.length < 3) throw new Error(`只返回${rows.length}只有效成分股`);
+      if (pageCount > 1 && rawRows.length < reportedTotal) {
+        throw new Error(`公开成分股${reportedTotal}只，仅读取${rawRows.length}条`);
       }
+      Object.defineProperties(rows, {
+        reportedTotal: {value: reportedTotal || uniqueRows.length, enumerable: false},
+        excludedCount: {value: Math.max(0, uniqueRows.length - rows.length), enumerable: false},
+        pageCount: {value: pageCount, enumerable: false},
+        complete: {value: true, enumerable: false},
+      });
+      return rows;
+    } catch (error) {
+      throw new Error(`题材成分股读取失败：${error.message || String(error)}`);
     }
-    throw new Error(`题材成分股读取失败：${errors.join("；")}`);
   }
 
   function companySecurityCode(code) {

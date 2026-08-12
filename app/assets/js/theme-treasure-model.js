@@ -376,18 +376,25 @@ const AShareThemeTreasureModel = (function createThemeTreasureModel() {
     const limitLike = items.filter((stock) => (finite(stock.changePct) ?? 0) >= 9.5).length;
     const groups = ["领涨", "核心", "跟随", "分歧"].map((role) => ({
       role,
-      items: items.filter((stock) => stock.role === role).slice(0, role === "分歧" ? 6 : 10),
+      items: items.filter((stock) => stock.role === role),
     })).filter((group) => group.items.length);
     const base = theme.interpretation || interpretationFor(theme);
+    const reportedTotal = Math.max(items.length, Math.trunc(finite(options.reportedTotal) || 0));
+    const excludedCount = Math.max(0, Math.trunc(finite(options.excludedCount) || 0));
+    const complete = options.complete !== false;
     const breadthSentence = items.length
-      ? `已核验${items.length}只高成交活跃成分股，其中上涨${positive}只、下跌${negative}只、涨幅不低于3%的有${strong}只${limitLike ? `、涨幅不低于9.5%的有${limitLike}只` : ""}。`
+      ? `${complete ? "已完整核验" : "已核验"}${items.length}只可展示成分股${reportedTotal > items.length ? `（公开总数${reportedTotal}只，过滤ST、退市或无效记录${excludedCount}只）` : ""}，其中上涨${positive}只、下跌${negative}只、涨幅不低于3%的有${strong}只${limitLike ? `、涨幅不低于9.5%的有${limitLike}只` : ""}。`
       : "成分股接口暂未返回足够样本，不对题材内部扩散程度下结论。";
     return {
       ok: true,
       version: 1,
       theme,
       constituentCount: items.length,
-      constituents: items.slice(0, Math.max(8, Math.min(40, Number(options.limit) || 24))),
+      reportedConstituentCount: reportedTotal,
+      excludedConstituentCount: excludedCount,
+      constituentPageCount: Math.max(1, Math.trunc(finite(options.pageCount) || 1)),
+      constituentCoverageComplete: complete,
+      constituents: items,
       groups,
       interpretation: {
         ...base,

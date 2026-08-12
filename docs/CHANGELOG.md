@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.21.14 - 2026-08-12
+
+- Paginated every thematic-board constituent request through the provider's published total instead of stopping at the first response page.
+- Removed the old per-role and 24-stock display caps so every verified constituent is retained in the handbook relationship map.
+- Added displayed, filtered, and public-total coverage counts, plus regression coverage for boards with more than 100 constituents.
+
 ## 2.21.11 - 2026-08-11
 
 - Fixed the `同步市场` action so a missing legacy single-file template can no longer block structured desktop data updates.

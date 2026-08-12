@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v96-market-sync-reliability";
+const CACHE_VERSION = "a-share-review-v97-theme-constituents";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [

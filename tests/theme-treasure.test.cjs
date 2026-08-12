@@ -70,6 +70,73 @@ test("theme graph assigns factual stock roles and keeps complete relation text",
   });
 });
 
+test("theme constituent API paginates beyond the first 80 and returns the complete board", async () => {
+  const requests = [];
+  const fetchImpl = async (url) => {
+    const target = new URL(String(url));
+    const page = Number(target.searchParams.get("pn"));
+    const pageSize = Number(target.searchParams.get("pz"));
+    requests.push({page, pageSize});
+    const start = (page - 1) * pageSize;
+    const count = Math.max(0, Math.min(pageSize, 205 - start));
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({data: {
+        total: 205,
+        diff: Array.from({length: count}, (_, index) => {
+          const sequence = start + index + 1;
+          return {
+            f12: String(sequence).padStart(6, "0"),
+            f13: 0,
+            f14: `样例公司${sequence}`,
+            f2: 10,
+            f3: sequence % 9,
+            f6: 100000000 + sequence,
+            f8: 1,
+            f20: 100,
+            f21: 90,
+            f100: "测试行业",
+            f103: "测试题材",
+          };
+        }),
+      }}),
+    };
+  };
+  const rows = await require("../app/backend/theme-treasure").fetchBoardConstituents(fetchImpl, "BK1002");
+  assert.equal(rows.length, 205);
+  assert.equal(rows.reportedTotal, 205);
+  assert.equal(rows.pageCount, 3);
+  assert.equal(rows.complete, true);
+  assert.deepEqual(requests.map((item) => item.page), [1, 2, 3]);
+  assert.ok(requests.every((item) => item.pageSize === 100));
+});
+
+test("theme graph keeps every verified constituent instead of capping role groups", async () => {
+  const {buildThemeDetail, buildThemeRanking} = await modelPromise;
+  const theme = buildThemeRanking(snapshot, {sort: "score", limit: 20}).items[0];
+  const rows = Array.from({length: 135}, (_, index) => ({
+    code: String(index + 1).padStart(6, "0"),
+    name: `完整成分${index + 1}`,
+    market: 0,
+    changePct: (index % 15) - 5,
+    amount: 200 - index,
+    industry: "测试行业",
+  }));
+  const detail = buildThemeDetail(theme, rows, {
+    reportedTotal: 138,
+    excludedCount: 3,
+    pageCount: 2,
+    complete: true,
+  });
+  assert.equal(detail.constituentCount, 135);
+  assert.equal(detail.reportedConstituentCount, 138);
+  assert.equal(detail.excludedConstituentCount, 3);
+  assert.equal(detail.constituents.length, 135);
+  assert.equal(detail.groups.reduce((total, group) => total + group.items.length, 0), 135);
+  assert.match(detail.interpretation.headline, /已完整核验135只可展示成分股/);
+});
+
 test("company profile uses verified business text and direct topic evidence without invented claims", async () => {
   const {buildCompanyThemeProfile} = await modelPromise;
   const profile = buildCompanyThemeProfile(
@@ -174,4 +241,6 @@ test("mobile theme treasure verifies membership before loading company profile",
   assert.match(live, /loadCompanySurvey/);
   assert.match(live, /ORG_PROFILE/);
   assert.match(live, /BUSINESS_SCOPE/);
+  assert.match(live, /CONSTITUENT_PAGE_SIZE\s*=\s*100/);
+  assert.match(live, /for \(let pageNumber = 2; pageNumber <= pageCount; pageNumber \+= 1\)/);
 });

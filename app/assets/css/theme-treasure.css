@@ -209,7 +209,13 @@
 .theme-risks { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 14px 14px; }
 .theme-risk-tag { padding: 4px 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); color: var(--text-soft); background: var(--surface-soft); }
 
-.theme-map-content { min-height: 280px; padding: 14px; }
+.theme-map-content {
+  min-height: 280px;
+  max-height: min(920px, calc(100vh - 120px));
+  overflow: auto;
+  padding: 14px;
+  scrollbar-gutter: stable;
+}
 .theme-root-node { display: inline-flex; align-items: center; min-height: 38px; padding: 7px 12px; border: 1px solid var(--accent); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--accent) 10%, var(--surface-raised)); font-weight: 700; }
 .theme-tree-groups { display: grid; gap: 10px; margin-top: 12px; padding-left: 24px; border-left: 1px solid var(--border-strong); }
 .theme-stock-group { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 10px; align-items: start; }
@@ -333,6 +339,7 @@
   .theme-source-time { margin-left: 0; }
   .theme-sort { width: 100%; grid-template-columns: repeat(2, 1fr); }
   .theme-treasure-main { grid-template-columns: 1fr; }
+  .theme-map-content { max-height: none; overflow: visible; }
   .theme-ranking-panel { border-right: 0; border-bottom: 1px solid var(--border-strong); }
   .theme-ranking-list { height: 420px; }
   .theme-ranking-head,

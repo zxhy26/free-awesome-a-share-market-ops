@@ -279,13 +279,15 @@ function renderDetail(detail) {
       const section = element("section", "theme-stock-group");
       const list = element("div", "theme-stock-list");
       group.items.forEach((stock) => list.append(stockNode(stock)));
-      section.append(element("div", "theme-role-label", group.role), list);
+      section.append(element("div", "theme-role-label", `${group.role} ${group.items.length}`), list);
       tree.append(section);
     });
     dom.map.append(tree);
   }
+  const reportedCount = Number(detail?.reportedConstituentCount) || Number(detail?.constituentCount) || 0;
+  const excludedCount = Number(detail?.excludedConstituentCount) || 0;
   dom.mapMeta.textContent = detail?.constituentCount
-    ? `已核验 ${detail.constituentCount} 只高成交活跃成分股 · 点击个股查看公司主营与题材关联`
+    ? `完整读取 ${reportedCount} 只公开成分股 · 展示 ${detail.constituentCount} 只${excludedCount ? ` · 过滤 ${excludedCount} 只ST、退市或无效记录` : ""} · 点击个股查看公司主营与题材关联`
     : "成分股接口暂未形成可核验样本";
 }
 

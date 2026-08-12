@@ -421,8 +421,12 @@
     if (!theme) throw new Error("当前题材快照中找不到该题材");
     const constituents = await globalThis.AShareMobileLive.loadBoardConstituents(code);
     const detail = globalThis.AShareThemeTreasureModel.buildThemeDetail(theme, constituents, {
-      source: "东方财富概念板块成分股公开行情",
+      source: "东方财富概念板块完整分页成分股公开行情",
       fetchedAt: new Date().toISOString(),
+      reportedTotal: constituents.reportedTotal,
+      excludedCount: constituents.excludedCount,
+      pageCount: constituents.pageCount,
+      complete: constituents.complete,
     });
     themeDetailCache.set(code, {savedAt: Date.now(), value: detail});
     return detail;

@@ -12,6 +12,8 @@ const EASTMONEY_TOKEN = "bd1d9ddb04089700cf9c27f6f7426281";
 const DETAIL_CACHE_MS = 60 * 1000;
 const PROFILE_CACHE_MS = 24 * 60 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 12000;
+const CONSTITUENT_PAGE_SIZE = 100;
+const MAX_CONSTITUENT_PAGES = 60;
 const A_SHARE_CODE_RE = /^\d{6}$/;
 
 function finite(value) {
@@ -59,51 +61,92 @@ async function fetchJson(fetchImpl, url, timeoutMs = REQUEST_TIMEOUT_MS) {
   }
 }
 
-async function fetchBoardConstituents(fetchImpl, boardCode) {
+function boardConstituentUrl(host, boardCode, pageNumber) {
+  const url = new URL("/api/qt/clist/get", host);
+  Object.entries({
+    pn: String(pageNumber),
+    pz: String(CONSTITUENT_PAGE_SIZE),
+    po: "1",
+    np: "1",
+    fltt: "2",
+    invt: "2",
+    fid: "f6",
+    fs: `b:${boardCode}`,
+    fields: "f12,f13,f14,f2,f3,f6,f8,f20,f21,f100,f103",
+    ut: EASTMONEY_TOKEN,
+    _: String(Date.now()),
+  }).forEach(([key, value]) => url.searchParams.set(key, value));
+  return url;
+}
+
+async function fetchBoardConstituentPage(fetchImpl, boardCode, pageNumber, preferredHost = "") {
+  const hosts = preferredHost
+    ? [preferredHost, ...BOARD_API_HOSTS.filter((host) => host !== preferredHost)]
+    : BOARD_API_HOSTS;
   const errors = [];
-  for (const host of BOARD_API_HOSTS) {
-    const url = new URL("/api/qt/clist/get", host);
-    Object.entries({
-      pn: "1",
-      pz: "80",
-      po: "1",
-      np: "1",
-      fltt: "2",
-      invt: "2",
-      fid: "f6",
-      fs: `b:${boardCode}`,
-      fields: "f12,f13,f14,f2,f3,f6,f8,f20,f21,f100,f103",
-      ut: EASTMONEY_TOKEN,
-      _: String(Date.now()),
-    }).forEach(([key, value]) => url.searchParams.set(key, value));
+  for (const host of hosts) {
     try {
-      const payload = await fetchJson(fetchImpl, url);
+      const payload = await fetchJson(fetchImpl, boardConstituentUrl(host, boardCode, pageNumber));
       const rows = Array.isArray(payload?.data?.diff) ? payload.data.diff : [];
-      const normalized = rows.map((row) => {
-        const code = String(row?.f12 || "").trim();
-        const name = String(row?.f14 || "").trim();
-        if (!A_SHARE_CODE_RE.test(code) || !name || /^(ST|\*ST)|退市/u.test(name)) return null;
-        return {
-          code,
-          name,
-          market: finite(row?.f13),
-          price: finite(row?.f2),
-          changePct: finite(row?.f3),
-          amount: finite(row?.f6) === null ? null : Number(row.f6) / 100000000,
-          turnoverRate: finite(row?.f8),
-          totalMarketCap: finite(row?.f20),
-          floatMarketCap: finite(row?.f21),
-          industry: String(row?.f100 || "").trim(),
-          concepts: String(row?.f103 || "").split(/[，,、;]/u).map((item) => item.trim()).filter(Boolean),
-        };
-      }).filter(Boolean);
-      if (normalized.length < 3) throw new Error(`只返回${normalized.length}只有效成分股`);
-      return normalized;
+      if (!rows.length) throw new Error("返回空页");
+      return {host, payload, rows};
     } catch (error) {
-      errors.push(`${host}: ${error.message}`);
+      errors.push(`${host}: 第${pageNumber}页 ${error.message}`);
     }
   }
-  throw new Error(`题材成分股接口失败：${errors.join("；")}`);
+  throw new Error(errors.join("；"));
+}
+
+function normalizeBoardConstituent(row) {
+  const code = String(row?.f12 || "").trim();
+  const name = String(row?.f14 || "").trim();
+  if (!A_SHARE_CODE_RE.test(code) || !name || /^(ST|\*ST)|退市/u.test(name)) return null;
+  return {
+    code,
+    name,
+    market: finite(row?.f13),
+    price: finite(row?.f2),
+    changePct: finite(row?.f3),
+    amount: finite(row?.f6) === null ? null : Number(row.f6) / 100000000,
+    turnoverRate: finite(row?.f8),
+    totalMarketCap: finite(row?.f20),
+    floatMarketCap: finite(row?.f21),
+    industry: String(row?.f100 || "").trim(),
+    concepts: String(row?.f103 || "").split(/[，,、;]/u).map((item) => item.trim()).filter(Boolean),
+  };
+}
+
+async function fetchBoardConstituents(fetchImpl, boardCode) {
+  try {
+    const firstPage = await fetchBoardConstituentPage(fetchImpl, boardCode, 1);
+    const reportedTotal = Math.max(0, Math.trunc(finite(firstPage.payload?.data?.total) || 0));
+    const requestedPages = Math.max(1, Math.ceil(reportedTotal / CONSTITUENT_PAGE_SIZE));
+    if (requestedPages > MAX_CONSTITUENT_PAGES) {
+      throw new Error(`公开成分股${reportedTotal}只，超过单题材完整读取上限`);
+    }
+
+    const rawRows = [...firstPage.rows];
+    for (let pageNumber = 2; pageNumber <= requestedPages; pageNumber += 1) {
+      const page = await fetchBoardConstituentPage(fetchImpl, boardCode, pageNumber, firstPage.host);
+      rawRows.push(...page.rows);
+    }
+
+    const uniqueRows = [...new Map(rawRows.map((row) => [String(row?.f12 || "").trim(), row])).values()];
+    const normalized = uniqueRows.map(normalizeBoardConstituent).filter(Boolean);
+    if (normalized.length < 3) throw new Error(`只返回${normalized.length}只有效成分股`);
+    const complete = requestedPages === 1 || rawRows.length >= reportedTotal;
+    if (!complete) throw new Error(`公开成分股${reportedTotal}只，仅读取${rawRows.length}条`);
+
+    Object.defineProperties(normalized, {
+      reportedTotal: {value: reportedTotal || uniqueRows.length, enumerable: false},
+      excludedCount: {value: Math.max(0, uniqueRows.length - normalized.length), enumerable: false},
+      pageCount: {value: requestedPages, enumerable: false},
+      complete: {value: true, enumerable: false},
+    });
+    return normalized;
+  } catch (error) {
+    throw new Error(`题材成分股接口失败：${error.message}`);
+  }
 }
 
 function f10MarketPrefix(stockCode) {
@@ -193,8 +236,12 @@ function createThemeTreasureService(options = {}) {
     try {
       const constituents = await fetchBoardConstituents(fetchImpl, normalizedCode);
       const data = buildThemeDetail(theme, constituents, {
-        source: "东方财富概念板块成分股公开行情",
+        source: "东方财富概念板块完整分页成分股公开行情",
         fetchedAt: now().toISOString(),
+        reportedTotal: constituents.reportedTotal,
+        excludedCount: constituents.excludedCount,
+        pageCount: constituents.pageCount,
+        complete: constituents.complete,
       });
       detailCache.set(normalizedCode, {savedAt: now().getTime(), data});
       return data;
