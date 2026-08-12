@@ -1417,7 +1417,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, await themeTreasure.ranking({
         sort: url.searchParams.get("sort") || "score",
         query: url.searchParams.get("q") || "",
-        limit: url.searchParams.get("limit") || 120,
+        limit: url.searchParams.get("limit") || 600,
       }));
     } catch (error) {
       sendJson(res, error.statusCode || 502, {
@@ -1464,7 +1464,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     try {
-      sendJson(res, 200, await themeTreasure.ranking({force: true, sort: "score", limit: 120}));
+      sendJson(res, 200, await themeTreasure.ranking({force: true, sort: "score", limit: 600}));
     } catch (error) {
       sendJson(res, 502, {
         ok: false,

@@ -100,10 +100,11 @@ async function fetchBoardConstituentPage(fetchImpl, boardCode, pageNumber, prefe
 function normalizeBoardConstituent(row) {
   const code = String(row?.f12 || "").trim();
   const name = String(row?.f14 || "").trim();
-  if (!A_SHARE_CODE_RE.test(code) || !name || /^(ST|\*ST)|退市/u.test(name)) return null;
+  if (!A_SHARE_CODE_RE.test(code) || !name) return null;
   return {
     code,
     name,
+    riskFlag: /^(ST|\*ST)|退市/u.test(name),
     market: finite(row?.f13),
     price: finite(row?.f2),
     changePct: finite(row?.f3),
@@ -134,11 +135,12 @@ async function fetchBoardConstituents(fetchImpl, boardCode) {
     const uniqueRows = [...new Map(rawRows.map((row) => [String(row?.f12 || "").trim(), row])).values()];
     const normalized = uniqueRows.map(normalizeBoardConstituent).filter(Boolean);
     if (normalized.length < 3) throw new Error(`只返回${normalized.length}只有效成分股`);
-    const complete = requestedPages === 1 || rawRows.length >= reportedTotal;
-    if (!complete) throw new Error(`公开成分股${reportedTotal}只，仅读取${rawRows.length}条`);
+    const expectedTotal = reportedTotal || uniqueRows.length;
+    const complete = normalized.length === expectedTotal;
+    if (!complete) throw new Error(`东财公开成分股${expectedTotal}只，完整分页后仅核验${normalized.length}只`);
 
     Object.defineProperties(normalized, {
-      reportedTotal: {value: reportedTotal || uniqueRows.length, enumerable: false},
+      reportedTotal: {value: expectedTotal, enumerable: false},
       excludedCount: {value: Math.max(0, uniqueRows.length - normalized.length), enumerable: false},
       pageCount: {value: requestedPages, enumerable: false},
       complete: {value: true, enumerable: false},

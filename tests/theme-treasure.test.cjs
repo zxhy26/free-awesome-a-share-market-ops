@@ -23,23 +23,28 @@ const snapshot = {
         {code: "BK1005", name: "融资融券", amount: 120, changePct: 1.5, upCount: 2100, downCount: 1500, leaderName: "戊公司", leaderCode: "000005", leaderMarket: 0, leaderChangePct: 10},
         {code: "BK1006", name: "昨日炸板", amount: 80, changePct: 2.5, upCount: 50, downCount: 20, leaderName: "己公司", leaderCode: "000006", leaderMarket: 0, leaderChangePct: 10},
         {code: "BK1007", name: "上证50_", amount: 70, changePct: 1.2, upCount: 30, downCount: 20, leaderName: "庚公司", leaderCode: "600007", leaderMarket: 1, leaderChangePct: 8},
+        {code: "BK1008", name: "ST股", amount: 1, changePct: 0, upCount: 0, downCount: 0, leaderName: "", leaderCode: "", leaderMarket: 0, leaderChangePct: null},
       ],
     },
   },
 };
 
-test("theme ranking excludes generic market tags and supports objective sort modes", async () => {
+test("theme ranking keeps every Eastmoney concept and supports an explicit generic filter", async () => {
   const {buildThemeRanking} = await modelPromise;
   const comprehensive = buildThemeRanking(snapshot, {sort: "score", limit: 20});
   assert.equal(comprehensive.ok, true);
-  assert.equal(comprehensive.total, 4);
-  assert.equal(comprehensive.excludedGenericCount, 3);
-  assert.equal(comprehensive.items[0].name, "机器人概念");
+  assert.equal(comprehensive.total, 8);
+  assert.equal(comprehensive.reportedTotal, 8);
+  assert.equal(comprehensive.genericCount, 4);
+  assert.equal(comprehensive.excludedGenericCount, 0);
   assert.match(comprehensive.methodology, /应用内排序指标/);
   assert.doesNotMatch(JSON.stringify(comprehensive), /政策利好|消息刺激|资金抢筹/);
 
   const flow = buildThemeRanking(snapshot, {sort: "flow", limit: 20});
-  assert.deepEqual(flow.items.map((item) => item.name), ["机器人概念", "交换机", "医药商业", "光伏概念"]);
+  assert.deepEqual(flow.items.map((item) => item.name), ["融资融券", "昨日炸板", "上证50_", "机器人概念", "交换机", "ST股", "医药商业", "光伏概念"]);
+  const filtered = buildThemeRanking(snapshot, {sort: "flow", limit: 20, includeGeneric: false});
+  assert.equal(filtered.total, 4);
+  assert.equal(filtered.excludedGenericCount, 4);
   const change = buildThemeRanking(snapshot, {sort: "change", query: "医药"});
   assert.equal(change.items.length, 1);
   assert.equal(change.items[0].code, "BK1003");
@@ -60,7 +65,7 @@ test("theme graph assigns factual stock roles and keeps complete relation text",
     {code: "300001", name: "甲公司", market: 0, changePct: 18, amount: 32, industry: "自动化设备"},
     {code: "600010", name: "核心公司", market: 1, changePct: 5.2, amount: 22, industry: "通用设备"},
     {code: "000011", name: "跟随公司", market: 0, changePct: 1.1, amount: 8, industry: "专用设备"},
-    {code: "600012", name: "分歧公司", market: 1, changePct: -2.4, amount: 6, industry: "自动化设备"},
+    {code: "600012", name: "*ST分歧公司", market: 1, changePct: -2.4, amount: 6, industry: "自动化设备"},
   ]);
   assert.equal(detail.constituentCount, 4);
   assert.deepEqual(detail.groups.map((group) => group.role), ["领涨", "核心", "跟随", "分歧"]);
@@ -68,6 +73,8 @@ test("theme graph assigns factual stock roles and keeps complete relation text",
     assert.match(stock.relationReason, /公开成分股/);
     assert.doesNotMatch(stock.relationReason, /\.\.\.|…/);
   });
+  assert.equal(detail.constituents.find((stock) => stock.code === "600012").riskFlag, true);
+  assert.match(detail.constituents.find((stock) => stock.code === "600012").relationReason, /风险警示/);
 });
 
 test("theme constituent API paginates beyond the first 80 and returns the complete board", async () => {
@@ -89,7 +96,7 @@ test("theme constituent API paginates beyond the first 80 and returns the comple
           return {
             f12: String(sequence).padStart(6, "0"),
             f13: 0,
-            f14: `样例公司${sequence}`,
+            f14: sequence === 205 ? "*ST样例公司205" : `样例公司${sequence}`,
             f2: 10,
             f3: sequence % 9,
             f6: 100000000 + sequence,
@@ -108,6 +115,7 @@ test("theme constituent API paginates beyond the first 80 and returns the comple
   assert.equal(rows.reportedTotal, 205);
   assert.equal(rows.pageCount, 3);
   assert.equal(rows.complete, true);
+  assert.equal(rows.find((item) => item.code === "000205").riskFlag, true);
   assert.deepEqual(requests.map((item) => item.page), [1, 2, 3]);
   assert.ok(requests.every((item) => item.pageSize === 100));
 });
@@ -134,7 +142,7 @@ test("theme graph keeps every verified constituent instead of capping role group
   assert.equal(detail.excludedConstituentCount, 3);
   assert.equal(detail.constituents.length, 135);
   assert.equal(detail.groups.reduce((total, group) => total + group.items.length, 0), 135);
-  assert.match(detail.interpretation.headline, /已完整核验135只可展示成分股/);
+  assert.match(detail.interpretation.headline, /已完整核验135只东财公开成分股/);
 });
 
 test("company profile uses verified business text and direct topic evidence without invented claims", async () => {
@@ -242,5 +250,7 @@ test("mobile theme treasure verifies membership before loading company profile",
   assert.match(live, /ORG_PROFILE/);
   assert.match(live, /BUSINESS_SCOPE/);
   assert.match(live, /CONSTITUENT_PAGE_SIZE\s*=\s*100/);
+  assert.match(live, /BOARD_PAGE_SIZE\s*=\s*100/);
+  assert.match(live, /rows\.length !== reportedRows/);
   assert.match(live, /for \(let pageNumber = 2; pageNumber <= pageCount; pageNumber \+= 1\)/);
 });

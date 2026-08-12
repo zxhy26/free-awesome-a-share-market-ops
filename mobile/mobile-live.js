@@ -1,6 +1,8 @@
 (function installMobileLiveData() {
   const JSONP_TIMEOUT_MS = 12000;
   const EASTMONEY_TOKEN = "bd1d9ddb04089700cf9c27f6f7426281";
+  const BOARD_PAGE_SIZE = 100;
+  const MAX_BOARD_PAGES = 10;
   const CONSTITUENT_PAGE_SIZE = 100;
   const MAX_CONSTITUENT_PAGES = 60;
   const nativeFetch = globalThis.fetch.bind(globalThis);
@@ -261,31 +263,66 @@
         sourceTimestamp: finite(raw?.f124),
       });
     }
-    const minimum = group === "concept" ? 350 : 90;
-    if (rows.length < minimum) {
-      throw new Error(`${group === "concept" ? "概念" : "行业"}板块只返回${rows.length}行，未通过完整性校验`);
-    }
     return rows;
   }
 
-  async function loadBoardGroup(group) {
+  async function loadBoardGroupPage(group, pageNumber, preferredHost = "") {
     const fsCode = group === "concept" ? "m:90+t:3" : "m:90+s:4";
-    const url = new URL("https://push2.eastmoney.com/api/qt/clist/get");
-    Object.entries({
-      pn: "1",
-      pz: "500",
-      po: "1",
-      np: "1",
-      fltt: "2",
-      invt: "2",
-      fid: "f62",
-      fs: fsCode,
-      fields: "f12,f14,f3,f62,f104,f105,f128,f136,f140,f141,f124",
-      ut: EASTMONEY_TOKEN,
-      _: String(Date.now()),
-    }).forEach(([key, value]) => url.searchParams.set(key, value));
-    const payload = await jsonp(url);
-    return normalizeBoardRows(payload?.data?.diff, group);
+    const hosts = ["https://push2.eastmoney.com", "https://push2delay.eastmoney.com"];
+    const orderedHosts = preferredHost
+      ? [preferredHost, ...hosts.filter((host) => host !== preferredHost)]
+      : hosts;
+    const errors = [];
+    for (const host of orderedHosts) {
+      const url = new URL("/api/qt/clist/get", host);
+      Object.entries({
+        pn: String(pageNumber),
+        pz: String(BOARD_PAGE_SIZE),
+        po: "1",
+        np: "1",
+        fltt: "2",
+        invt: "2",
+        fid: "f62",
+        fs: fsCode,
+        fields: "f12,f14,f3,f62,f104,f105,f128,f136,f140,f141,f124",
+        ut: EASTMONEY_TOKEN,
+        _: String(Date.now()),
+      }).forEach(([key, value]) => url.searchParams.set(key, value));
+      try {
+        const payload = await jsonp(url);
+        const rows = normalizeBoardRows(payload?.data?.diff, group);
+        if (!rows.length) throw new Error("返回空页");
+        return {host, payload, rows};
+      } catch (error) {
+        errors.push(`${host}: 第${pageNumber}页${error.message || String(error)}`);
+      }
+    }
+    throw new Error(errors.join("；"));
+  }
+
+  async function loadBoardGroup(group) {
+    const firstPage = await loadBoardGroupPage(group, 1);
+    const reportedRows = Math.max(0, Math.trunc(finite(firstPage.payload?.data?.total) || 0));
+    const pageCount = Math.max(1, Math.ceil(reportedRows / BOARD_PAGE_SIZE));
+    const minimum = group === "concept" ? 400 : 100;
+    if (reportedRows < minimum || pageCount > MAX_BOARD_PAGES) {
+      throw new Error(`${group === "concept" ? "概念" : "行业"}板块公开总数${reportedRows || "未知"}，无法完整读取`);
+    }
+    const remaining = await Promise.all(
+      Array.from({length: pageCount - 1}, (_, index) => loadBoardGroupPage(group, index + 2, firstPage.host)),
+    );
+    const rows = [...new Map(
+      [firstPage, ...remaining].flatMap((page) => page.rows).map((row) => [row.code, row]),
+    ).values()];
+    if (rows.length !== reportedRows) {
+      throw new Error(`${group === "concept" ? "概念" : "行业"}板块完整分页后为${rows.length}/${reportedRows}行，拒绝使用不完整目录`);
+    }
+    Object.defineProperties(rows, {
+      reportedRows: {value: reportedRows, enumerable: false},
+      pageCount: {value: pageCount, enumerable: false},
+      coveragePct: {value: 100, enumerable: false},
+    });
+    return rows;
   }
 
   async function loadIndexQuotes() {
@@ -400,8 +437,8 @@
         source: "东方财富板块资金与腾讯指数公开行情",
         methodology: "仅采用公开接口返回的真实快照；完整性不足时不覆盖上一份已验证数据。",
         groups: {
-          industry: {key: "industry", title: "二级行业板块", rows: industryRows},
-          concept: {key: "concept", title: "概念板块", rows: conceptRows},
+          industry: {key: "industry", title: "二级行业板块", rows: industryRows, reportedRows: industryRows.reportedRows, pageCount: industryRows.pageCount, coveragePct: 100},
+          concept: {key: "concept", title: "概念板块", rows: conceptRows, reportedRows: conceptRows.reportedRows, pageCount: conceptRows.pageCount, coveragePct: 100},
         },
         indices,
       };
@@ -573,10 +610,11 @@
       const rows = uniqueRows.map((row) => {
           const stockCode = String(row?.f12 || "").trim();
           const name = String(row?.f14 || "").trim();
-          if (!/^\d{6}$/.test(stockCode) || !name || /^(ST|\*ST)|退市/u.test(name)) return null;
+          if (!/^\d{6}$/.test(stockCode) || !name) return null;
           return {
             code: stockCode,
             name,
+            riskFlag: /^(ST|\*ST)|退市/u.test(name),
             market: finite(row?.f13),
             price: finite(row?.f2),
             changePct: finite(row?.f3),
@@ -589,11 +627,10 @@
           };
       }).filter(Boolean);
       if (rows.length < 3) throw new Error(`只返回${rows.length}只有效成分股`);
-      if (pageCount > 1 && rawRows.length < reportedTotal) {
-        throw new Error(`公开成分股${reportedTotal}只，仅读取${rawRows.length}条`);
-      }
+      const expectedTotal = reportedTotal || uniqueRows.length;
+      if (rows.length !== expectedTotal) throw new Error(`东财公开成分股${expectedTotal}只，完整分页后仅核验${rows.length}只`);
       Object.defineProperties(rows, {
-        reportedTotal: {value: reportedTotal || uniqueRows.length, enumerable: false},
+        reportedTotal: {value: expectedTotal, enumerable: false},
         excludedCount: {value: Math.max(0, uniqueRows.length - rows.length), enumerable: false},
         pageCount: {value: pageCount, enumerable: false},
         complete: {value: true, enumerable: false},

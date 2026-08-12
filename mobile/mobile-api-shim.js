@@ -402,7 +402,7 @@
     const result = model.buildThemeRanking(snapshot, {
       sort: url.searchParams.get("sort") || "score",
       query: url.searchParams.get("q") || "",
-      limit: url.searchParams.get("limit") || 120,
+      limit: url.searchParams.get("limit") || 600,
     });
     if (!result.items?.length) throw new Error("题材榜单没有可用的真实行情快照");
     return {...result, refreshed: force};

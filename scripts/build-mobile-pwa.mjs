@@ -7,7 +7,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
 const mobileTemplateDir = path.join(repoRoot, "mobile");
 const packageInfo = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8"));
-const mobileReleaseRevision = "theme-company-profile-1";
+const mobileReleaseRevision = "eastmoney-exact-themes-1";
 
 function parseArguments(argv) {
   const values = {};

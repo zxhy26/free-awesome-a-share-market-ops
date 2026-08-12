@@ -125,7 +125,9 @@ function renderRanking() {
   const fragment = document.createDocumentFragment();
   rows.forEach((row) => fragment.append(rowButton(row)));
   dom.rankingList.append(fragment);
-  dom.rankingMeta.textContent = `${state.ranking.total || rows.length} 个有效题材 · 当前显示 ${rows.length} 个`;
+  const loadedCount = Number(state.ranking.total) || rows.length;
+  const reportedCount = Number(state.ranking.reportedTotal) || loadedCount;
+  dom.rankingMeta.textContent = `东财概念板块 ${reportedCount} 个 · 已加载 ${loadedCount} 个 · 当前显示 ${rows.length} 个`;
 }
 
 function metric(label, value, className = "") {
@@ -287,7 +289,7 @@ function renderDetail(detail) {
   const reportedCount = Number(detail?.reportedConstituentCount) || Number(detail?.constituentCount) || 0;
   const excludedCount = Number(detail?.excludedConstituentCount) || 0;
   dom.mapMeta.textContent = detail?.constituentCount
-    ? `完整读取 ${reportedCount} 只公开成分股 · 展示 ${detail.constituentCount} 只${excludedCount ? ` · 过滤 ${excludedCount} 只ST、退市或无效记录` : ""} · 点击个股查看公司主营与题材关联`
+    ? `东财公开成分 ${reportedCount} 只 · 已完整加载 ${detail.constituentCount} 只${excludedCount ? ` · ${excludedCount} 条无效记录未计入` : ""} · ST及退市风险股保留并按东财口径计数 · 点击个股查看公司主营与题材关联`
     : "成分股接口暂未形成可核验样本";
 }
 
@@ -328,7 +330,7 @@ function updateStatus(data) {
 async function loadRanking(options = {}) {
   const requestId = ++state.loadId;
   try {
-    const data = await loadThemeTreasure({sort: state.sort, query: state.query, limit: 160});
+    const data = await loadThemeTreasure({sort: state.sort, query: state.query, limit: 600});
     if (requestId !== state.loadId) return;
     state.ranking = data;
     updateStatus(data);

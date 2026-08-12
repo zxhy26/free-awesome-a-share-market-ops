@@ -1,7 +1,7 @@
 const AShareThemeTreasureModel = (function createThemeTreasureModel() {
   "use strict";
 
-  const GENERIC_TOPIC_RE = /^(融资融券|沪股通|深股通|标准普尔|MSCI中国|富时罗素|机构重仓|证金持股|社保重仓|QFII重仓|基金重仓|昨日涨停|昨日连板|昨日触板|昨日炸板|昨日高振幅|百元股|低价股|小盘股|中盘股|大盘股|小盘成长|中盘成长|大盘成长|小盘价值|中盘价值|大盘价值|先进制造风格|科技风格|医药医疗风格|高市净率|低市净率|高市盈率|低市盈率|上证\d+_?|HS\d+_?|沪深\d+_?|中证\d+_?|题材股|趋势股|东方财富热股|转债标的|AH股|股权激励)$/u;
+  const GENERIC_TOPIC_RE = /^(融资融券|沪股通|深股通|标准普尔|MSCI中国|富时罗素|机构重仓|证金持股|社保重仓|QFII重仓|基金重仓|昨日涨停|昨日连板|昨日触板|昨日炸板|昨日高振幅|ST股|百元股|低价股|小盘股|中盘股|大盘股|小盘成长|中盘成长|大盘成长|小盘价值|中盘价值|大盘价值|先进制造风格|科技风格|医药医疗风格|高市净率|低市净率|高市盈率|低市盈率|上证\d+_?|HS\d+_?|沪深\d+_?|中证\d+_?|题材股|趋势股|东方财富热股|转债标的|AH股|股权激励)$/u;
   const SORT_KEYS = new Set(["score", "change", "flow", "breadth"]);
 
   function finite(value) {
@@ -111,8 +111,10 @@ const AShareThemeTreasureModel = (function createThemeTreasureModel() {
       `题材指数当日${change >= 0 ? "上涨" : "下跌"}${Math.abs(change).toFixed(2)}%。`,
       `主力资金${flow >= 0 ? "净流入" : "净流出"}${Math.abs(flow).toFixed(2)}亿元。`,
     ];
-    if (row.upCount !== null && row.downCount !== null) {
+    if (row.upCount !== null && row.downCount !== null && breadth !== null) {
       evidence.push(`上涨${row.upCount}家、下跌${row.downCount}家，上涨占比${row.breadthPct.toFixed(1)}%。`);
+    } else if (row.upCount !== null && row.downCount !== null) {
+      evidence.push(`上涨${row.upCount}家、下跌${row.downCount}家，当前没有可计算的上涨占比。`);
     }
     if (row.leader?.name) {
       evidence.push(`当前领涨股为${row.leader.name}${row.leader.changePct === null ? "" : `，涨幅${row.leader.changePct.toFixed(2)}%`}。`);
@@ -172,7 +174,9 @@ const AShareThemeTreasureModel = (function createThemeTreasureModel() {
     const allRows = rawRows
       .map(normalizeThemeRow)
       .filter((row) => /^BK\d{4}$/.test(row.code) && row.name && row.amount !== null && row.changePct !== null);
-    const rankedUniverse = decorateRows(allRows.filter((row) => options.includeGeneric || !row.generic));
+    const rankedUniverse = decorateRows(
+      options.includeGeneric === false ? allRows.filter((row) => !row.generic) : allRows,
+    );
     const ranks = {
       score: rankMap(rankedUniverse, (row) => row.score),
       change: rankMap(rankedUniverse, (row) => row.changePct),
@@ -208,9 +212,15 @@ const AShareThemeTreasureModel = (function createThemeTreasureModel() {
       sort,
       query,
       total: rankedUniverse.length,
+      reportedTotal: Math.max(
+        rankedUniverse.length,
+        Math.trunc(finite(snapshot?.groups?.concept?.reportedRows ?? snapshot?.reportedTotal ?? snapshot?.total) || 0),
+      ),
       count: items.length,
       items,
       excludedGenericCount: allRows.length - rankedUniverse.length,
+      genericCount: allRows.filter((row) => row.generic).length,
+      coverageComplete: Math.trunc(finite(snapshot?.groups?.concept?.reportedRows) || rankedUniverse.length) === rankedUniverse.length,
     };
   }
 
@@ -223,6 +233,7 @@ const AShareThemeTreasureModel = (function createThemeTreasureModel() {
     return {
       code,
       name,
+      riskFlag: Boolean(raw?.riskFlag) || /^(ST|\*ST)|退市/u.test(name),
       market: marketFromCode(code, raw?.market ?? raw?.f13),
       price: round(raw?.price ?? raw?.f2, 3),
       changePct: round(raw?.changePct ?? raw?.f3, 2),
@@ -357,12 +368,13 @@ const AShareThemeTreasureModel = (function createThemeTreasureModel() {
     const theme = themeInput?.code ? themeInput : normalizeThemeRow(themeInput || {});
     const stocks = (Array.isArray(constituentRows) ? constituentRows : [])
       .map(normalizeConstituent)
-      .filter((stock) => /^\d{6}$/.test(stock.code) && stock.name && !/^(ST|\*ST)|退市/u.test(stock.name))
+      .filter((stock) => /^\d{6}$/.test(stock.code) && stock.name)
       .sort((left, right) => (finite(right.amount) ?? -Infinity) - (finite(left.amount) ?? -Infinity));
     const roleOrder = {"领涨": 0, "核心": 1, "跟随": 2, "分歧": 3};
     const items = stocks.map((stock, index) => {
       const role = constituentRole(stock, theme, index);
       const facts = ["该股属于本题材公开成分股"];
+      if (stock.riskFlag) facts.push("股票名称含风险警示标识");
       if (stock.changePct !== null) facts.push(`当日涨跌幅${stock.changePct > 0 ? "+" : ""}${stock.changePct.toFixed(2)}%`);
       if (stock.amount !== null) facts.push(`成交额${stock.amount.toFixed(2)}亿元`);
       if (stock.industry) facts.push(`所属行业：${stock.industry}`);
@@ -383,7 +395,7 @@ const AShareThemeTreasureModel = (function createThemeTreasureModel() {
     const excludedCount = Math.max(0, Math.trunc(finite(options.excludedCount) || 0));
     const complete = options.complete !== false;
     const breadthSentence = items.length
-      ? `${complete ? "已完整核验" : "已核验"}${items.length}只可展示成分股${reportedTotal > items.length ? `（公开总数${reportedTotal}只，过滤ST、退市或无效记录${excludedCount}只）` : ""}，其中上涨${positive}只、下跌${negative}只、涨幅不低于3%的有${strong}只${limitLike ? `、涨幅不低于9.5%的有${limitLike}只` : ""}。`
+      ? `${complete ? "已完整核验" : "已核验"}${items.length}只东财公开成分股${reportedTotal > items.length ? `（东财总数${reportedTotal}只，本次缺少无效记录${excludedCount}只）` : ""}，其中上涨${positive}只、下跌${negative}只、涨幅不低于3%的有${strong}只${limitLike ? `、涨幅不低于9.5%的有${limitLike}只` : ""}。`
       : "成分股接口暂未返回足够样本，不对题材内部扩散程度下结论。";
     return {
       ok: true,

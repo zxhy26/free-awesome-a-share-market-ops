@@ -4,6 +4,7 @@ const {
   clampQuoteTimestampToTradingSession,
   GROUP_DEFINITIONS,
   createLiveSectorFlowService,
+  defaultFetchBoardGroup,
   hasAcceptableBoardCoverage,
   marketPhaseAt,
   normalizeBoardRows,
@@ -218,10 +219,67 @@ test("primary board funding rows publish the same-round percentage in display un
   assert.equal(result.rows[0].leaderChangePct, 10);
 });
 
-test("board coverage accepts a 500-of-504 provider cap but rejects materially incomplete data", () => {
-  assert.equal(hasAcceptableBoardCoverage(500, 504, 400), true);
-  assert.equal(hasAcceptableBoardCoverage(494, 504, 400), true);
+test("board coverage requires an exact match with the provider total", () => {
+  assert.equal(hasAcceptableBoardCoverage(504, 504, 400), true);
+  assert.equal(hasAcceptableBoardCoverage(500, 504, 400), false);
+  assert.equal(hasAcceptableBoardCoverage(494, 504, 400), false);
   assert.equal(hasAcceptableBoardCoverage(493, 504, 400), false);
   assert.equal(hasAcceptableBoardCoverage(500, 600, 400), false);
   assert.equal(hasAcceptableBoardCoverage(100, 124, 100), false);
+  assert.equal(hasAcceptableBoardCoverage(504, null, 400), false);
+});
+
+test("concept directory supplements the 500-row primary cap to the exact Eastmoney total", async () => {
+  const requests = [];
+  const makeRow = (sequence, primary = false) => ({
+    f12: `BK${String(sequence).padStart(4, "0")}`,
+    f14: `概念${sequence}`,
+    f62: sequence * 1000000,
+    f3: primary ? 100 : 1,
+    f104: 10,
+    f105: 5,
+    f128: "领涨股",
+    f140: "600001",
+    f141: 1,
+    f136: primary ? 1000 : 10,
+    f124: 1786090710,
+  });
+  const fetchImpl = async (url) => {
+    const target = new URL(String(url));
+    if (target.hostname === "data.eastmoney.com") {
+      requests.push("primary");
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({data: {
+          total: 504,
+          diff: Array.from({length: 500}, (_, index) => makeRow(index + 1, true)),
+        }}),
+      };
+    }
+    const page = Number(target.searchParams.get("pn"));
+    requests.push(`page-${page}`);
+    const start = (page - 1) * 100;
+    const count = Math.max(0, Math.min(100, 504 - start));
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({data: {
+        total: 504,
+        diff: Array.from({length: count}, (_, index) => makeRow(start + index + 1)),
+      }}),
+    };
+  };
+
+  const result = await defaultFetchBoardGroup(GROUP_DEFINITIONS.concept, {
+    fetchImpl,
+    nowMs: 1786090710000,
+    timeoutMs: 1000,
+  });
+  assert.equal(result.reportedRows, 504);
+  assert.equal(result.rows.length, 504);
+  assert.equal(result.coveragePct, 100);
+  assert.equal(result.pageCount, 6);
+  assert.deepEqual(requests, ["primary", "page-6"]);
+  assert.equal(result.rows.find((item) => item.code === "BK0504").changePct, 1);
 });

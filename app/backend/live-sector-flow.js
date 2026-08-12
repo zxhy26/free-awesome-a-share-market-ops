@@ -8,6 +8,13 @@ const ACTIVE_REFRESH_AGE_MS = 700;
 const HOLIDAY_REFRESH_AGE_MS = 5000;
 const DEFAULT_TIMEOUT_MS = 10000;
 const MAX_GROUP_TIMESTAMP_SKEW_MS = 2000;
+const EASTMONEY_TOKEN = "bd1d9ddb04089700cf9c27f6f7426281";
+const BOARD_PAGE_SIZE = 100;
+const MAX_BOARD_PAGES = 10;
+const BOARD_PAGE_HOSTS = Object.freeze([
+  "https://push2delay.eastmoney.com",
+  "https://push2.eastmoney.com",
+]);
 const GROUP_DEFINITIONS = Object.freeze({
   industry: Object.freeze({
     key: "industry",
@@ -239,8 +246,11 @@ function normalizeBoardRows(diff, definition, options = {}) {
     });
   }
   const rows = [...unique.values()];
-  if (rows.length < definition.minimumRows) {
-    throw new Error(`${definition.title}仅返回 ${rows.length} 行，低于完整性阈值 ${definition.minimumRows}`);
+  const minimumRows = Number.isFinite(Number(options.minimumRows))
+    ? Math.max(0, Number(options.minimumRows))
+    : definition.minimumRows;
+  if (rows.length < minimumRows) {
+    throw new Error(`${definition.title}仅返回 ${rows.length} 行，低于完整性阈值 ${minimumRows}`);
   }
   const timestamps = rows.map((row) => row.sourceTimestamp).filter(Number.isFinite);
   return {
@@ -256,8 +266,116 @@ function hasAcceptableBoardCoverage(rowCount, reportedRows, minimumRows) {
   const minimum = Math.max(0, Number(minimumRows) || 0);
   const reported = finite(reportedRows);
   if (rows < minimum) return false;
-  if (reported === null || reported <= 0) return true;
-  return rows >= Math.max(minimum, Math.ceil(reported * 0.98));
+  if (reported === null || reported <= 0) return false;
+  return rows === Math.trunc(reported);
+}
+
+function boardPageUrl(host, definition, pageNumber, cacheBust) {
+  const url = new URL("/api/qt/clist/get", host);
+  Object.entries({
+    pn: String(pageNumber),
+    pz: String(BOARD_PAGE_SIZE),
+    po: "1",
+    np: "1",
+    fltt: "2",
+    invt: "2",
+    fid: "f62",
+    fs: definition.fsCode,
+    fields: "f12,f14,f3,f62,f104,f105,f128,f136,f140,f141,f124",
+    ut: EASTMONEY_TOKEN,
+    _: String(cacheBust),
+  }).forEach(([key, value]) => url.searchParams.set(key, value));
+  return url;
+}
+
+async function fetchBoardPage(definition, pageNumber, options = {}) {
+  const errors = [];
+  for (const host of BOARD_PAGE_HOSTS) {
+    try {
+      const payload = await fetchJson(
+        options.fetchImpl || globalThis.fetch,
+        boardPageUrl(host, definition, pageNumber, options.cacheBust || Date.now()),
+        {timeoutMs: options.timeoutMs || DEFAULT_TIMEOUT_MS},
+      );
+      const rows = normalizeBoardRows(payload?.data?.diff, definition, {
+        changePctScale: 1,
+        minimumRows: 0,
+      }).rows;
+      if (!rows.length) throw new Error("返回空页");
+      return {host, payload, rows};
+    } catch (error) {
+      errors.push(`${host}: 第${pageNumber}页 ${error.message}`);
+    }
+  }
+  throw new Error(errors.join("；"));
+}
+
+function mergeBoardRows(...groups) {
+  const rows = new Map();
+  for (const group of groups) {
+    for (const row of group?.rows || []) {
+      if (!rows.has(row.code)) rows.set(row.code, row);
+    }
+  }
+  return [...rows.values()];
+}
+
+async function fetchAllBoardPages(definition, options = {}) {
+  const firstPage = await fetchBoardPage(definition, 1, options);
+  const reportedRows = Math.max(0, Math.trunc(finite(firstPage.payload?.data?.total) || 0));
+  const pageCount = Math.max(1, Math.ceil(reportedRows / BOARD_PAGE_SIZE));
+  if (!reportedRows || pageCount > MAX_BOARD_PAGES) {
+    throw new Error(`${definition.title}公开总数${reportedRows || "未知"}，无法执行完整分页`);
+  }
+  const remaining = await Promise.all(
+    Array.from({length: pageCount - 1}, (_, index) => fetchBoardPage(definition, index + 2, options)),
+  );
+  const rows = mergeBoardRows(firstPage, ...remaining);
+  if (!hasAcceptableBoardCoverage(rows.length, reportedRows, definition.minimumRows)) {
+    throw new Error(`${definition.title}完整分页后仍为 ${rows.length}/${reportedRows} 行`);
+  }
+  const timestamps = rows.map((row) => row.sourceTimestamp).filter(Number.isFinite);
+  return {
+    key: definition.key,
+    title: definition.title,
+    rows,
+    sourceTimestamp: timestamps.length ? Math.max(...timestamps) : null,
+    reportedRows,
+    pageCount,
+    host: firstPage.host,
+  };
+}
+
+async function completePrimaryBoardGroup(definition, primary, reportedRows, options = {}) {
+  if (hasAcceptableBoardCoverage(primary.rows.length, reportedRows, definition.minimumRows)) {
+    return {rows: primary.rows, reportedRows, pageCount: 1, route: "eastmoney-bkzj"};
+  }
+  if (reportedRows < definition.minimumRows || reportedRows > BOARD_PAGE_SIZE * MAX_BOARD_PAGES) {
+    throw new Error(`${definition.title}公开总数 ${reportedRows} 超出完整读取范围`);
+  }
+
+  const pageCount = Math.ceil(reportedRows / BOARD_PAGE_SIZE);
+  const overlapPage = Math.max(1, Math.ceil((primary.rows.length + 1) / BOARD_PAGE_SIZE));
+  const tailPages = await Promise.all(
+    Array.from({length: pageCount - overlapPage + 1}, (_, index) => (
+      fetchBoardPage(definition, overlapPage + index, options)
+    )),
+  );
+  const rows = mergeBoardRows(primary, ...tailPages);
+  if (hasAcceptableBoardCoverage(rows.length, reportedRows, definition.minimumRows)) {
+    return {
+      rows,
+      reportedRows,
+      pageCount,
+      route: `eastmoney-bkzj+${tailPages[0]?.host || "eastmoney-push2"}-tail`,
+    };
+  }
+
+  const complete = await fetchAllBoardPages(definition, options);
+  return {
+    ...complete,
+    route: `${complete.host || "eastmoney-push2"}-complete-pages`,
+  };
 }
 
 async function defaultFetchBoardGroup(definition, options = {}) {
@@ -265,32 +383,47 @@ async function defaultFetchBoardGroup(definition, options = {}) {
   const cacheBust = Number(options.nowMs) || Date.now();
   const primaryUrl = "https://data.eastmoney.com/dataapi/bkzj/getbkzj"
     + `?key=${encodeURIComponent("f62,f3,f104,f105,f128,f136,f140,f141")}&code=${encodeURIComponent(definition.fsCode)}&_=${cacheBust}`;
-  const fallbackUrl = "https://push2.eastmoney.com/api/qt/clist/get"
-    + "?pn=1&pz=1000&po=1&np=1&fltt=2&invt=2&fid=f62"
-    + `&fs=${encodeURIComponent(definition.fsCode)}`
-    + `&fields=f12,f14,f3,f62,f104,f105,f128,f136,f140,f141,f124&_=${cacheBust}`;
   const errors = [];
-  for (const [url, route, changePctScale] of [
-    [primaryUrl, "eastmoney-bkzj", 100],
-    [fallbackUrl, "eastmoney-push2", 1],
-  ]) {
-    try {
-      const json = await fetchJson(fetchImpl, url, {timeoutMs: options.timeoutMs || DEFAULT_TIMEOUT_MS});
-      const normalized = normalizeBoardRows(json?.data?.diff, definition, {changePctScale});
-      const total = finite(json?.data?.total);
-      if (!hasAcceptableBoardCoverage(normalized.rows.length, total, definition.minimumRows)) {
-        throw new Error(`${definition.title}只返回 ${normalized.rows.length}/${total} 行，低于98%完整性阈值`);
-      }
-      return {
-        ...normalized,
-        route,
-        reportedRows: total,
-        coveragePct: total && total > 0 ? round((normalized.rows.length / total) * 100, 2) : 100,
-        capturedAtMs: Date.now(),
-      };
-    } catch (error) {
-      errors.push(`${route}: ${error.message}`);
-    }
+  try {
+    const json = await fetchJson(fetchImpl, primaryUrl, {timeoutMs: options.timeoutMs || DEFAULT_TIMEOUT_MS});
+    const primary = normalizeBoardRows(json?.data?.diff, definition, {changePctScale: 100});
+    const total = Math.max(0, Math.trunc(finite(json?.data?.total) || 0));
+    const completed = await completePrimaryBoardGroup(definition, primary, total, {
+      fetchImpl,
+      cacheBust,
+      timeoutMs: options.timeoutMs || DEFAULT_TIMEOUT_MS,
+    });
+    return {
+      ...primary,
+      rows: completed.rows,
+      route: completed.route,
+      reportedRows: completed.reportedRows,
+      pageCount: completed.pageCount,
+      coveragePct: 100,
+      capturedAtMs: cacheBust,
+    };
+  } catch (error) {
+    errors.push(`eastmoney-bkzj: ${error.message}`);
+  }
+  try {
+    const complete = await fetchAllBoardPages(definition, {
+      fetchImpl,
+      cacheBust,
+      timeoutMs: options.timeoutMs || DEFAULT_TIMEOUT_MS,
+    });
+    return {
+      key: complete.key,
+      title: complete.title,
+      rows: complete.rows,
+      sourceTimestamp: complete.sourceTimestamp,
+      route: `${complete.host || "eastmoney-push2"}-complete-pages`,
+      reportedRows: complete.reportedRows,
+      pageCount: complete.pageCount,
+      coveragePct: 100,
+      capturedAtMs: cacheBust,
+    };
+  } catch (error) {
+    errors.push(`eastmoney-push2-complete: ${error.message}`);
   }
   throw new Error(`${definition.title}实时资金接口失败：${errors.join("；")}`);
 }
@@ -593,6 +726,7 @@ module.exports = {
   DEFAULT_TIMEOUT_MS,
   LIVE_INTERVAL_MS,
   createLiveSectorFlowService,
+  defaultFetchBoardGroup,
   hasAcceptableBoardCoverage,
   marketMinuteFromParts,
   marketPhaseAt,

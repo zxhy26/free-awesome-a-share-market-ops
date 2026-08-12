@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.21.15 - 2026-08-12
+
+- Matched the thematic handbook to Eastmoney's complete concept-board directory instead of removing generic market and index concepts.
+- Supplemented Eastmoney's 500-row funding response to the provider-reported total and now reject every directory snapshot below 100% coverage.
+- Kept ST and delisting-risk constituents in each theme's published count, marked their risk status, and aligned desktop and mobile pagination.
+- Added explicit provider-total, loaded-total, and visible-result counts plus live regression checks for 504-of-504 concept coverage.
+
 ## 2.21.14 - 2026-08-12
 
 - Paginated every thematic-board constituent request through the provider's published total instead of stopping at the first response page.
