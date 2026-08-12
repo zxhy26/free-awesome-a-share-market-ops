@@ -3,15 +3,15 @@
   "product": "复盘软件定制版-短线模型V1.0",
   "edition": "custom",
   "capabilities": ["shortline"],
-  "version": "2.21.14",
-  "publishedAt": "2026-08-12T05:34:17Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.14/A-Share-Review-Custom-Shortline-v2.21.14.exe",
-  "sha256": "5D6A911D1F306DBC7A3145CCA3A34B448E0FA186A51E8D25F9804F5E36E238F9",
-  "size": 45592576,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.14",
+  "version": "2.21.15",
+  "publishedAt": "2026-08-12T09:55:00Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.15/A-Share-Review-Custom-Shortline-v2.21.15.exe",
+  "sha256": "DB50B938E9DA8870B175D05146F0AD9C6079781C71CFBB4B77DB387CB9B61434",
+  "size": 45596160,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.15",
   "notes": [
-    "题材宝典按公开成分总数逐页完整读取，并取消角色分组和页面展示数量上限。",
-    "页面明确显示公开总数、实际展示数和过滤的 ST、退市或无效记录数。",
+    "题材宝典按东方财富当前概念板块 total 全量读取，榜单数量与东财口径一致。",
+    "成分股保留 ST 和退市风险条目并标注风险，桌面和手机使用同一完整分页规则。",
     "保留 2.21.13 的定制版单后台、短线 REST、实时监控和 WebSocket 修复。",
     "09:15 一字方向预览、09:25 冻结、Day2 条件及短线统计继续使用最新版逻辑。"
   ]

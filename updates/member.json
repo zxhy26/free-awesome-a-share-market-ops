@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "product": "大a后勤部",
   "edition": "member",
-  "version": "2.21.14",
-  "publishedAt": "2026-08-12T05:34:17Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.14/Da-A-Hou-Qin-Bu-v2.21.14.exe",
-  "sha256": "0CDC48CBF7FC632457FE5060AD5CCB40AA41557B28253B82051996E956681AFF",
-  "size": 45413888,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.14",
+  "version": "2.21.15",
+  "publishedAt": "2026-08-12T09:55:00Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.15/Da-A-Hou-Qin-Bu-v2.21.15.exe",
+  "sha256": "44D50845BC1DADB6ADDF0FDA5DD854FC4518599117652723F1564B2613CCB450",
+  "size": 45421056,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.15",
   "notes": [
-    "题材宝典按公开成分总数逐页完整读取，不再只取接口首批数据。",
-    "取消角色分组和页面展示数量上限，所有已核验成分股均可查看。",
-    "页面明确显示公开总数、实际展示数和过滤的 ST、退市或无效记录数。",
-    "增加超过 100 只成分股的大题材分页回归测试。"
+    "题材宝典按东方财富当前概念板块 total 全量读取，少一条都不会发布为完整目录。",
+    "取消对融资融券、指数样本、昨日表现等东财概念板块的默认排除，榜单数量与东财口径一致。",
+    "成分股保留 ST 和退市风险条目并标注风险，东财公开总数与已加载数分别显示。",
+    "桌面和手机使用同一完整分页规则；本次实时验收为概念板块 504/504。"
   ]
 }
