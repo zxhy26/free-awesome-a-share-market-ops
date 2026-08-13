@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.21.18 - 2026-08-13
+
+- Switched main-index annotations to the original plate names, second-precision timestamps, and directions published by the public CLS market-watch feed instead of locally generated attribution labels.
+- Added a dedicated five-second CLS live service and included it in the one-second market snapshot and manual-refresh paths, so annotations update without waiting for a full market rebuild.
+- Excluded all stock-detail events at ingestion and rendering boundaries; an outage now retains only same-trading-day original events and otherwise publishes no substitute labels.
+
 ## 2.21.17 - 2026-08-13
 
 - Removed all unverified placeholder labels from index intraday charts; a turning point is now annotated only after real concept flow, the concept's own minute move, local direction alignment, and index correlation pass the publication threshold.

@@ -1,6 +1,6 @@
 "use strict";
 
-const CLS_INDEX_ANNOTATION_SOURCE = "财联社盘面直播";
+const CLS_INDEX_ANNOTATION_SOURCE = "财联社盯盘";
 const CLS_INDEX_ANNOTATION_PAGE = "https://www.cls.cn/finance";
 const CLS_INDEX_ANNOTATION_ENDPOINTS = Object.freeze([
   "https://api3.cls.cn/v3/transaction/anchor",
@@ -43,7 +43,7 @@ function isClsPlateAnchor(row) {
 
 function normalizeClsAnchorPayload(payload, options = {}) {
   if (Number(payload?.errno) !== 0 || !Array.isArray(payload?.data)) {
-    throw new Error(`财联社盘面直播返回异常：${payload?.msg || payload?.errno || "缺少事件列表"}`);
+    throw new Error(`财联社盯盘返回异常：${payload?.msg || payload?.errno || "缺少事件列表"}`);
   }
   const tradeDate = normalizeTradeDate(options.tradeDate);
   const syncedAt = String(options.syncedAt || "");
@@ -87,7 +87,7 @@ function normalizeClsAnchorPayload(payload, options = {}) {
   }
   items.sort((left, right) => left.minute - right.minute || left.sourceTime.localeCompare(right.sourceTime, "zh-CN"));
   return {
-    version: 1,
+    version: 2,
     tradeDate,
     syncedAt,
     source: CLS_INDEX_ANNOTATION_SOURCE,
@@ -104,7 +104,7 @@ function normalizeClsAnchorPayload(payload, options = {}) {
 function fallbackClsAnnotationFeed(cachedFeed, options = {}) {
   const tradeDate = normalizeTradeDate(options.tradeDate);
   const syncedAt = String(options.syncedAt || "");
-  const error = String(options.error || "财联社盘面直播暂时无法读取").slice(0, 300);
+  const error = String(options.error || "财联社盯盘暂时无法读取").slice(0, 300);
   if (
     cachedFeed
     && normalizeTradeDate(cachedFeed.tradeDate) === tradeDate
@@ -124,7 +124,7 @@ function fallbackClsAnnotationFeed(cachedFeed, options = {}) {
     };
   }
   return {
-    version: 1,
+    version: 2,
     tradeDate,
     syncedAt,
     source: CLS_INDEX_ANNOTATION_SOURCE,

@@ -30,7 +30,7 @@ test("CLS payload keeps only original plate names, times and directions", () => 
     ],
   }, {tradeDate: "2026-07-31", syncedAt: "2026/07/31 15:01:00"});
 
-  assert.equal(feed.source, "财联社盘面直播");
+  assert.equal(feed.source, "财联社盯盘");
   assert.equal(feed.status, "ok");
   assert.equal(feed.itemCount, 2);
   assert.equal(feed.excludedStockCount, 2);

@@ -424,7 +424,7 @@ function exportOptimizedAppData(options) {
       version: 1,
       tradeDate: marketData.index?.tradeDate || marketData.market?.tradeDate || "",
       syncedAt: marketData.syncedAt || "",
-      source: "财联社盘面直播",
+      source: "财联社盯盘",
       status: "unavailable",
       itemCount: 0,
       items: [],

@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "product": "复盘软件基础版",
   "edition": "basic",
-  "version": "2.21.17",
-  "publishedAt": "2026-08-13T15:05:00Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.17/A-Share-Review-Basic-v2.21.17.exe",
-  "sha256": "D067D464230D53987F15AC2F43F2D995FE6BC358A8A72A949C326A9581479E2E",
-  "size": 47121920,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.17",
+  "version": "2.21.18",
+  "publishedAt": "2026-08-13T16:06:44Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.18/A-Share-Review-Basic-v2.21.18.exe",
+  "sha256": "B2A794B13B9EA4B28AE6BA93DB1F32B9E0374526C229C3B053784D556FFB9865",
+  "size": 47123456,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.18",
   "notes": [
-    "指数分时只发布经过实时题材资金、题材自身分时、局部同向度与指数相关性联合核验的归因。",
-    "取消所有待确认和未知原因占位；证据不足的候选只在后台继续采集，不在图上显示。",
-    "题材归因证据刷新由45秒缩短为15秒，并保留财联社同刻板块事件交叉验证。",
-    "禁止个股事件、收盘排名倒推、未来样本和本地套话生成题材原因。"
+    "主要指数分时直接采用财联社盯盘公开板块事件的原始名称、秒级时间和方向。",
+    "新增5秒实时盯盘通道，并接入逐秒市场快照和手动同步，无需等待整轮复盘更新。",
+    "所有个股事件在入口和图表双重剔除，不使用本地生成的题材标签。",
+    "接口异常时只保留同交易日原始事件；没有同日原始数据就不显示标注。"
   ]
 }

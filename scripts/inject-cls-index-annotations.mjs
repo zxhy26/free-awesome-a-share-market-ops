@@ -24,14 +24,15 @@ function writeJson(filePath, value) {
 }
 
 function updateSourceNote(value) {
-  const clsNote = "指数分时文字标注先识别真实指数有效拐点，再以东方财富实时概念分钟资金和概念板块逐笔分时作双重归因证据；财联社同刻行业/题材事件仅作交叉验证并排除所有个股事件；未达到证据门槛的候选不在图上发布，不使用收盘排名倒推、未来样本或虚构原因。";
+  const clsNote = "指数分时文字标注直接采用财联社盯盘公开板块事件的原始名称、秒级时间和方向，并排除所有个股事件；事件只定位到同秒真实指数点，不生成原因、不补写标签、不用历史或收盘数据倒推；接口暂不可用时只保留同交易日已经取得的原始事件，否则不显示标注。";
   let note = String(value || "")
     .replace(/指数线标签只在.*?不等同于成分股精确权重贡献；/g, "")
     .replace(/指数分时线标注只保留.*?绿色为累计净流出。?/g, "")
     .replace(/指数分时文字标注仅采用财联社盘面直播[^。]*。?/g, "")
     .replace(/指数分时文字标注先识别真实指数有效拐点[^。]*。?/g, "")
-    .replace(/指数分时文字只展示财联社盘面直播[^。]*。?/g, "");
-  if (!note.includes("指数分时文字标注先识别真实指数有效拐点")) note += clsNote;
+    .replace(/指数分时文字只展示财联社盘面直播[^。]*。?/g, "")
+    .replace(/指数分时文字标注直接采用财联社盯盘[^。]*。?/g, "");
+  if (!note.includes("指数分时文字标注直接采用财联社盯盘")) note += clsNote;
   return note;
 }
 
@@ -40,7 +41,7 @@ async function fetchAnnotations(tradeDate) {
   for (const endpoint of CLS_INDEX_ANNOTATION_ENDPOINTS) {
     try {
       const response = await fetch(`${endpoint}?cdate=${encodeURIComponent(tradeDate)}`, {
-        headers: {Accept: "application/json", Referer: "https://www.cls.cn/finance", "User-Agent": "Mozilla/5.0 AShareReview/2.21.0"},
+        headers: {Accept: "application/json", Referer: "https://www.cls.cn/finance", "User-Agent": "Mozilla/5.0 AShareReview/2.21.18"},
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return normalizeClsAnchorPayload(await response.json(), {
@@ -51,7 +52,7 @@ async function fetchAnnotations(tradeDate) {
       errors.push(error.message);
     }
   }
-  throw new Error(`财联社盘面直播接口连续失败：${errors.join("；")}`);
+  throw new Error(`财联社盯盘接口连续失败：${errors.join("；")}`);
 }
 
 function updateHealth(dataDir, feed) {
@@ -68,7 +69,7 @@ function updateHealth(dataDir, feed) {
   };
   module.checks = [
     ...(module.checks || []).filter((item) => item.name !== "指数文字标注"),
-    {name: "指数文字标注", status: "ok", detail: `财联社交叉验证事件${feed.itemCount}条（已排除${feed.excludedStockCount || 0}条个股）`},
+    {name: "指数文字标注", status: "ok", detail: `财联社盯盘原始板块事件${feed.itemCount}条（已排除${feed.excludedStockCount || 0}条个股）`},
   ];
   writeJson(healthPath, health);
 }

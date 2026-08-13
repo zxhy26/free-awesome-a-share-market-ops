@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v100-realtime-verified-attribution";
+const CACHE_VERSION = "a-share-review-v101-cls-watch-direct";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [

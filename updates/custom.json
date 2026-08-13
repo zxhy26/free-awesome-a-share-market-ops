@@ -3,16 +3,16 @@
   "product": "复盘软件定制版-短线模型V1.0",
   "edition": "custom",
   "capabilities": ["shortline"],
-  "version": "2.21.17",
-  "publishedAt": "2026-08-13T15:05:00Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.17/A-Share-Review-Custom-Shortline-v2.21.17.exe",
-  "sha256": "F24AE91443DA5325019ECACF1011C31C64EB42AFBD24D6BEC1FF92776B8B8E0C",
-  "size": 47273472,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.17",
+  "version": "2.21.18",
+  "publishedAt": "2026-08-13T16:06:44Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.18/A-Share-Review-Custom-Shortline-v2.21.18.exe",
+  "sha256": "48EE7BD11C652A203F5E27A96611C798F16D334F3B525D05357F33FF6C1A0FF3",
+  "size": 47275008,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.18",
   "notes": [
-    "指数分时只发布经过实时题材资金、题材自身分时、局部同向度与指数相关性联合核验的归因。",
-    "取消所有待确认和未知原因占位；证据不足的候选只在后台继续采集，不在图上显示。",
-    "题材归因证据刷新由45秒缩短为15秒，禁止收盘倒推、未来样本和本地套话生成。",
-    "定制版真实 EXE 已通过单后台、固定端口、REST、监控和 WebSocket 101/open 验证。"
+    "主要指数分时直接采用财联社盯盘公开板块事件的原始名称、秒级时间和方向。",
+    "新增5秒实时盯盘通道，并接入逐秒市场快照和手动同步，无需等待整轮复盘更新。",
+    "所有个股事件在入口和图表双重剔除，不使用本地生成的题材标签。",
+    "接口异常时只保留同交易日原始事件；没有同日原始数据就不显示标注。"
   ]
 }

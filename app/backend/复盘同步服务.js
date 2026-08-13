@@ -12,6 +12,7 @@ const { createBoardMinuteFlowService } = require("./board-minute-flow");
 const { createBoardIntradayService } = require("./board-intraday");
 const { createIndexIntradayService } = require("./index-intraday");
 const { refreshIndexContribution } = require("./index-contribution-online");
+const { createClsMarketWatchService } = require("./财联社盯盘服务");
 const { createAppUpdateService } = require("./app-update");
 const { createUserPreferencesService } = require("./用户设置");
 const { createMacTradingAppService } = require("./macos-trading-app");
@@ -114,6 +115,15 @@ const boardMinuteFlow = createBoardMinuteFlowService({
 const boardIntraday = createBoardIntradayService();
 const indexIntraday = createIndexIntradayService({
   marketDataPath: path.join(DATA_DIR, "market.json"),
+});
+const clsMarketWatch = createClsMarketWatchService({
+  log,
+  readCachedFeed: () => readJsonFile(path.join(DATA_DIR, "indices.json"), {})?.annotations || null,
+  getTradeDate: () => {
+    const market = readJsonFile(path.join(DATA_DIR, "market.json"), {});
+    const indices = readJsonFile(path.join(DATA_DIR, "indices.json"), {});
+    return market?.tradeDate || market?.market?.tradeDate || indices?.tradeDate || "";
+  },
 });
 const shortlineHub = SHORTLINE_ENABLED
   ? createShortlineWebSocketHub({log})
@@ -1336,7 +1346,7 @@ const server = http.createServer(async (req, res) => {
       appData: appDataStatus(),
       flowData: flowDataStatus(),
       historyCount: listHistoryDates().length,
-      endpoints: ["/api/v1/market/snapshot", "/api/v1/preferences", "POST /api/v1/preferences", "/api/v1/index-catalog", "/api/v1/index-trend?key=sh000001", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/theme-treasure", "/api/v1/theme-treasure/detail?code=BK0000", "/api/v1/theme-treasure/company?theme=BK0000&stock=000001", "POST /api/v1/theme-treasure/refresh", "/api/v1/sector-trend?code=BK0000", "/api/v1/sector-flow?code=BK0000", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "/api/v1/membership/status", "POST /api/v1/membership/trial", "/api/v1/app-update/status", "/api/v1/app-update/check", "POST /api/v1/app-update/install", "POST /api/v1/sync", "POST /api/v1/index-contribution/refresh", "POST /stock-open", "POST /derivatives-refresh", "POST /next-week-events-refresh", ...(SHORTLINE_ENABLED ? SHORTLINE_ENDPOINTS : [])],
+      endpoints: ["/api/v1/market/snapshot", "/api/v1/preferences", "POST /api/v1/preferences", "/api/v1/index-catalog", "/api/v1/index-trend?key=sh000001", "/api/v1/live/sector-flows", "POST /api/v1/live/sector-flows/refresh", "/api/v1/live/cls-watch", "POST /api/v1/live/cls-watch/refresh", "/api/v1/theme-treasure", "/api/v1/theme-treasure/detail?code=BK0000", "/api/v1/theme-treasure/company?theme=BK0000&stock=000001", "POST /api/v1/theme-treasure/refresh", "/api/v1/sector-trend?code=BK0000", "/api/v1/sector-flow?code=BK0000", "/api/v1/stocks/search", "/api/v1/stocks/analyze", "/api/v1/health", "/api/v1/history/dates", "/api/v1/history/:date", "/api/v1/data/:module", "/api/v1/status", "/api/v1/membership/status", "POST /api/v1/membership/trial", "/api/v1/app-update/status", "/api/v1/app-update/check", "POST /api/v1/app-update/install", "POST /api/v1/sync", "POST /api/v1/index-contribution/refresh", "POST /stock-open", "POST /derivatives-refresh", "POST /next-week-events-refresh", ...(SHORTLINE_ENABLED ? SHORTLINE_ENDPOINTS : [])],
     });
     return;
   }
@@ -1387,7 +1397,9 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === "/api/v1/live/sector-flows" && req.method === "GET") {
     try {
-      sendJson(res, 200, await liveSectorFlow.getSnapshot({nonBlocking: true}));
+      const snapshot = await liveSectorFlow.getSnapshot({nonBlocking: true});
+      const clsWatch = await clsMarketWatch.getFeed({tradeDate: snapshot.tradeDate, nonBlocking: true});
+      sendJson(res, 200, {...snapshot, clsWatch});
     } catch (error) {
       sendJson(res, 502, {
         ok: false,
@@ -1405,7 +1417,9 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     try {
-      sendJson(res, 200, await liveSectorFlow.forceRefresh());
+      const snapshot = await liveSectorFlow.forceRefresh();
+      const clsWatch = await clsMarketWatch.forceRefresh({tradeDate: snapshot.tradeDate});
+      sendJson(res, 200, {...snapshot, clsWatch});
     } catch (error) {
       sendJson(res, 502, {
         ok: false,
@@ -1414,6 +1428,21 @@ const server = http.createServer(async (req, res) => {
         service: liveSectorFlow.getState(),
       });
     }
+    return;
+  }
+
+  if (url.pathname === "/api/v1/live/cls-watch" && req.method === "GET") {
+    const tradeDate = url.searchParams.get("tradeDate") || "";
+    sendJson(res, 200, await clsMarketWatch.getFeed({tradeDate, nonBlocking: true}));
+    return;
+  }
+
+  if (url.pathname === "/api/v1/live/cls-watch/refresh") {
+    if (req.method !== "POST") {
+      methodNotAllowed(res);
+      return;
+    }
+    sendJson(res, 200, await clsMarketWatch.forceRefresh({tradeDate: url.searchParams.get("tradeDate") || ""}));
     return;
   }
 
@@ -1570,7 +1599,7 @@ const server = http.createServer(async (req, res) => {
     const health = readJsonFile(path.join(DATA_DIR, "health.json"), {});
     const derivatives = derivativesStatus();
     const mergedHealth = mergeHealthModule(health, derivativesHealthModule(derivatives, new Date(), health.tradeDate));
-    sendJson(res, 200, {...mergedHealth, derivatives, indexContribution: indexContributionStatus(), liveSectorFlow: liveSectorFlow.getState(), themeTreasure: themeTreasure.getState(), shortline: shortlineRuntimeStatus(), service: apiServiceState()});
+    sendJson(res, 200, {...mergedHealth, derivatives, indexContribution: indexContributionStatus(), liveSectorFlow: liveSectorFlow.getState(), clsMarketWatch: clsMarketWatch.getState(), themeTreasure: themeTreasure.getState(), shortline: shortlineRuntimeStatus(), service: apiServiceState()});
     return;
   }
 
@@ -1798,6 +1827,7 @@ server.on("upgrade", (req, socket, head) => {
 
 server.on("close", () => {
   liveSectorFlow.stopPolling();
+  clsMarketWatch.stopPolling();
   shortlineMonitor.stop();
   shortlineHub.close();
 });
@@ -1809,6 +1839,7 @@ server.listen(PORT, HOST, () => {
   if (!TEST_MODE) {
     appUpdate.scheduleLauncherCleanup();
     liveSectorFlow.startPolling();
+    clsMarketWatch.startPolling();
     const timer = setTimeout(() => stockAnalysis.warmStockIndex().catch(() => {}), 18000);
     if (typeof timer.unref === "function") timer.unref();
   }

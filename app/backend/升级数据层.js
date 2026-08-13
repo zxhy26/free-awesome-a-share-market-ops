@@ -645,13 +645,13 @@ function buildHealth(data, archiveCount = 0) {
       {
         name: "指数文字标注",
         status: validatedAttributionRows > 0 ? (indexAnnotations.status === "retained" ? "warning" : "ok") : "pending",
-        detail: `真实题材分钟资金${validatedAttributionRows}/${attributionRows.length}条；前台按拐点核验题材分时；财联社交叉事件${Number(indexAnnotations.itemCount) || 0}条（已排除个股）`,
+        detail: `财联社盯盘原始板块事件${Number(indexAnnotations.itemCount) || 0}条（已排除个股）；前台只按原始秒级时间定位到真实指数点，不生成替代标签`,
       },
     ],
     warnings: [
       ...(indexItems.length < 8 ? [`主要指数仅${indexItems.length}/8个`] : []),
       ...(snapshotOnlyItems.length ? [`${snapshotOnlyItems.map((item) => item.name).join("、")}当前只有真实快照点，未补画分钟轨迹`] : []),
-      ...(indexAnnotations.status === "retained" ? ["财联社盘面直播本轮读取失败，当前沿用同交易日上一份板块事件作交叉验证，不替代题材资金与分时证据"] : []),
+      ...(indexAnnotations.status === "retained" ? ["财联社盯盘本轮读取失败，当前只沿用同交易日已经取得的原始板块事件，不生成替代标签"] : []),
     ],
   }));
 

@@ -399,14 +399,19 @@ export function buildClsIndexAnnotationEvents(index, annotationFeed) {
     const price = finiteNumber(point?.price);
     if (price === null || minute - Number(point.minute) > 3) return null;
     const sourceDirection = item?.sourceDirection === "up" ? "up" : item?.sourceDirection === "down" ? "down" : "neutral";
+    if (sourceDirection === "neutral") return null;
     return {
       ...item,
       minute,
       revealMinute: minute,
       price,
       label,
+      displayLabel: `${sourceDirection === "up" ? "↑" : "↓"}${label}`,
       sourceDirection,
       flowDirection: sourceDirection === "up" ? 1 : sourceDirection === "down" ? -1 : 0,
+      resolved: true,
+      source: String(item?.source || annotationFeed?.source || "财联社盯盘"),
+      sourceMode: "direct-cls-watch",
     };
   }).filter(Boolean).sort((left, right) => left.minute - right.minute);
 }
@@ -462,7 +467,7 @@ function formatAttributionPercent(value) {
 function attributionTooltip(item) {
   const directionText = item.sourceDirection === "up" ? "上涨转折" : item.sourceDirection === "down" ? "下跌转折" : "指数转折";
   if (!item.methodology) {
-    return `来源：财联社盘面直播｜${item.sourceTime || marketMinuteToTime(item.minute, true)}｜${item.label}｜${directionText}`;
+    return `来源：财联社盯盘｜原始事件 ${item.sourceTime || marketMinuteToTime(item.minute, true)}｜${item.label}｜${directionText}｜图中位置采用同秒真实指数点`;
   }
   const evidenceStart = finiteNumber(item.evidenceStartMinute) ?? item.minute;
   const evidenceEnd = finiteNumber(item.evidenceEndMinute) ?? item.revealMinute ?? item.minute;
@@ -606,7 +611,7 @@ export function createIndexCharts(container, indices, annotationFeed = {}, optio
       cursor: article.querySelector(".cursor"),
       attributionLayer: article.querySelector(".index-attributions"),
       attributionEvents: Array.isArray(customEvents) ? customEvents : buildClsIndexAnnotationEvents(index, annotationFeed),
-      annotationSource: options.annotationSource || annotationFeed?.source || "财联社盘面直播",
+      annotationSource: options.annotationSource || annotationFeed?.source || "财联社盯盘",
       annotationStatus: annotationFeed?.status || "unavailable",
     });
   }

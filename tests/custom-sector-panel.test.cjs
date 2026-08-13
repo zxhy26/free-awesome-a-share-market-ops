@@ -43,25 +43,22 @@ test("custom sector workspace persists at most six real industry or concept inde
   assert.match(membershipSource, /\/api\/v1\/sector-trend/);
 });
 
-test("main index labels use real turning points with dual concept evidence and CLS cross-checks", () => {
-  assert.match(indexHtml, /实时盘面核验题材归因/);
+test("main index labels directly use original CLS watch plate events", () => {
+  assert.match(indexHtml, /财联社盯盘原始板块事件/);
   assert.match(appSource, /state\.data\.indices\?\.annotations/);
-  assert.match(appSource, /buildConceptTurningAnnotations/);
-  assert.match(appSource, /requirePriceConfirmation:\s*!discovery/);
-  assert.match(appSource, /priceSeriesByCode:\s*state\.indexAttribution\.priceSeries/);
-  assert.match(appSource, /loadBoardAttributionTrend\(candidate\.code, candidate\.name, tradeDate\)/);
+  assert.match(appSource, /buildClsIndexAnnotationEvents\(index, indexAnnotationFeed\(\)\)/);
+  assert.match(appSource, /snapshot\.clsWatch/);
+  assert.doesNotMatch(appSource, /buildConceptTurningAnnotations|loadBoardAttributionTrend|indexAttribution\.priceSeries/);
   assert.match(chartsSource, /annotationEventsForIndex/);
   assert.match(chartsSource, /item\.displayLabel \|\| item\.label/);
-  assert.match(chartsSource, /主要归因题材/);
   assert.match(chartsSource, /buildClsIndexAnnotationEvents\(index, annotationFeed\)/);
   assert.match(chartsSource, /sourceType === "plate"/);
   assert.match(chartsSource, /stock_detail/);
-  assert.match(turningSource, /EVIDENCE_AFTER_PIVOT_MINUTES/);
-  assert.match(turningSource, /MIN_PRICE_CORRELATION/);
-  assert.match(turningSource, /不会发布到指数分时图|includeUnresolved/);
+  assert.match(chartsSource, /sourceMode:\s*"direct-cls-watch"/);
+  assert.match(chartsSource, /来源：财联社盯盘/);
   assert.match(chartsSource, /item\?\.resolved !== false/);
   assert.match(clsInjectionSource, /排除所有个股事件/);
-  assert.match(clsInjectionSource, /财联社同刻行业\/题材事件仅作交叉验证/);
+  assert.match(clsInjectionSource, /财联社盯盘/);
   const createIndexChartsSource = chartsSource.slice(chartsSource.indexOf("export function createIndexCharts"));
   assert.doesNotMatch(createIndexChartsSource, /buildSectorAttributionCandidates|buildPersistentSectorAttributions/);
 });
