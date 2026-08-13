@@ -1,13 +1,13 @@
-import {checkAppUpdate, getAppUpdateStatus, getHealth, installAppUpdate, loadBoardAttributionTrend, loadBoardIntradayTrend, loadBoardMinuteFlow, loadCoreData, loadIndexCatalog, loadIndexContributionData, loadIndexTrend, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260813-2";
+import {checkAppUpdate, getAppUpdateStatus, getHealth, installAppUpdate, loadBoardAttributionTrend, loadBoardIntradayTrend, loadBoardMinuteFlow, loadCoreData, loadIndexCatalog, loadIndexContributionData, loadIndexTrend, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260813-3";
 import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNumber, formatPercent, formatYi, signed, summarizeMoneyEffect, valueClass} from "./analysis.js?v=20260730-1";
-import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260813-2";
+import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260813-3";
 import {createSummaryDialog} from "./dialog.js";
 import {createDisplaySettings} from "./display-settings.js?v=20260803-1";
 import {createIndexWorkspace, resolveIndexGridLayout} from "./index-workspace.js?v=20260731-1";
 import {initializePwa} from "./pwa.js?v=20260719-2";
 import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260727-2";
 import {createCustomSectorWorkspace} from "./custom-sector-workspace.js?v=20260809-1";
-import {buildConceptTurningAnnotations} from "./concept-turning-annotations.js?v=20260813-2";
+import {buildConceptTurningAnnotations} from "./concept-turning-annotations.js?v=20260813-3";
 import {initializeTheme} from "./theme.js";
 import {inTradingWindow, shouldAppendRegularSessionSample} from "./market-session.js?v=20260730-1";
 import {createPersistentSettingsStorage} from "./persistent-settings.js?v=20260801-1";
@@ -123,7 +123,7 @@ const state = {
 };
 
 const flowScaleCache = new WeakMap();
-const INDEX_ATTRIBUTION_REFRESH_MS = 45 * 1000;
+const INDEX_ATTRIBUTION_REFRESH_MS = 15 * 1000;
 const INDEX_ATTRIBUTION_MAX_PRICE_SERIES = 30;
 const INDEX_ATTRIBUTION_BATCH_SIZE = 6;
 
@@ -930,7 +930,7 @@ function indexTurningAttributions(index, options = {}) {
   const discovery = options.discovery === true;
   return buildConceptTurningAnnotations(index, conceptAttributionRows(), {
     clsFeed: indexAnnotationFeed(),
-    includeUnresolved: !discovery,
+    includeUnresolved: discovery,
     priceSeriesByCode: state.indexAttribution.priceSeries,
     requirePriceConfirmation: !discovery,
   });
@@ -939,7 +939,7 @@ function indexTurningAttributions(index, options = {}) {
 function updateIndexAttributionEvents() {
   for (const chart of state.charts || []) {
     chart.attributionEvents = indexTurningAttributions(chart.data);
-    chart.annotationSource = "东方财富题材资金与板块分时，财联社事件交叉验证";
+    chart.annotationSource = "东方财富实时题材资金与板块分时，财联社事件交叉验证";
   }
 }
 
@@ -1010,7 +1010,7 @@ function renderSelectedIndexCharts() {
   state.charts = createIndexCharts(dom.indexGrid, indices, indexAnnotationFeed(), {
     onRemove: (key) => state.indexWorkspace?.remove(key),
     annotationEventsForIndex: (index) => indexTurningAttributions(index),
-    annotationSource: "东方财富题材资金与板块分时，财联社事件交叉验证",
+    annotationSource: "东方财富实时题材资金与板块分时，财联社事件交叉验证",
   });
   updateIndexCharts(state.charts, Number(dom.timeline.value));
   void refreshIndexAttributionEvidence();

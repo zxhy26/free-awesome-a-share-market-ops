@@ -3,16 +3,16 @@
   "product": "复盘软件定制版-短线模型V1.0",
   "edition": "custom",
   "capabilities": ["shortline"],
-  "version": "2.21.16",
-  "publishedAt": "2026-08-13T14:00:00Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.16/A-Share-Review-Custom-Shortline-v2.21.16.exe",
-  "sha256": "F5CCFD6914D084A477A2959D5E8F89D48874FFC6B2071110C5A27F142EE3580A",
-  "size": 47288832,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.16",
+  "version": "2.21.17",
+  "publishedAt": "2026-08-13T15:05:00Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.17/A-Share-Review-Custom-Shortline-v2.21.17.exe",
+  "sha256": "F24AE91443DA5325019ECACF1011C31C64EB42AFBD24D6BEC1FF92776B8B8E0C",
+  "size": 47273472,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.17",
   "notes": [
-    "指数分时标签改为真实转折点与真实题材资金、题材自身分时的联合归因。",
-    "低置信度转折保留待确认，禁止未来样本、收盘倒填和本地套话生成。",
-    "修复题材分钟线 DNS 波动及午间时间重叠，并保留定制版单后台与短线实时能力。",
-    "定制版真实 EXE 已通过固定端口、REST、监控和 WebSocket 101/open 验证。"
+    "指数分时只发布经过实时题材资金、题材自身分时、局部同向度与指数相关性联合核验的归因。",
+    "取消所有待确认和未知原因占位；证据不足的候选只在后台继续采集，不在图上显示。",
+    "题材归因证据刷新由45秒缩短为15秒，禁止收盘倒推、未来样本和本地套话生成。",
+    "定制版真实 EXE 已通过单后台、固定端口、REST、监控和 WebSocket 101/open 验证。"
   ]
 }

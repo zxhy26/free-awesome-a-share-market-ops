@@ -44,7 +44,7 @@ test("custom sector workspace persists at most six real industry or concept inde
 });
 
 test("main index labels use real turning points with dual concept evidence and CLS cross-checks", () => {
-  assert.match(indexHtml, /真实题材资金拐点归因/);
+  assert.match(indexHtml, /实时盘面核验题材归因/);
   assert.match(appSource, /state\.data\.indices\?\.annotations/);
   assert.match(appSource, /buildConceptTurningAnnotations/);
   assert.match(appSource, /requirePriceConfirmation:\s*!discovery/);
@@ -58,7 +58,8 @@ test("main index labels use real turning points with dual concept evidence and C
   assert.match(chartsSource, /stock_detail/);
   assert.match(turningSource, /EVIDENCE_AFTER_PIVOT_MINUTES/);
   assert.match(turningSource, /MIN_PRICE_CORRELATION/);
-  assert.match(turningSource, /证据不足显示待确认|证据未达到可信度门槛/);
+  assert.match(turningSource, /不会发布到指数分时图|includeUnresolved/);
+  assert.match(chartsSource, /item\?\.resolved !== false/);
   assert.match(clsInjectionSource, /排除所有个股事件/);
   assert.match(clsInjectionSource, /财联社同刻行业\/题材事件仅作交叉验证/);
   const createIndexChartsSource = chartsSource.slice(chartsSource.indexOf("export function createIndexCharts"));

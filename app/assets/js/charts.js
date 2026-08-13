@@ -418,7 +418,11 @@ export function selectClsIndexAnnotations(events, minute) {
 
 export function selectIndexTurningAnnotations(events, minute) {
   const visibleMinute = Number(minute) || 0;
-  return (events || []).filter((item) => (finiteNumber(item?.revealMinute) ?? finiteNumber(item?.minute) ?? 0) <= visibleMinute);
+  return (events || []).filter((item) => (
+    item?.resolved !== false
+    && Boolean(String(item?.displayLabel || item?.label || "").trim())
+    && (finiteNumber(item?.revealMinute) ?? finiteNumber(item?.minute) ?? 0) <= visibleMinute
+  ));
 }
 
 function formatFlowDelta(value) {
@@ -456,10 +460,7 @@ function formatAttributionPercent(value) {
 }
 
 function attributionTooltip(item) {
-  const directionText = item.sourceDirection === "up" ? "上涨转折" : item.sourceDirection === "down" ? "下跌转折" : "方向待确认";
-  if (item.resolved === false) {
-    return `${directionText}｜拐点 ${marketMinuteToTime(item.minute, true)}｜原因待确认｜同时间窗真实题材资金与题材分时证据未达到可信度门槛，不作推测`;
-  }
+  const directionText = item.sourceDirection === "up" ? "上涨转折" : item.sourceDirection === "down" ? "下跌转折" : "指数转折";
   if (!item.methodology) {
     return `来源：财联社盘面直播｜${item.sourceTime || marketMinuteToTime(item.minute, true)}｜${item.label}｜${directionText}`;
   }
@@ -492,7 +493,6 @@ function renderIndexAnnotations(chart, minute, geometry) {
     const group = document.createElementNS(SVG_NS, "g");
     const toneClass = item.sourceDirection === "up" ? "gain-mark" : item.sourceDirection === "down" ? "loss-mark" : "neutral-mark";
     group.classList.add("index-attribution", item.methodology ? "turning-index-annotation" : "cls-index-annotation", toneClass);
-    if (item.resolved === false) group.classList.add("unresolved-mark");
     group.dataset.source = String(item.source || chart.annotationSource || "真实题材归因");
     group.dataset.sourceTime = String(item.sourceTime || "");
     group.dataset.articleId = String(item.articleId || "");

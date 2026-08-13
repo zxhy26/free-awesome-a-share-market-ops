@@ -378,24 +378,10 @@ export function buildConceptTurningAnnotations(board, conceptRows, options = {})
       .filter(Boolean)
       .sort((left, right) => right.score - left.score || left.conceptName.localeCompare(right.conceptName, "zh-CN"));
     const lead = ranked[0];
-    if (!lead) {
-      if (options.includeUnresolved !== true) return null;
-      return {
-        ...turn,
-        label: "原因待确认",
-        displayLabel: `${turn.direction > 0 ? "↑" : "↓"}待确认`,
-        targetChangePct: targetChangeAt(board, turn.minute),
-        directionName: turn.direction > 0 ? "上涨转折" : "下跌转折",
-        sourceDirection: turn.direction > 0 ? "up" : "down",
-        confidence: 0,
-        confidenceLabel: "待确认",
-        resolved: false,
-        alternatives: [],
-        methodology: "真实指数拐点没有匹配到同时间窗、同方向且足够新鲜的题材分钟资金证据，因此不推测原因。",
-      };
-    }
+    if (!lead) return null;
     const confidence = confidenceFor(lead, ranked);
     const resolved = confidence >= (finiteNumber(options.minimumConfidence) ?? MIN_CAUSE_CONFIDENCE);
+    if (!resolved && options.includeUnresolved !== true) return null;
     const alternatives = ranked.slice(1, 3).map((item) => ({
       name: item.conceptName,
       score: item.score,
@@ -409,22 +395,22 @@ export function buildConceptTurningAnnotations(board, conceptRows, options = {})
     return {
       ...turn,
       ...lead,
-      label: resolved ? lead.conceptName : "原因待确认",
+      label: lead.conceptName,
       candidateLabel: lead.conceptName,
       displayLabel: resolved
         ? `${turn.direction > 0 ? "↑" : "↓"}${conciseThemeName(lead.conceptName)}`
-        : `${turn.direction > 0 ? "↑" : "↓"}待确认`,
+        : "",
       targetChangePct: targetChangeAt(board, turn.minute),
       directionName: turn.direction > 0 ? "上涨转折" : "下跌转折",
       sourceDirection: turn.direction > 0 ? "up" : "down",
       confidence,
-      confidenceLabel: resolved ? (confidence >= 82 ? "高" : confidence >= 70 ? "中高" : "中") : "待确认",
+      confidenceLabel: resolved ? (confidence >= 82 ? "高" : confidence >= 70 ? "中高" : "中") : "内部候选",
       resolved,
       alternatives,
       candidatePool,
       methodology: resolved
         ? "真实指数拐点与同时间窗东方财富概念板块分钟资金增量、概念分时涨跌、局部资金同步度及指数相关性匹配；财联社同刻板块事件仅作交叉验证，不使用个股、收盘倒推或未来样本。"
-        : "候选题材证据未达到可信度门槛，因此保留候选但不声明为转折成因。",
+        : "该题材仅供后台继续采集实时证据，不会发布到指数分时图。",
     };
   }).filter(Boolean).sort((left, right) => left.minute - right.minute);
 }

@@ -7,7 +7,7 @@ import {
   selectSignificantConceptAnnotations,
   selectVisibleConceptAnnotations,
 } from "../app/assets/js/concept-turning-annotations.js";
-import {buildIndexTurningPoints} from "../app/assets/js/charts.js";
+import {buildIndexTurningPoints, selectIndexTurningAnnotations} from "../app/assets/js/charts.js";
 import {
   MAX_CONCEPT_HISTORY_ROWS,
   selectConceptHistoryCandidates,
@@ -87,16 +87,32 @@ test("main-index attribution requires matching real concept price action when st
     })),
   }]));
   const events = buildConceptTurningAnnotations(board, rows, {
-    includeUnresolved: true,
     priceSeriesByCode: priceSeries,
     requirePriceConfirmation: true,
     minimumConfidence: 0,
   });
 
   assert.ok(events.length > 0);
-  assert.ok(events.every((event) => event.resolved === false || event.hasFreshPrice === true));
-  assert.ok(events.every((event) => event.resolved === false || event.priceAligned === true));
-  assert.ok(events.every((event) => event.resolved === false || event.sampleMinute <= event.evidenceEndMinute));
+  assert.ok(events.every((event) => event.resolved === true));
+  assert.ok(events.every((event) => event.hasFreshPrice === true));
+  assert.ok(events.every((event) => event.priceAligned === true));
+  assert.ok(events.every((event) => event.sampleMinute <= event.evidenceEndMinute));
+});
+
+test("unverified candidates stay internal and never reach the index chart", () => {
+  const board = {code: "000001", name: "上证指数", tradeDate: "2026-08-07", preClose: 100, points: boardPoints()};
+  const candidates = buildConceptTurningAnnotations(board, [
+    conceptRow(1, "机器人", "BK1001"),
+    conceptRow(-1, "算力", "BK1002"),
+  ], {
+    includeUnresolved: true,
+    minimumConfidence: 97,
+  });
+
+  assert.ok(candidates.length > 0);
+  assert.ok(candidates.every((event) => event.resolved === false));
+  assert.ok(candidates.every((event) => event.displayLabel === ""));
+  assert.deepEqual(selectIndexTurningAnnotations(candidates, 240), []);
 });
 
 test("future-only concept samples are never backfilled into an earlier turn", () => {

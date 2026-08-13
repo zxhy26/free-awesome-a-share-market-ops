@@ -3,7 +3,7 @@ import {
   GENERIC_CONCEPT_PATTERN,
   selectSignificantConceptAnnotations,
   selectVisibleConceptAnnotations,
-} from "./concept-turning-annotations.js?v=20260813-2";
+} from "./concept-turning-annotations.js?v=20260813-3";
 
 const MAX_CUSTOM_SECTORS = 6;
 const MAX_CONCEPT_HISTORY_ROWS = 36;

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.21.17 - 2026-08-13
+
+- Removed all unverified placeholder labels from index intraday charts; a turning point is now annotated only after real concept flow, the concept's own minute move, local direction alignment, and index correlation pass the publication threshold.
+- Kept low-confidence candidates strictly inside the background evidence-discovery pipeline so they can trigger additional live data collection without appearing as a claimed cause.
+- Shortened concept evidence refresh from 45 seconds to 15 seconds and added a renderer-level gate that prevents unresolved records from reaching any index chart.
+
 ## 2.21.16 - 2026-08-13
 
 - Replaced generic index annotations with persistent labels anchored to genuine intraday turning points and rendered with explicit red upward or green downward direction.
