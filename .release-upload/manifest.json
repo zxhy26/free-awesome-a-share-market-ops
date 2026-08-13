@@ -1,0 +1,55 @@
+{
+    "tag":  "v2.21.17",
+    "ready":  true,
+    "assets":  [
+                   {
+                       "name":  "Da-A-Hou-Qin-Bu-v2.21.17.exe",
+                       "sha256":  "9026CB46102669A955F06F2CA6EB79F2CA6F06BB8F3A691FD4298F657849DACB",
+                       "size":  47102976,
+                       "chunks":  [
+                                      "member-v2.21.17.part001",
+                                      "member-v2.21.17.part002",
+                                      "member-v2.21.17.part003",
+                                      "member-v2.21.17.part004",
+                                      "member-v2.21.17.part005",
+                                      "member-v2.21.17.part006",
+                                      "member-v2.21.17.part007",
+                                      "member-v2.21.17.part008",
+                                      "member-v2.21.17.part009"
+                                  ]
+                   },
+                   {
+                       "name":  "A-Share-Review-Basic-v2.21.17.exe",
+                       "sha256":  "D067D464230D53987F15AC2F43F2D995FE6BC358A8A72A949C326A9581479E2E",
+                       "size":  47121920,
+                       "chunks":  [
+                                      "basic-v2.21.17.part001",
+                                      "basic-v2.21.17.part002",
+                                      "basic-v2.21.17.part003",
+                                      "basic-v2.21.17.part004",
+                                      "basic-v2.21.17.part005",
+                                      "basic-v2.21.17.part006",
+                                      "basic-v2.21.17.part007",
+                                      "basic-v2.21.17.part008",
+                                      "basic-v2.21.17.part009"
+                                  ]
+                   },
+                   {
+                       "name":  "A-Share-Review-Custom-Shortline-v2.21.17.exe",
+                       "sha256":  "F24AE91443DA5325019ECACF1011C31C64EB42AFBD24D6BEC1FF92776B8B8E0C",
+                       "size":  47273472,
+                       "chunks":  [
+                                      "custom-v2.21.17.part001",
+                                      "custom-v2.21.17.part002",
+                                      "custom-v2.21.17.part003",
+                                      "custom-v2.21.17.part004",
+                                      "custom-v2.21.17.part005",
+                                      "custom-v2.21.17.part006",
+                                      "custom-v2.21.17.part007",
+                                      "custom-v2.21.17.part008",
+                                      "custom-v2.21.17.part009",
+                                      "custom-v2.21.17.part010"
+                                  ]
+                   }
+               ]
+}
