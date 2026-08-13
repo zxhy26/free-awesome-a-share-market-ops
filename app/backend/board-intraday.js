@@ -5,6 +5,8 @@ const {execFile} = require("child_process");
 
 const BOARD_CODE_PATTERN = /^BK\d{4}$/;
 const EASTMONEY_HOST = "push2.eastmoney.com";
+const EASTMONEY_HISTORY_HOST = "push2his.eastmoney.com";
+const EASTMONEY_HISTORY_FALLBACK_IPS = Object.freeze(["119.3.232.150"]);
 const DEFAULT_TIMEOUT_MS = 15000;
 const DEFAULT_CACHE_TTL_MS = 12000;
 const SOURCE_NAME = "东方财富板块指数逐笔分时";
@@ -120,6 +122,61 @@ function parseBoardDetailsPayload(payload, options = {}) {
   };
 }
 
+function parseBoardTrendsPayload(payload, options = {}) {
+  const data = payload?.data;
+  const trends = Array.isArray(data?.trends) ? data.trends : [];
+  const preClose = finite(data?.preClose);
+  if (Number(payload?.rc) !== 0 || !data || !trends.length || preClose === null || preClose <= 0) {
+    throw Object.assign(new Error("板块指数分钟分时接口没有返回有效数据。"), {
+      statusCode: 502,
+      code: "BOARD_INTRADAY_MINUTE_EMPTY",
+    });
+  }
+  const byMinute = new Map();
+  let sourceTradeDate = "";
+  for (const raw of trends) {
+    const fields = String(raw || "").split(",");
+    const dateTime = String(fields[0] || "").trim();
+    const tradeDate = dateTime.slice(0, 10);
+    const time = dateTime.slice(11, 19);
+    const price = finite(fields[2]);
+    const minute = marketMinuteFromTime(time);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(tradeDate) || minute === null || price === null || price <= 0) continue;
+    sourceTradeDate = tradeDate;
+    // Keep the afternoon-open sample after the morning close on the compressed axis.
+    // Both 11:30 and 13:00 map to minute 120, but 13:00 must never replace a
+    // morning-close sample while replaying data at 11:30.
+    const normalizedMinute = round(minute + (/^13:00(?::|$)/.test(time) ? 0.001 : 0), 4);
+    byMinute.set(normalizedMinute, {
+      tradeDate,
+      minute: normalizedMinute,
+      time: time.length === 5 ? `${time}:00` : time,
+      price: round(price, 4),
+      changePct: round(((price - preClose) / preClose) * 100, 4),
+      volume: finite(fields[5]),
+      amount: finite(fields[6]),
+      source: "eastmoney-board-index-minute-trends",
+    });
+  }
+  const points = [...byMinute.values()].sort((left, right) => left.minute - right.minute);
+  if (!points.length || !sourceTradeDate) {
+    throw Object.assign(new Error("板块指数分钟分时接口没有返回交易时段样本。"), {
+      statusCode: 502,
+      code: "BOARD_INTRADAY_MINUTE_SESSION_EMPTY",
+    });
+  }
+  return {
+    code: normalizeBoardCode(options.code || data.code),
+    name: String(options.name || data.name || data.code || "板块").trim(),
+    tradeDate: sourceTradeDate,
+    preClose: round(preClose, 4),
+    points,
+    latestMinute: points.at(-1).minute,
+    latestPrice: points.at(-1).price,
+    latestChangePct: points.at(-1).changePct,
+  };
+}
+
 async function fetchTextWithFetch(fetchImpl, url, timeoutMs) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Math.max(1000, timeoutMs));
@@ -153,7 +210,7 @@ function fetchCurlText(url, timeoutMs, resolveIp = "") {
     "--show-error",
     "--compressed",
     "--connect-timeout",
-    String(Math.min(8, timeoutSeconds)),
+    String(Math.min(4, timeoutSeconds)),
     "--max-time",
     String(timeoutSeconds),
     "-H",
@@ -181,22 +238,32 @@ function fetchCurlText(url, timeoutMs, resolveIp = "") {
 
 async function fetchEastmoneyText(url, timeoutMs) {
   const errors = [];
-  try {
-    return await fetchCurlText(url, timeoutMs);
-  } catch (error) {
-    errors.push(`系统解析: ${error.message}`);
-  }
+  const hostname = new URL(url).hostname;
+  const deadline = Date.now() + Math.max(1000, Number(timeoutMs) || DEFAULT_TIMEOUT_MS);
   let resolvedIps = [];
   try {
-    resolvedIps = await dns.resolve4(EASTMONEY_HOST);
+    resolvedIps = await dns.resolve4(hostname);
   } catch (_) {
     resolvedIps = [];
   }
-  for (const ip of [...new Set(resolvedIps)]) {
+  const preferredIps = hostname === EASTMONEY_HISTORY_HOST
+    ? EASTMONEY_HISTORY_FALLBACK_IPS
+    : [];
+  for (const ip of [...new Set([...preferredIps, ...resolvedIps])]) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs < 1000) break;
     try {
-      return await fetchCurlText(url, timeoutMs, ip);
+      return await fetchCurlText(url, Math.min(remainingMs, 7000), ip);
     } catch (error) {
       errors.push(`${ip}: ${error.message}`);
+    }
+  }
+  const remainingMs = deadline - Date.now();
+  if (remainingMs >= 1000) {
+    try {
+      return await fetchCurlText(url, remainingMs);
+    } catch (error) {
+      errors.push(`系统解析: ${error.message}`);
     }
   }
   throw new Error(`板块指数分时行情不可用：${errors.at(-1) || "未知错误"}`);
@@ -212,7 +279,7 @@ function createBoardIntradayService(options = {}) {
   async function getTimeline(rawCode, name = "", rawTradeDate = "") {
     const code = normalizeBoardCode(rawCode);
     const tradeDate = normalizeTradeDate(rawTradeDate, now());
-    const key = `${tradeDate}:${code}`;
+    const key = `details:${tradeDate}:${code}`;
     const nowMs = now().getTime();
     const cached = cache.get(key);
     if (cached && nowMs - cached.cachedAtMs < cacheTtlMs) {
@@ -282,8 +349,67 @@ function createBoardIntradayService(options = {}) {
     }
   }
 
+  async function getMinuteTimeline(rawCode, name = "", rawTradeDate = "") {
+    const code = normalizeBoardCode(rawCode);
+    const tradeDate = normalizeTradeDate(rawTradeDate, now());
+    const key = `minute:${tradeDate}:${code}`;
+    const nowMs = now().getTime();
+    const cached = cache.get(key);
+    if (cached && nowMs - cached.cachedAtMs < cacheTtlMs) {
+      return {...cached.payload, cached: true, cacheAgeMs: Math.max(0, nowMs - cached.cachedAtMs)};
+    }
+    const params = new URLSearchParams({
+      secid: `90.${code}`,
+      fields1: "f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13",
+      fields2: "f51,f52,f53,f54,f55,f56,f57,f58",
+      ut: "bd1d9ddb04089700cf9c27f6f7426281",
+      ndays: "1",
+      iscr: "0",
+      iscca: "0",
+    });
+    const url = `https://${EASTMONEY_HISTORY_HOST}/api/qt/stock/trends2/get?${params}`;
+    try {
+      const text = fetchImpl
+        ? await fetchTextWithFetch(fetchImpl, url, timeoutMs)
+        : await fetchEastmoneyText(url, timeoutMs);
+      const timeline = parseBoardTrendsPayload(parseJsonOrJsonp(text), {code, name});
+      if (rawTradeDate && timeline.tradeDate !== rawTradeDate) {
+        throw Object.assign(new Error(`行情源最新交易日为${timeline.tradeDate}，拒绝将其标记为${rawTradeDate}。`), {
+          statusCode: 409,
+          code: "BOARD_INTRADAY_DATE_MISMATCH",
+        });
+      }
+      const result = {
+        ok: true,
+        ...timeline,
+        source: "东方财富板块指数分钟分时",
+        methodology: "指数拐点归因专用的真实板块分钟涨跌曲线；只使用来源交易日内已发生的样本，不插值到未来。",
+        fetchedAt: now().toISOString(),
+        cached: false,
+        cacheAgeMs: 0,
+      };
+      cache.set(key, {cachedAtMs: nowMs, payload: result});
+      return result;
+    } catch (error) {
+      if (cached) {
+        return {
+          ...cached.payload,
+          cached: true,
+          stale: true,
+          cacheAgeMs: Math.max(0, nowMs - cached.cachedAtMs),
+          warning: error.message || String(error),
+        };
+      }
+      throw Object.assign(new Error(`板块指数分钟分时读取失败：${error.message || error}`), {
+        statusCode: error.statusCode || 502,
+        code: error.code || "BOARD_INTRADAY_MINUTE_UNAVAILABLE",
+      });
+    }
+  }
+
   return {
     getTimeline,
+    getMinuteTimeline,
     getState: () => ({cacheEntries: cache.size, cacheTtlMs, source: SOURCE_NAME}),
   };
 }
@@ -295,5 +421,6 @@ module.exports = {
   marketMinuteFromTime,
   normalizeBoardCode,
   parseBoardDetailsPayload,
+  parseBoardTrendsPayload,
   tradeDateFromQuotePayload,
 };

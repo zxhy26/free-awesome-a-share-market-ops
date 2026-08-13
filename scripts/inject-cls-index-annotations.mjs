@@ -24,13 +24,14 @@ function writeJson(filePath, value) {
 }
 
 function updateSourceNote(value) {
-  const clsNote = "指数分时文字标注仅采用财联社盘面直播公开事件接口返回的行业与题材板块事件，排除所有个股事件；前台只把原始板块事件定位到同期指数线并按原始方向显示红绿；接口异常时仅保留同交易日上一份财联社板块记录，没有记录则不显示，不使用个股、资金拐点、板块强弱或本地规则生成替代标注。";
+  const clsNote = "指数分时文字标注先识别真实指数有效拐点，再以东方财富概念分钟资金和概念板块逐笔分时作双重归因证据；财联社同刻行业/题材事件仅作交叉验证并排除所有个股事件；证据不足显示待确认，不使用收盘排名倒推、未来样本或虚构原因。";
   let note = String(value || "")
     .replace(/指数线标签只在.*?不等同于成分股精确权重贡献；/g, "")
     .replace(/指数分时线标注只保留.*?绿色为累计净流出。?/g, "")
     .replace(/指数分时文字标注仅采用财联社盘面直播[^。]*。?/g, "")
+    .replace(/指数分时文字标注先识别真实指数有效拐点[^。]*。?/g, "")
     .replace(/指数分时文字只展示财联社盘面直播[^。]*。?/g, "");
-  if (!note.includes("指数分时文字标注仅采用财联社盘面直播")) note += clsNote;
+  if (!note.includes("指数分时文字标注先识别真实指数有效拐点")) note += clsNote;
   return note;
 }
 
@@ -67,7 +68,7 @@ function updateHealth(dataDir, feed) {
   };
   module.checks = [
     ...(module.checks || []).filter((item) => item.name !== "指数文字标注"),
-    {name: "指数文字标注", status: "ok", detail: `财联社行业/题材板块事件${feed.itemCount}条（已排除${feed.excludedStockCount || 0}条个股）`},
+    {name: "指数文字标注", status: "ok", detail: `财联社交叉验证事件${feed.itemCount}条（已排除${feed.excludedStockCount || 0}条个股）`},
   ];
   writeJson(healthPath, health);
 }

@@ -64,7 +64,39 @@ test("every confirmed board turn receives the strongest same-time concept label"
   assert.deepEqual([...new Set(events.map((event) => event.label))].sort(), ["机器人", "算力"]);
   assert.ok(events.every((event) => event.sampleMinute <= event.revealMinute));
   assert.ok(events.every((event) => event.direction > 0 ? event.label === "机器人" : event.label === "算力"));
-  assert.ok(events.every((event) => /不使用个股、行业名称或未来样本/.test(event.methodology)));
+  assert.ok(events.every((event) => /不使用个股、收盘倒推或未来样本/.test(event.methodology)));
+});
+
+test("main-index attribution requires matching real concept price action when strict confirmation is enabled", () => {
+  const points = boardPoints();
+  const board = {code: "000001", name: "上证指数", tradeDate: "2026-08-07", preClose: 100, points};
+  const rows = [
+    conceptRow(1, "机器人", "BK1001"),
+    conceptRow(-1, "算力", "BK1002"),
+  ];
+  const priceSeries = new Map(rows.map((row) => [row.code, {
+    code: row.code,
+    tradeDate: board.tradeDate,
+    preClose: 100,
+    source: "eastmoney-board-index-details",
+    points: row.points.map((point) => ({
+      minute: point.minute,
+      changePct: point.changePct,
+      price: 100 + point.changePct,
+      tradeDate: board.tradeDate,
+    })),
+  }]));
+  const events = buildConceptTurningAnnotations(board, rows, {
+    includeUnresolved: true,
+    priceSeriesByCode: priceSeries,
+    requirePriceConfirmation: true,
+    minimumConfidence: 0,
+  });
+
+  assert.ok(events.length > 0);
+  assert.ok(events.every((event) => event.resolved === false || event.hasFreshPrice === true));
+  assert.ok(events.every((event) => event.resolved === false || event.priceAligned === true));
+  assert.ok(events.every((event) => event.resolved === false || event.sampleMinute <= event.evidenceEndMinute));
 });
 
 test("future-only concept samples are never backfilled into an earlier turn", () => {

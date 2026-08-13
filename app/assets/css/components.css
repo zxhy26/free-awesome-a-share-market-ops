@@ -206,6 +206,7 @@ html[data-font-size="xlarge"] .index-chart { height: 104px; }
 .index-chart .cursor { fill: var(--surface-raised); stroke: currentColor; stroke-width: 1.5; }
 .index-attribution-stem { stroke: currentColor; stroke-width: .8; stroke-dasharray: 1.5 1.2; opacity: .82; vector-effect: non-scaling-stroke; }
 .index-attribution-dot { fill: currentColor; stroke: var(--surface); stroke-width: .8; vector-effect: non-scaling-stroke; }
+.index-attribution-background { fill: var(--surface); fill-opacity: .94; stroke: currentColor; stroke-width: .45; vector-effect: non-scaling-stroke; pointer-events: none; }
 .index-attribution-label { fill: currentColor; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; paint-order: stroke fill; font-size: calc(10 * var(--app-font-unit)); font-weight: 850; letter-spacing: 0; pointer-events: all; }
 .index-attribution.gain-mark { color: var(--gain); }
 .index-attribution.loss-mark { color: var(--loss); }

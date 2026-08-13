@@ -3,16 +3,16 @@
   "product": "复盘软件定制版-短线模型V1.0",
   "edition": "custom",
   "capabilities": ["shortline"],
-  "version": "2.21.15",
-  "publishedAt": "2026-08-12T09:55:00Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.15/A-Share-Review-Custom-Shortline-v2.21.15.exe",
-  "sha256": "DB50B938E9DA8870B175D05146F0AD9C6079781C71CFBB4B77DB387CB9B61434",
-  "size": 45596160,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.15",
+  "version": "2.21.16",
+  "publishedAt": "2026-08-13T14:00:00Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.16/A-Share-Review-Custom-Shortline-v2.21.16.exe",
+  "sha256": "F5CCFD6914D084A477A2959D5E8F89D48874FFC6B2071110C5A27F142EE3580A",
+  "size": 47288832,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.16",
   "notes": [
-    "题材宝典按东方财富当前概念板块 total 全量读取，榜单数量与东财口径一致。",
-    "成分股保留 ST 和退市风险条目并标注风险，桌面和手机使用同一完整分页规则。",
-    "保留 2.21.13 的定制版单后台、短线 REST、实时监控和 WebSocket 修复。",
-    "09:15 一字方向预览、09:25 冻结、Day2 条件及短线统计继续使用最新版逻辑。"
+    "指数分时标签改为真实转折点与真实题材资金、题材自身分时的联合归因。",
+    "低置信度转折保留待确认，禁止未来样本、收盘倒填和本地套话生成。",
+    "修复题材分钟线 DNS 波动及午间时间重叠，并保留定制版单后台与短线实时能力。",
+    "定制版真实 EXE 已通过固定端口、REST、监控和 WebSocket 101/open 验证。"
   ]
 }

@@ -197,10 +197,6 @@ html.mobile-pwa:has(.dialog-backdrop:not([hidden])) body {
     min-width: 0;
   }
 
-  .mobile-pwa .index-attributions .index-attribution:nth-child(n + 4) {
-    display: none;
-  }
-
   .mobile-pwa .timeline-wrap {
     grid-template-columns: 38px minmax(0, 1fr) 38px;
     gap: 5px;

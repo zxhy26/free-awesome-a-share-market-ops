@@ -565,7 +565,10 @@
     }
     if (path.endsWith("/api/v1/sector-trend")) {
       try {
-        return jsonResponse(await globalThis.AShareMobileLive.loadBoardTrend(
+        const loader = requestUrl.searchParams.get("mode") === "attribution-minute"
+          ? globalThis.AShareMobileLive.loadBoardMinuteTrend
+          : globalThis.AShareMobileLive.loadBoardTrend;
+        return jsonResponse(await loader(
           requestUrl.searchParams.get("code"),
           requestUrl.searchParams.get("name"),
           requestUrl.searchParams.get("tradeDate"),

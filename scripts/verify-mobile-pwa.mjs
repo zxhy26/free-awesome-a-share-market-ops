@@ -324,10 +324,10 @@ function validateEdition(edition) {
   );
 
   assert(
-    /\.mobile-pwa\s+\.index-attributions\s+\.index-attribution:nth-child\(n\s*\+\s*4\)[\s\S]*?display:\s*none/.test(
+    !/\.mobile-pwa\s+\.index-attributions\s+\.index-attribution:nth-child\([^)]+\)[\s\S]*?display:\s*none/.test(
       mobileCssSource,
     ),
-    `${label}: mobile index annotations are not capped for narrow screens`,
+    `${label}: 手机端不应隐藏已确认的指数拐点归因标签`,
   );
 
   const historyIndex = readJson(path.join(root, "data", "history-index.json"));

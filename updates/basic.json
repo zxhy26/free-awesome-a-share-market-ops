@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "product": "复盘软件基础版",
   "edition": "basic",
-  "version": "2.21.15",
-  "publishedAt": "2026-08-12T09:55:00Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.15/A-Share-Review-Basic-v2.21.15.exe",
-  "sha256": "3A345F1DA07FB8EAC35C45927DF58B39971212DE3B41961C2DC3B868620E5BE8",
-  "size": 45444608,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.15",
+  "version": "2.21.16",
+  "publishedAt": "2026-08-13T14:00:00Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.16/A-Share-Review-Basic-v2.21.16.exe",
+  "sha256": "7F2C411793D474118AFF5F31BC6D6D6D18E6469C7DBF849E70B7FF099FA1F4D6",
+  "size": 47137792,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.16",
   "notes": [
-    "题材宝典按东方财富当前概念板块 total 全量读取，少一条都不会发布为完整目录。",
-    "取消对融资融券、指数样本、昨日表现等东财概念板块的默认排除，榜单数量与东财口径一致。",
-    "成分股保留 ST 和退市风险条目并标注风险，东财公开总数与已加载数分别显示。",
-    "桌面和手机使用同一完整分页规则；本次实时验收为概念板块 504/504。"
+    "指数分时标签改为锚定真实转折点，并用红色上涨、绿色下跌明确方向。",
+    "每个归因同时核验题材分钟资金、题材自身分时、局部同向度与指数相关性。",
+    "证据不足的转折明确显示待确认，不用收盘数据倒填，也不编造题材原因。",
+    "修复题材分钟线 DNS 波动与 11:30、13:00 时间重叠，主页面归因无需会员即可核验。"
   ]
 }

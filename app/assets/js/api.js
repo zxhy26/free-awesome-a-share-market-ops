@@ -388,6 +388,20 @@ export async function loadBoardIntradayTrend(code, name = "", tradeDate = "") {
   });
 }
 
+export async function loadBoardAttributionTrend(code, name = "", tradeDate = "") {
+  const parameters = new URLSearchParams({
+    code: String(code || ""),
+    name: String(name || ""),
+    tradeDate: String(tradeDate || ""),
+    mode: "attribution-minute",
+  });
+  return fetchJson(`${SERVICE_ORIGIN}/api/v1/sector-trend?${parameters}`, {
+    label: "指数题材归因分时",
+    timeoutMs: 20000,
+    allowSnapshot: false,
+  });
+}
+
 export async function loadBoardMinuteFlow(code, name = "") {
   const parameters = new URLSearchParams({
     code: String(code || ""),

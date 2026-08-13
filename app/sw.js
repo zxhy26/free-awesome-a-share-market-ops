@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v98-eastmoney-exact-themes";
+const CACHE_VERSION = "a-share-review-v99-index-turning-concepts";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [

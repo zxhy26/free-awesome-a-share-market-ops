@@ -35,7 +35,7 @@ test("page display synchronizer reuses main settings and reacts across browsing 
   assert.match(display, /--app-font-unit/);
   assert.match(pageSync, /createPageDisplaySync\(\)/);
   assert.match(worker, /display-page-sync\.js/);
-  assert.match(worker, /a-share-review-v98-eastmoney-exact-themes/);
+  assert.match(worker, /a-share-review-v99-index-turning-concepts/);
 });
 
 test("independent-page styles scale through the global font unit", () => {

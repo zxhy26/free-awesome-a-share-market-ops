@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.21.16 - 2026-08-13
+
+- Replaced generic index annotations with persistent labels anchored to genuine intraday turning points and rendered with explicit red upward or green downward direction.
+- Matched each label against same-session concept capital-flow momentum, the concept's own real minute-price movement, local directional alignment, and index correlation; low-confidence turns remain visibly unconfirmed instead of being guessed.
+- Added bounded Eastmoney minute-trend retrieval with DNS fallback, source-trading-date validation, no future samples, and distinct 11:30/13:00 timeline positions.
+- Kept the index-attribution verification channel public on the main dashboard while preserving Member locking for the separate custom-sector workspace.
+
 ## 2.21.15 - 2026-08-12
 
 - Matched the thematic handbook to Eastmoney's complete concept-board directory instead of removing generic market and index concepts.

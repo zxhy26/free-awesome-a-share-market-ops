@@ -4,6 +4,7 @@ const {
   createBoardIntradayService,
   marketMinuteFromTime,
   parseBoardDetailsPayload,
+  parseBoardTrendsPayload,
   tradeDateFromQuotePayload,
 } = require("../app/backend/board-intraday");
 
@@ -20,6 +21,22 @@ const detailsPayload = {
       "13:00:03,100.80,40,0,1",
       "15:00:00,101.20,50,0,2",
       "15:00:00,101.25,60,0,2",
+    ],
+  },
+};
+
+const trendsPayload = {
+  rc: 0,
+  data: {
+    code: "BK0475",
+    name: "银行Ⅱ",
+    preClose: 100,
+    trends: [
+      "2026-07-28 09:30,100.00,100.50,100.50,100.00,20,2000,100.25",
+      "2026-07-28 11:30,100.50,101.00,101.00,100.50,30,3030,100.75",
+      "2026-07-28 12:01,101.00,110.00,110.00,101.00,30,3300,105.00",
+      "2026-07-28 13:00,101.00,100.80,101.00,100.80,40,4032,100.90",
+      "2026-07-28 15:00,100.80,101.20,101.20,100.80,50,5060,101.00",
     ],
   },
 };
@@ -45,6 +62,29 @@ test("market minute conversion freezes outside the two trading sessions", () => 
   assert.equal(marketMinuteFromTime("12:00:00"), null);
   assert.equal(marketMinuteFromTime("13:00:00"), 120);
   assert.equal(marketMinuteFromTime("15:00:00"), 240);
+});
+
+test("board minute trends provide a fast real-price confirmation series for index attribution", () => {
+  const result = parseBoardTrendsPayload(trendsPayload, {code: "BK0475", name: "银行Ⅱ"});
+  assert.equal(result.tradeDate, "2026-07-28");
+  assert.equal(result.preClose, 100);
+  assert.deepEqual(result.points.map((point) => point.minute), [0, 120, 120.001, 240]);
+  assert.equal(result.points[1].time, "11:30:00");
+  assert.equal(result.points[2].time, "13:00:00");
+  assert.equal(result.points.at(-1).changePct, 1.2);
+  assert.ok(result.points.every((point) => point.source === "eastmoney-board-index-minute-trends"));
+});
+
+test("board service exposes the minute-trend channel without changing the tick channel", async () => {
+  const fetchImpl = async () => ({ok: true, text: async () => JSON.stringify(trendsPayload)});
+  const service = createBoardIntradayService({
+    fetchImpl,
+    now: () => new Date("2026-07-28T15:01:00+08:00"),
+  });
+  const result = await service.getMinuteTimeline("BK0475", "银行Ⅱ", "2026-07-28");
+  assert.equal(result.ok, true);
+  assert.equal(result.source, "东方财富板块指数分钟分时");
+  assert.equal(result.points.at(-1).minute, 240);
 });
 
 test("board service cross-checks the source trade date before publication", async () => {

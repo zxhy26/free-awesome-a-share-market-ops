@@ -38,19 +38,29 @@ test("custom sector workspace persists at most six real industry or concept inde
   assert.match(appSource, /loadBoardIntradayTrend/);
   assert.match(appSource, /customSectorWorkspace\?\.applyLiveSnapshot/);
   assert.match(serviceSource, /\/api\/v1\/sector-trend/);
+  assert.match(serviceSource, /isPublicIndexAttributionProbe/);
+  assert.match(serviceSource, /url\.searchParams\.get\("mode"\) === "attribution-minute"/);
   assert.match(membershipSource, /\/api\/v1\/sector-trend/);
 });
 
-test("index labels render only original CLS industry and theme plate annotations", () => {
-  assert.match(indexHtml, /财联社行业\/题材板块标注/);
+test("main index labels use real turning points with dual concept evidence and CLS cross-checks", () => {
+  assert.match(indexHtml, /真实题材资金拐点归因/);
   assert.match(appSource, /state\.data\.indices\?\.annotations/);
+  assert.match(appSource, /buildConceptTurningAnnotations/);
+  assert.match(appSource, /requirePriceConfirmation:\s*!discovery/);
+  assert.match(appSource, /priceSeriesByCode:\s*state\.indexAttribution\.priceSeries/);
+  assert.match(appSource, /loadBoardAttributionTrend\(candidate\.code, candidate\.name, tradeDate\)/);
+  assert.match(chartsSource, /annotationEventsForIndex/);
+  assert.match(chartsSource, /item\.displayLabel \|\| item\.label/);
+  assert.match(chartsSource, /主要归因题材/);
   assert.match(chartsSource, /buildClsIndexAnnotationEvents\(index, annotationFeed\)/);
   assert.match(chartsSource, /sourceType === "plate"/);
   assert.match(chartsSource, /stock_detail/);
-  assert.match(chartsSource, /const labelText = item\.label/);
-  assert.match(chartsSource, /来源：财联社盘面直播/);
+  assert.match(turningSource, /EVIDENCE_AFTER_PIVOT_MINUTES/);
+  assert.match(turningSource, /MIN_PRICE_CORRELATION/);
+  assert.match(turningSource, /证据不足显示待确认|证据未达到可信度门槛/);
   assert.match(clsInjectionSource, /排除所有个股事件/);
-  assert.match(clsInjectionSource, /已排除\$\{feed\.excludedStockCount \|\| 0\}条个股/);
+  assert.match(clsInjectionSource, /财联社同刻行业\/题材事件仅作交叉验证/);
   const createIndexChartsSource = chartsSource.slice(chartsSource.indexOf("export function createIndexCharts"));
   assert.doesNotMatch(createIndexChartsSource, /buildSectorAttributionCandidates|buildPersistentSectorAttributions/);
 });
@@ -73,7 +83,7 @@ test("custom sector turns keep persistent labels from real concept-board flow on
   assert.match(turningSource, /group === "concept"/);
   assert.match(turningSource, /GENERIC_CONCEPT_PATTERN/);
   assert.match(turningSource, /end\.minute > start\.minute/);
-  assert.match(turningSource, /不使用个股、行业名称或未来样本/);
+  assert.match(turningSource, /不使用个股、收盘倒推或未来样本/);
 });
 
 test("desktop index layout supports automatic one-row and two-row grids while the flow column fills its stack", () => {

@@ -1,12 +1,13 @@
-import {checkAppUpdate, getAppUpdateStatus, getHealth, installAppUpdate, loadBoardIntradayTrend, loadBoardMinuteFlow, loadCoreData, loadIndexCatalog, loadIndexContributionData, loadIndexTrend, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260811-1";
+import {checkAppUpdate, getAppUpdateStatus, getHealth, installAppUpdate, loadBoardAttributionTrend, loadBoardIntradayTrend, loadBoardMinuteFlow, loadCoreData, loadIndexCatalog, loadIndexContributionData, loadIndexTrend, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260813-2";
 import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNumber, formatPercent, formatYi, signed, summarizeMoneyEffect, valueClass} from "./analysis.js?v=20260730-1";
-import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260731-3";
+import {createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260813-2";
 import {createSummaryDialog} from "./dialog.js";
 import {createDisplaySettings} from "./display-settings.js?v=20260803-1";
 import {createIndexWorkspace, resolveIndexGridLayout} from "./index-workspace.js?v=20260731-1";
 import {initializePwa} from "./pwa.js?v=20260719-2";
 import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260727-2";
 import {createCustomSectorWorkspace} from "./custom-sector-workspace.js?v=20260809-1";
+import {buildConceptTurningAnnotations} from "./concept-turning-annotations.js?v=20260813-2";
 import {initializeTheme} from "./theme.js";
 import {inTradingWindow, shouldAppendRegularSessionSample} from "./market-session.js?v=20260730-1";
 import {createPersistentSettingsStorage} from "./persistent-settings.js?v=20260801-1";
@@ -107,6 +108,12 @@ const state = {
   liveFlowRequestRunning: false,
   liveFlowSnapshot: null,
   liveFlowGroups: {industry: null, concept: null},
+  indexAttribution: {
+    tradeDate: "",
+    priceSeries: new Map(),
+    inFlight: false,
+    lastRefreshAt: 0,
+  },
   membershipActive: false,
   contributionLoading: false,
   summaryText: "",
@@ -116,6 +123,9 @@ const state = {
 };
 
 const flowScaleCache = new WeakMap();
+const INDEX_ATTRIBUTION_REFRESH_MS = 45 * 1000;
+const INDEX_ATTRIBUTION_MAX_PRICE_SERIES = 30;
+const INDEX_ATTRIBUTION_BATCH_SIZE = 6;
 
 function el(tag, className = "", text = "") {
   const element = document.createElement(tag);
@@ -505,6 +515,7 @@ function applyLiveFlowSnapshot(snapshot, options = {}) {
   state.liveFlowGroups.concept = mergeLiveFlowGroup("concept", snapshot);
   state.customSectorWorkspace?.applyLiveSnapshot(snapshot);
   applyLiveIndexQuotes(snapshot);
+  updateIndexAttributionEvents();
 
   const previousMaximum = Number(dom.timeline.max) || 0;
   const previousValue = Number(dom.timeline.value) || 0;
@@ -523,6 +534,7 @@ function applyLiveFlowSnapshot(snapshot, options = {}) {
   renderFlow("concept", displayMinute);
   state.customSectorWorkspace?.render(displayMinute);
   dom.timelineTime.textContent = marketMinuteToTime(displayMinute, true);
+  void refreshIndexAttributionEvidence();
   return true;
 }
 
@@ -874,6 +886,120 @@ function indexAnnotationFeed() {
   };
 }
 
+function coreTradeDate(data = state.data) {
+  return String(data?.sectors?.tradeDate || data?.market?.tradeDate || data?.market?.market?.tradeDate || "");
+}
+
+function resetIndexAttribution(tradeDate = "") {
+  state.indexAttribution = {
+    tradeDate: String(tradeDate || ""),
+    priceSeries: new Map(),
+    inFlight: false,
+    lastRefreshAt: 0,
+  };
+}
+
+function conceptAttributionRows() {
+  const group = state.data?.sectors?.concept;
+  const baseRows = Array.isArray(group?.attributionRows) && group.attributionRows.length
+    ? group.attributionRows
+    : Array.isArray(group?.rows) ? group.rows : [];
+  const snapshot = state.liveFlowSnapshot;
+  const liveRows = liveTradeDateMatches(snapshot) && Array.isArray(snapshot?.groups?.concept?.rows)
+    ? snapshot.groups.concept.rows
+    : [];
+  if (!liveRows.length || snapshot?.auction === true) return baseRows;
+  const liveByKey = new Map(liveRows.map((row) => [liveRowKey(row), row]).filter(([key]) => key));
+  const liveMinute = finiteNumber(snapshot?.marketMinute);
+  if (liveMinute === null || liveMinute < 0 || liveMinute > 240) return baseRows;
+  return baseRows.map((row) => {
+    const liveRow = liveByKey.get(liveRowKey(row));
+    if (!liveRow || finiteNumber(liveRow.amount) === null) return row;
+    const byMinute = new Map((row.points || []).map((point) => [finiteNumber(point?.minute), point]).filter(([minute]) => minute !== null));
+    const previousPoint = [...byMinute.values()].sort((left, right) => Number(left.minute) - Number(right.minute)).at(-1) || null;
+    byMinute.set(liveMinute, livePointForRow(liveRow, snapshot, previousPoint));
+    return {
+      ...row,
+      amount: liveRow.amount,
+      points: [...byMinute.values()].sort((left, right) => Number(left.minute) - Number(right.minute)),
+    };
+  });
+}
+
+function indexTurningAttributions(index, options = {}) {
+  const discovery = options.discovery === true;
+  return buildConceptTurningAnnotations(index, conceptAttributionRows(), {
+    clsFeed: indexAnnotationFeed(),
+    includeUnresolved: !discovery,
+    priceSeriesByCode: state.indexAttribution.priceSeries,
+    requirePriceConfirmation: !discovery,
+  });
+}
+
+function updateIndexAttributionEvents() {
+  for (const chart of state.charts || []) {
+    chart.attributionEvents = indexTurningAttributions(chart.data);
+    chart.annotationSource = "东方财富题材资金与板块分时，财联社事件交叉验证";
+  }
+}
+
+function indexAttributionCandidates() {
+  const indices = state.indexWorkspace?.getSelectedItems() || state.data?.indices?.items || [];
+  const candidates = new Map();
+  for (const index of indices) {
+    for (const event of indexTurningAttributions(index, {discovery: true})) {
+      (event.candidatePool || []).forEach((candidate, rank) => {
+        const code = String(candidate.code || "").trim().toUpperCase();
+        if (!code) return;
+        const current = candidates.get(code) || {code, name: candidate.name, hits: 0, score: 0};
+        current.hits += 1;
+        current.score += (finiteNumber(candidate.score) ?? 0) / (rank + 1);
+        candidates.set(code, current);
+      });
+    }
+  }
+  return [...candidates.values()]
+    .sort((left, right) => right.hits - left.hits || right.score - left.score || left.name.localeCompare(right.name, "zh-CN"))
+    .slice(0, INDEX_ATTRIBUTION_MAX_PRICE_SERIES);
+}
+
+async function refreshIndexAttributionEvidence(options = {}) {
+  if (!state.data || state.indexAttribution.inFlight) return;
+  const tradeDate = coreTradeDate();
+  if (!tradeDate) return;
+  if (state.indexAttribution.tradeDate !== tradeDate) resetIndexAttribution(tradeDate);
+  const now = Date.now();
+  if (!options.force && now - state.indexAttribution.lastRefreshAt < INDEX_ATTRIBUTION_REFRESH_MS) return;
+  const candidates = indexAttributionCandidates();
+  if (!candidates.length) return;
+  state.indexAttribution.inFlight = true;
+  state.indexAttribution.lastRefreshAt = now;
+  let loadedCount = 0;
+  let lastError = null;
+  try {
+    for (let offset = 0; offset < candidates.length; offset += INDEX_ATTRIBUTION_BATCH_SIZE) {
+      const batch = candidates.slice(offset, offset + INDEX_ATTRIBUTION_BATCH_SIZE);
+      const results = await Promise.allSettled(batch.map((candidate) => (
+        loadBoardAttributionTrend(candidate.code, candidate.name, tradeDate)
+      )));
+      if (coreTradeDate() !== tradeDate) return;
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled" && Array.isArray(result.value?.points) && result.value.points.length) {
+          state.indexAttribution.priceSeries.set(batch[index].code, result.value);
+          loadedCount += 1;
+        } else if (result.status === "rejected") {
+          lastError = result.reason;
+        }
+      });
+      updateIndexAttributionEvents();
+      if (state.charts.length) updateIndexCharts(state.charts, Number(dom.timeline.value));
+    }
+    if (!loadedCount && lastError) logTechnicalError(lastError, "指数题材归因分时核验");
+  } finally {
+    state.indexAttribution.inFlight = false;
+  }
+}
+
 function renderSelectedIndexCharts() {
   if (!state.data) return;
   const indices = state.indexWorkspace?.getSelectedItems() || state.data.indices.items || [];
@@ -883,8 +1009,11 @@ function renderSelectedIndexCharts() {
   dom.indexGrid.dataset.indexRows = String(layout.rows);
   state.charts = createIndexCharts(dom.indexGrid, indices, indexAnnotationFeed(), {
     onRemove: (key) => state.indexWorkspace?.remove(key),
+    annotationEventsForIndex: (index) => indexTurningAttributions(index),
+    annotationSource: "东方财富题材资金与板块分时，财联社事件交叉验证",
   });
   updateIndexCharts(state.charts, Number(dom.timeline.value));
+  void refreshIndexAttributionEvidence();
 }
 
 function renderAll() {
@@ -1112,6 +1241,7 @@ function setupInteractions(preferenceStorage) {
     storage,
     onSelectionChange: () => renderSelectedIndexCharts(),
     onLiveUpdate: () => {
+      updateIndexAttributionEvents();
       if (state.charts.length) updateIndexCharts(state.charts, Number(dom.timeline.value));
     },
   });
@@ -1242,6 +1372,8 @@ function applyCoreData(nextData, options = {}) {
   const previousMaximum = Number(dom.timeline.max) || 0;
   const previousValue = Number(dom.timeline.value) || 0;
   const wasFollowingLive = !state.data || previousValue >= previousMaximum - 0.05;
+  const nextTradeDate = coreTradeDate(nextData);
+  if (state.indexAttribution.tradeDate !== nextTradeDate) resetIndexAttribution(nextTradeDate);
   state.data = {...nextData, indexContribution: state.data?.indexContribution || null};
   const latestMinute = latestAshareMinute(nextData?.indices?.items || []);
   dom.timeline.max = String(latestMinute);

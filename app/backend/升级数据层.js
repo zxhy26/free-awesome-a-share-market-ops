@@ -618,6 +618,8 @@ function buildHealth(data, archiveCount = 0) {
   const ashareItems = indexItems.filter((item) => item.session !== "us");
   const snapshotOnlyItems = ashareItems.filter((item) => item.snapshotOnly === true);
   const indexAnnotations = data.indices?.annotations || {};
+  const attributionRows = data.sectors?.concept?.attributionRows || [];
+  const validatedAttributionRows = attributionRows.filter((row) => row.flowValidated === true && Array.isArray(row.points) && row.points.length >= 2).length;
   const indexCoverage = ashareItems.length ? ashareItems.reduce((sum, item) => {
     const uniqueMinutes = new Set((item.points || []).map((point) => finite(point.minute)).filter((value) => value !== null && value <= currentMinute));
     return sum + clamp((uniqueMinutes.size / Math.max(1, currentMinute)) * 100);
@@ -642,18 +644,14 @@ function buildHealth(data, archiveCount = 0) {
       ...ashareItems.map((item) => ({name: item.name, status: item.crossCheck?.status || "pending", detail: compactDetail(item.crossCheck?.detail || "等待下一轮双源核对")})),
       {
         name: "指数文字标注",
-        status: indexAnnotations.status === "ok" ? "ok" : indexAnnotations.status === "retained" ? "warning" : "pending",
-        detail: indexAnnotations.status === "ok"
-          ? `财联社行业/题材板块事件${Number(indexAnnotations.itemCount) || 0}条（已排除个股）`
-          : indexAnnotations.status === "retained"
-            ? `财联社接口暂时异常，保留同交易日板块事件${Number(indexAnnotations.itemCount) || 0}条（已排除个股）`
-            : "财联社盘面直播暂无可显示的行业/题材板块事件，不使用个股或本地生成标注",
+        status: validatedAttributionRows > 0 ? (indexAnnotations.status === "retained" ? "warning" : "ok") : "pending",
+        detail: `真实题材分钟资金${validatedAttributionRows}/${attributionRows.length}条；前台按拐点核验题材分时；财联社交叉事件${Number(indexAnnotations.itemCount) || 0}条（已排除个股）`,
       },
     ],
     warnings: [
       ...(indexItems.length < 8 ? [`主要指数仅${indexItems.length}/8个`] : []),
       ...(snapshotOnlyItems.length ? [`${snapshotOnlyItems.map((item) => item.name).join("、")}当前只有真实快照点，未补画分钟轨迹`] : []),
-      ...(indexAnnotations.status === "retained" ? ["财联社盘面直播本轮读取失败，当前沿用同交易日上一份行业/题材板块标注"] : []),
+      ...(indexAnnotations.status === "retained" ? ["财联社盘面直播本轮读取失败，当前沿用同交易日上一份板块事件作交叉验证，不替代题材资金与分时证据"] : []),
     ],
   }));
 

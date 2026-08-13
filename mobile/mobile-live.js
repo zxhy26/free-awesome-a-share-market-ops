@@ -501,7 +501,9 @@
       if (minute === null || price === null || price <= 0) return null;
       return {
         tradeDate: sourceTradeDate,
-        minute: round(minute),
+        // 11:30 and 13:00 share minute 120 on the compressed A-share axis.
+        // Preserve their order so a morning replay cannot see the afternoon sample.
+        minute: round(minute + (/^13:00(?::|$)/.test(time) ? 0.001 : 0)),
         time: String(fields[0] || ""),
         price: round(price),
         changePct: round(((price - preClose) / preClose) * 100),
@@ -518,6 +520,61 @@
       preClose: round(preClose),
       points,
       source: "东方财富板块指数逐笔分时",
+      fetchedAt: new Date().toISOString(),
+    };
+  }
+
+  async function loadBoardMinuteTrend(code, name = "", requestedTradeDate = "") {
+    const normalizedCode = String(code || "").trim().toUpperCase();
+    if (!/^BK\d{4}$/.test(normalizedCode)) throw new Error("板块代码无效");
+    const url = new URL("https://push2his.eastmoney.com/api/qt/stock/trends2/get");
+    Object.entries({
+      secid: `90.${normalizedCode}`,
+      fields1: "f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13",
+      fields2: "f51,f52,f53,f54,f55,f56,f57,f58",
+      ut: EASTMONEY_TOKEN,
+      ndays: "1",
+      iscr: "0",
+      iscca: "0",
+      _: String(Date.now()),
+    }).forEach(([key, value]) => url.searchParams.set(key, value));
+    const payload = await jsonp(url, 20000);
+    const preClose = finite(payload?.data?.preClose);
+    const trends = Array.isArray(payload?.data?.trends) ? payload.data.trends : [];
+    if (!preClose || !trends.length) throw new Error("板块指数分钟分时没有返回有效样本");
+    let sourceTradeDate = "";
+    const points = trends.map((raw) => {
+      const fields = String(raw || "").split(",");
+      const dateTime = String(fields[0] || "");
+      const tradeDate = dateTime.slice(0, 10);
+      const time = dateTime.slice(11, 19);
+      const minute = minuteFromTime(time);
+      const price = finite(fields[2]);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(tradeDate) || minute === null || price === null || price <= 0) return null;
+      sourceTradeDate = tradeDate;
+      return {
+        tradeDate,
+        minute: round(minute),
+        time: time.length === 5 ? `${time}:00` : time,
+        price: round(price),
+        changePct: round(((price - preClose) / preClose) * 100),
+        volume: finite(fields[5]),
+        amount: finite(fields[6]),
+        source: "eastmoney-board-index-minute-trends",
+      };
+    }).filter(Boolean);
+    if (requestedTradeDate && sourceTradeDate && requestedTradeDate !== sourceTradeDate) {
+      throw new Error(`公开行情最新交易日为${sourceTradeDate}，当前页面为${requestedTradeDate}`);
+    }
+    if (!points.length) throw new Error("板块指数分钟分时没有返回交易时段样本");
+    return {
+      ok: true,
+      code: normalizedCode,
+      name: name || payload?.data?.name || normalizedCode,
+      tradeDate: sourceTradeDate,
+      preClose: round(preClose),
+      points,
+      source: "东方财富板块指数分钟分时",
       fetchedAt: new Date().toISOString(),
     };
   }
@@ -759,6 +816,7 @@
   globalThis.AShareMobileLive = {
     loadLiveSectorFlows,
     loadBoardTrend,
+    loadBoardMinuteTrend,
     loadStockQuote,
     loadBoardConstituents,
     loadCompanySurvey,

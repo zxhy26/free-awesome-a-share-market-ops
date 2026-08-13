@@ -1296,7 +1296,12 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  const protectedApiFeature = membership.protectedFeatureForApi(url.pathname, req.method);
+  const isPublicIndexAttributionProbe = req.method === "GET"
+    && url.pathname === "/api/v1/sector-trend"
+    && url.searchParams.get("mode") === "attribution-minute";
+  const protectedApiFeature = isPublicIndexAttributionProbe
+    ? ""
+    : membership.protectedFeatureForApi(url.pathname, req.method);
   if (protectedApiFeature && !membership.hasAccess()) {
     membership.sendPaymentRequired(res, protectedApiFeature);
     return;
@@ -1493,7 +1498,10 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === "/api/v1/sector-trend" && req.method === "GET") {
     try {
-      sendJson(res, 200, await boardIntraday.getTimeline(
+      const timelineLoader = url.searchParams.get("mode") === "attribution-minute"
+        ? boardIntraday.getMinuteTimeline
+        : boardIntraday.getTimeline;
+      sendJson(res, 200, await timelineLoader(
         url.searchParams.get("code") || "",
         url.searchParams.get("name") || "",
         url.searchParams.get("tradeDate") || "",

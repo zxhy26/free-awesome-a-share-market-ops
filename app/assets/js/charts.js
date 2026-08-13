@@ -416,6 +416,11 @@ export function selectClsIndexAnnotations(events, minute) {
   return (events || []).filter((item) => item.minute <= visibleMinute);
 }
 
+export function selectIndexTurningAnnotations(events, minute) {
+  const visibleMinute = Number(minute) || 0;
+  return (events || []).filter((item) => (finiteNumber(item?.revealMinute) ?? finiteNumber(item?.minute) ?? 0) <= visibleMinute);
+}
+
 function formatFlowDelta(value) {
   const amount = Number(value) || 0;
   const absolute = Math.abs(amount);
@@ -445,24 +450,57 @@ function measureAttributionLabel(layer, labelText) {
   };
 }
 
-function renderClsIndexAnnotations(chart, minute, geometry) {
-  const selected = selectClsIndexAnnotations(chart.attributionEvents, minute)
+function formatAttributionPercent(value) {
+  const number = finiteNumber(value);
+  return number === null ? "--" : `${number > 0 ? "+" : ""}${number.toFixed(2)}%`;
+}
+
+function attributionTooltip(item) {
+  const directionText = item.sourceDirection === "up" ? "上涨转折" : item.sourceDirection === "down" ? "下跌转折" : "方向待确认";
+  if (item.resolved === false) {
+    return `${directionText}｜拐点 ${marketMinuteToTime(item.minute, true)}｜原因待确认｜同时间窗真实题材资金与题材分时证据未达到可信度门槛，不作推测`;
+  }
+  if (!item.methodology) {
+    return `来源：财联社盘面直播｜${item.sourceTime || marketMinuteToTime(item.minute, true)}｜${item.label}｜${directionText}`;
+  }
+  const evidenceStart = finiteNumber(item.evidenceStartMinute) ?? item.minute;
+  const evidenceEnd = finiteNumber(item.evidenceEndMinute) ?? item.revealMinute ?? item.minute;
+  const correlation = finiteNumber(item.correlation);
+  const alignment = finiteNumber(item.localAlignmentShare);
+  const alternatives = (item.alternatives || []).map((entry) => entry.name).filter(Boolean).join("、") || "无";
+  const cls = item.clsConfirmation?.label ? `${item.clsConfirmation.label}（${item.clsConfirmation.match === "exact" ? "同名" : "同题材链"}）` : "无同刻事件";
+  return [
+    `${directionText}｜拐点 ${marketMinuteToTime(item.minute, true)}｜主要归因题材：${item.label}`,
+    `证据窗 ${marketMinuteToTime(evidenceStart, true)}-${marketMinuteToTime(evidenceEnd, true)}｜资金变化 ${formatFlowDelta(item.flowDelta)}｜题材涨跌变化 ${formatAttributionPercent(item.conceptChangeDelta)}`,
+    `题材与指数相关性 ${correlation === null ? "样本不足" : correlation.toFixed(2)}｜资金同向度 ${alignment === null ? "--" : `${Math.round(alignment * 100)}%`}｜置信度 ${item.confidence || 0}%（${item.confidenceLabel || "--"}）`,
+    `财联社交叉验证：${cls}｜备选题材：${alternatives}`,
+  ].join("\n");
+}
+
+function overlapArea(left, right) {
+  const width = Math.max(0, Math.min(left.right, right.right) - Math.max(left.left, right.left));
+  const height = Math.max(0, Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top));
+  return width * height;
+}
+
+function renderIndexAnnotations(chart, minute, geometry) {
+  const selected = selectIndexTurningAnnotations(chart.attributionEvents, minute)
     .sort((left, right) => left.minute - right.minute);
   const nodes = [];
   const labels = [];
   for (const item of selected) {
     const group = document.createElementNS(SVG_NS, "g");
     const toneClass = item.sourceDirection === "up" ? "gain-mark" : item.sourceDirection === "down" ? "loss-mark" : "neutral-mark";
-    group.classList.add("index-attribution", "cls-index-annotation", toneClass);
-    group.dataset.source = "财联社盘面直播";
+    group.classList.add("index-attribution", item.methodology ? "turning-index-annotation" : "cls-index-annotation", toneClass);
+    if (item.resolved === false) group.classList.add("unresolved-mark");
+    group.dataset.source = String(item.source || chart.annotationSource || "真实题材归因");
     group.dataset.sourceTime = String(item.sourceTime || "");
     group.dataset.articleId = String(item.articleId || "");
     const title = document.createElementNS(SVG_NS, "title");
-    const directionText = item.sourceDirection === "up" ? "上涨" : item.sourceDirection === "down" ? "下跌" : "未标方向";
-    title.textContent = `来源：财联社盘面直播｜${item.sourceTime || marketMinuteToTime(item.minute, true)}｜${item.label}｜${directionText}`;
+    title.textContent = attributionTooltip(item);
     const x = geometry.xForMinute(item.minute);
     const y = geometry.yForPrice(item.price);
-    const labelText = item.label;
+    const labelText = item.displayLabel || item.label;
     const labelMetrics = measureAttributionLabel(chart.attributionLayer, labelText);
     const estimatedWidth = labelMetrics.width;
     const labelHalfHeight = labelMetrics.height / 2;
@@ -473,26 +511,34 @@ function renderClsIndexAnnotations(chart, minute, geometry) {
     for (let lane = labelHalfHeight + 2; lane <= CHART_HEIGHT - labelHalfHeight - 2; lane += laneStep) ascendingLanes.push(lane);
     const laneCandidates = item.sourceDirection === "down" ? [...ascendingLanes].reverse() : ascendingLanes;
     let placement = null;
+    let fallbackPlacement = null;
+    const horizontalOffsets = [0, -18, 18, -36, 36];
     for (const lane of laneCandidates) {
-      for (const anchorEnd of anchorCandidates) {
-        const labelX = x + (anchorEnd ? -3 : 3);
-        const left = anchorEnd ? labelX - estimatedWidth : labelX;
-        const candidateBox = {left, right: left + estimatedWidth, top: lane - labelHalfHeight, bottom: lane + labelHalfHeight};
-        if (candidateBox.left < 3 || candidateBox.right > CHART_WIDTH - 3) continue;
-        const overlaps = labels.some((box) => !(candidateBox.right + 2 <= box.left || box.right + 2 <= candidateBox.left || candidateBox.bottom <= box.top || box.bottom <= candidateBox.top));
-        if (!overlaps) {
-          placement = {anchorEnd, labelX, labelY: lane, labelBox: candidateBox};
-          break;
+      for (const horizontalOffset of horizontalOffsets) {
+        for (const anchorEnd of anchorCandidates) {
+          const labelX = x + horizontalOffset + (anchorEnd ? -3 : 3);
+          const left = anchorEnd ? labelX - estimatedWidth : labelX;
+          const candidateBox = {left, right: left + estimatedWidth, top: lane - labelHalfHeight, bottom: lane + labelHalfHeight};
+          if (candidateBox.left < 3 || candidateBox.right > CHART_WIDTH - 3) continue;
+          const overlapScore = labels.reduce((sum, box) => sum + overlapArea(candidateBox, box), 0);
+          const candidate = {anchorEnd, labelX, labelY: lane, labelBox: candidateBox, connectorX: x + horizontalOffset, overlapScore};
+          if (!fallbackPlacement || overlapScore < fallbackPlacement.overlapScore) fallbackPlacement = candidate;
+          if (overlapScore === 0) {
+            placement = candidate;
+            break;
+          }
         }
+        if (placement) break;
       }
       if (placement) break;
     }
+    placement ||= fallbackPlacement;
     if (!placement) continue;
-    const {anchorEnd, labelX, labelY, labelBox} = placement;
+    const {anchorEnd, labelX, labelY, labelBox, connectorX} = placement;
     const stem = document.createElementNS(SVG_NS, "line");
     stem.classList.add("index-attribution-stem");
     stem.setAttribute("x1", x.toFixed(2));
-    stem.setAttribute("x2", x.toFixed(2));
+    stem.setAttribute("x2", connectorX.toFixed(2));
     stem.setAttribute("y1", y.toFixed(2));
     stem.setAttribute("y2", labelY.toFixed(2));
     const dot = document.createElementNS(SVG_NS, "circle");
@@ -500,6 +546,13 @@ function renderClsIndexAnnotations(chart, minute, geometry) {
     dot.setAttribute("cx", x.toFixed(2));
     dot.setAttribute("cy", y.toFixed(2));
     dot.setAttribute("r", "1.8");
+    const background = document.createElementNS(SVG_NS, "rect");
+    background.classList.add("index-attribution-background");
+    background.setAttribute("x", (labelBox.left - 1).toFixed(2));
+    background.setAttribute("y", (labelBox.top - .5).toFixed(2));
+    background.setAttribute("width", (labelBox.right - labelBox.left + 2).toFixed(2));
+    background.setAttribute("height", (labelBox.bottom - labelBox.top + 1).toFixed(2));
+    background.setAttribute("rx", "1.5");
     const text = document.createElementNS(SVG_NS, "text");
     text.classList.add("index-attribution-label");
     text.setAttribute("x", labelX.toFixed(2));
@@ -507,7 +560,7 @@ function renderClsIndexAnnotations(chart, minute, geometry) {
     text.setAttribute("text-anchor", anchorEnd ? "end" : "start");
     text.setAttribute("dominant-baseline", "middle");
     text.textContent = labelText;
-    group.append(title, stem, dot, text);
+    group.append(title, stem, dot, background, text);
     nodes.push(group);
     labels.push(labelBox);
   }
@@ -537,6 +590,9 @@ export function createIndexCharts(container, indices, annotationFeed = {}, optio
     removeButton.addEventListener("click", () => options.onRemove?.(index.key || index.code));
     article.querySelector("title").textContent = `${index.name || "指数"}分时图`;
     fragment.append(article);
+    const customEvents = typeof options.annotationEventsForIndex === "function"
+      ? options.annotationEventsForIndex(index)
+      : null;
     charts.push({
       data: index,
       article,
@@ -549,8 +605,8 @@ export function createIndexCharts(container, indices, annotationFeed = {}, optio
       baseline: article.querySelector(".baseline"),
       cursor: article.querySelector(".cursor"),
       attributionLayer: article.querySelector(".index-attributions"),
-      attributionEvents: buildClsIndexAnnotationEvents(index, annotationFeed),
-      annotationSource: annotationFeed?.source || "财联社盘面直播",
+      attributionEvents: Array.isArray(customEvents) ? customEvents : buildClsIndexAnnotationEvents(index, annotationFeed),
+      annotationSource: options.annotationSource || annotationFeed?.source || "财联社盘面直播",
       annotationStatus: annotationFeed?.status || "unavailable",
     });
   }
@@ -583,7 +639,7 @@ export function updateIndexCharts(charts, minute) {
     chart.cursor.setAttribute("cx", geometry.x.toFixed(2));
     chart.cursor.setAttribute("cy", geometry.y.toFixed(2));
     chart.cursor.style.color = `var(--${className === "loss" ? "loss" : "gain"})`;
-    renderClsIndexAnnotations(chart, minute, geometry);
+    renderIndexAnnotations(chart, minute, geometry);
     const amount = finiteNumber(displayPoint.amount);
     chart.amount.textContent = amount === null ? "成交额 --" : `成交额 ${(amount / 100000000).toFixed(1)}亿`;
     chart.sample.textContent = !chart.data.points?.length
