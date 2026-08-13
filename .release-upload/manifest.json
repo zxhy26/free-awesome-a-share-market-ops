@@ -1,6 +1,7 @@
 {
     "tag":  "v2.21.18",
     "ready":  true,
+    "attempt":  2,
     "assets":  [
                    {
                        "name":  "Da-A-Hou-Qin-Bu-v2.21.18.exe",
