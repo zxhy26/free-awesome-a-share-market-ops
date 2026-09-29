@@ -2,17 +2,19 @@
   "schemaVersion": 1,
   "product": "复盘软件定制版-短线模型V1.0",
   "edition": "custom",
-  "capabilities": ["shortline"],
-  "version": "2.21.18",
-  "publishedAt": "2026-08-13T16:06:44Z",
-  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.21.18/A-Share-Review-Custom-Shortline-v2.21.18.exe",
-  "sha256": "48EE7BD11C652A203F5E27A96611C798F16D334F3B525D05357F33FF6C1A0FF3",
-  "size": 47275008,
-  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.21.18",
+  "capabilities": [
+    "shortline"
+  ],
+  "version": "2.22.0",
+  "publishedAt": "2026-09-29T10:29:32.431Z",
+  "downloadUrl": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/download/v2.22.0/A-Share-Review-Custom-v2.22.0.exe",
+  "sha256": "0B43B4F05B1FCCDD30B765E4B59FA96ED4DF3FA1F47EE682532B8C70D9196CEB",
+  "size": 64843776,
+  "releasePage": "https://github.com/zxhy26/free-awesome-a-share-market-ops/releases/tag/v2.22.0",
   "notes": [
-    "主要指数分时直接采用财联社盯盘公开板块事件的原始名称、秒级时间和方向。",
-    "新增5秒实时盯盘通道，并接入逐秒市场快照和手动同步，无需等待整轮复盘更新。",
-    "所有个股事件在入口和图表双重剔除，不使用本地生成的题材标签。",
-    "接口异常时只保留同交易日原始事件；没有同日原始数据就不显示标注。"
+    "新增可记忆的紧凑工作台、实时与回放状态、一键回到最新。",
+    "指数分时可放大并查看真实样本，财联社事件保留来源与秒级时间。",
+    "修复午休后轮询停止、断线重连、手动同步误报成功和回放被刷新覆盖。",
+    "盘中行情与收盘量化批次独立校验；保留原有版本功能边界。"
   ]
 }
