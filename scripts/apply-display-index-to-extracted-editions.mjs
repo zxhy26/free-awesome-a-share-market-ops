@@ -122,7 +122,7 @@ function buildServiceWorker(mode) {
   let source = fs.readFileSync(path.join(sourceApp, "sw.js"), "utf8");
   source = source.replace(
     /const CACHE_VERSION = "[^"]+";/,
-    `const CACHE_VERSION = "a-share-review-v91-cross-platform-${mode}";`,
+    `const CACHE_VERSION = "a-share-review-v102-cross-platform-${mode}";`,
   );
   const extras = [];
   if (["basic", "self", "custom"].includes(mode)) {
@@ -175,6 +175,9 @@ function replaceSection(target, reference, startMarker, endMarker, label) {
 
 function patchCustomService(servicePath) {
   let source = fs.readFileSync(servicePath, "utf8");
+  // The current custom host already contains these migrations; preserve its later recovery fixes.
+  if (["clsMarketWatch.startPolling()", "await userPreferences.handleRequest(req, res, url)",
+    "indexIntraday.getCatalog()", '"/api/v1/app-update/status"', "boardIntraday.getTimeline"].every((part) => source.includes(part))) return;
   const standardService = fs.readFileSync(path.join(sourceApp, "backend", "复盘同步服务.js"), "utf8");
   source = insertBefore(
     source,

@@ -404,6 +404,7 @@ export function buildClsIndexAnnotationEvents(index, annotationFeed) {
       ...item,
       minute,
       revealMinute: minute,
+      sampleMinute: point.minute,
       price,
       label,
       displayLabel: `${sourceDirection === "up" ? "↑" : "↓"}${label}`,
@@ -454,8 +455,8 @@ function measureAttributionLabel(layer, labelText) {
     probe.remove();
   }
   return {
-    width: Math.min(178, Math.max(52, box.width + 4)),
-    height: Math.max(11, box.height + 2),
+    width: Math.min(178, Math.max(16, box.width + 4)),
+    height: Math.max(6, box.height + 2),
   };
 }
 
@@ -464,10 +465,11 @@ function formatAttributionPercent(value) {
   return number === null ? "--" : `${number > 0 ? "+" : ""}${number.toFixed(2)}%`;
 }
 
-function attributionTooltip(item) {
+export function attributionTooltip(item) {
   const directionText = item.sourceDirection === "up" ? "上涨转折" : item.sourceDirection === "down" ? "下跌转折" : "指数转折";
   if (!item.methodology) {
-    return `来源：财联社盯盘｜原始事件 ${item.sourceTime || marketMinuteToTime(item.minute, true)}｜${item.label}｜${directionText}｜图中位置采用同秒真实指数点`;
+    const movement = item.sourceDirection === "up" ? "板块走强" : "板块走弱";
+    return `来源：财联社盯盘｜原始事件 ${item.sourceTime || marketMinuteToTime(item.minute, true)}｜${item.label}｜${movement}｜对应指数样本 ${marketMinuteToTime(item.sampleMinute ?? item.minute, true)}。板块异动为同时段背景，不代表已证实的指数涨跌因果。`;
   }
   const evidenceStart = finiteNumber(item.evidenceStartMinute) ?? item.minute;
   const evidenceEnd = finiteNumber(item.evidenceEndMinute) ?? item.revealMinute ?? item.minute;
@@ -492,6 +494,10 @@ function overlapArea(left, right) {
 function renderIndexAnnotations(chart, minute, geometry) {
   const selected = selectIndexTurningAnnotations(chart.attributionEvents, minute)
     .sort((left, right) => left.minute - right.minute);
+  const signature = JSON.stringify([selected, geometry.yForPrice(0), geometry.yForPrice(1),
+    getComputedStyle(chart.attributionLayer).fontSize, chart.article.clientWidth]);
+  if (chart.annotationSignature === signature) return;
+  chart.annotationSignature = signature;
   const nodes = [];
   const labels = [];
   for (const item of selected) {
@@ -581,7 +587,7 @@ export function createIndexCharts(container, indices, annotationFeed = {}, optio
     article.dataset.indexKey = index.key || index.code || "";
     article.dataset.timelineState = index.error ? "error" : index.loading ? "loading" : index.points?.length ? "ready" : "pending";
     article.innerHTML = `
-      <div class="index-card-header"><strong></strong><span></span><button class="index-card-remove" type="button" title="移除指数" aria-label="移除指数">×</button></div>
+      <div class="index-card-header"><strong></strong><span></span><button class="index-card-focus" type="button" title="放大分时" aria-label="放大分时">⛶</button><button class="index-card-remove" type="button" title="移除指数" aria-label="移除指数">×</button></div>
       <div class="index-values"><strong></strong><span class="points"></span><span class="pct"></span></div>
       <svg class="index-chart" viewBox="0 0 260 116" preserveAspectRatio="none" role="img">
         <title></title><line class="grid" x1="0" x2="260" y1="29" y2="29"></line><line class="baseline" x1="0" x2="260" y1="58" y2="58"></line><line class="grid" x1="0" x2="260" y1="87" y2="87"></line><path class="line"></path><g class="index-attributions"></g><circle class="cursor" r="2.8"></circle>
@@ -590,6 +596,10 @@ export function createIndexCharts(container, indices, annotationFeed = {}, optio
     article.querySelector(".index-card-header strong").textContent = index.name || "--";
     article.querySelector(".index-card-header span").textContent = index.tradeDate || "--";
     const removeButton = article.querySelector(".index-card-remove");
+    const focusButton = article.querySelector(".index-card-focus");
+    focusButton.hidden = typeof options.onFocus !== "function";
+    focusButton.setAttribute("aria-label", `放大${index.name || "指数"}分时`);
+    focusButton.addEventListener("click", () => options.onFocus?.(index));
     removeButton.title = `移除${index.name || "指数"}`;
     removeButton.setAttribute("aria-label", `移除${index.name || "指数"}`);
     removeButton.addEventListener("click", () => options.onRemove?.(index.key || index.code));

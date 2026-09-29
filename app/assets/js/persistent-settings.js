@@ -3,6 +3,8 @@ const PREFERENCE_KEYS = Object.freeze({
   selectedSectors: "a-share-review:custom-sectors:v1",
   zoom: "a-share-review:page-zoom:v1",
   fontSize: "a-share-review:font-size:v1",
+  density: "a-share-review:density:v1",
+  annotations: "a-share-review:annotations:v1",
 });
 
 const TRACKED_KEYS = new Set(Object.values(PREFERENCE_KEYS));
@@ -22,10 +24,14 @@ function snapshotSettings(storage) {
     selectedSectors: parseArray(storage, PREFERENCE_KEYS.selectedSectors),
     zoom: Number(storage?.getItem(PREFERENCE_KEYS.zoom)) || 100,
     fontSize: String(storage?.getItem(PREFERENCE_KEYS.fontSize) || "standard"),
+    density: storage?.getItem(PREFERENCE_KEYS.density) === "compact" ? "compact" : "comfortable",
+    annotations: storage?.getItem(PREFERENCE_KEYS.annotations) !== "false",
   };
 }
 
 function applySettings(storage, settings = {}) {
+  if (["compact", "comfortable"].includes(settings.density)) storage?.setItem(PREFERENCE_KEYS.density, settings.density);
+  if (typeof settings.annotations === "boolean") storage?.setItem(PREFERENCE_KEYS.annotations, String(settings.annotations));
   if (Array.isArray(settings.selectedIndices)) {
     storage?.setItem(PREFERENCE_KEYS.selectedIndices, JSON.stringify(settings.selectedIndices));
   }

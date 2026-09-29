@@ -32,7 +32,19 @@ foreach ($RequiredPath in @(
   }
 }
 
+function Copy-ReleaseDirectory([string]$Source, [string]$Target) {
+  Assert-OutputPath $Target
+  [IO.Directory]::CreateDirectory($Target) | Out-Null
+  foreach ($Entry in Get-ChildItem -LiteralPath $Source -Force) {
+    if ($Entry.Name -match '\.(lock|tmp|log)$' -or $Entry.Name -in @('用户设置.json', 'user-preferences.json', '自动更新日志.txt')) { continue }
+    $Destination = Join-Path $Target $Entry.Name
+    if ($Entry.PSIsContainer) { Copy-ReleaseDirectory $Entry.FullName $Destination }
+    else { Copy-Item -LiteralPath $Entry.FullName -Destination $Destination -Force }
+  }
+}
+
 function Copy-BasePayload([string]$Source, [string]$Target) {
+  Assert-OutputPath $Target
   if (Test-Path -LiteralPath $Target) {
     Remove-Item -LiteralPath $Target -Recurse -Force
   }
@@ -56,7 +68,7 @@ function Copy-BasePayload([string]$Source, [string]$Target) {
     if (-not (Test-Path -LiteralPath $SourceDirectory -PathType Container)) {
       throw "基础载荷目录不存在：$SourceDirectory"
     }
-    Copy-Item -LiteralPath $SourceDirectory -Destination (Join-Path $Target $Name) -Recurse -Force
+    Copy-ReleaseDirectory $SourceDirectory (Join-Path $Target $Name)
   }
   foreach ($Name in @("生成文件", "缓存")) {
     [IO.Directory]::CreateDirectory((Join-Path $Target $Name)) | Out-Null
@@ -75,7 +87,9 @@ function Overlay-PublicApp([string]$Target) {
       Copy-Item -LiteralPath $Entry.FullName -Destination $Destination -Force
     }
   }
-  Copy-Item -LiteralPath (Join-Path $RepoRoot "app\data\theme-treasure.json") -Destination (Join-Path $AppRoot "data\theme-treasure.json") -Force
+  if (-not (Test-Path -LiteralPath (Join-Path $AppRoot "data\theme-treasure.json"))) {
+    Copy-Item -LiteralPath (Join-Path $RepoRoot "app\data\theme-treasure.json") -Destination (Join-Path $AppRoot "data\theme-treasure.json")
+  }
 }
 
 function Overlay-LatestRuntimeData([string]$Target) {
@@ -85,22 +99,32 @@ function Overlay-LatestRuntimeData([string]$Target) {
   Get-ChildItem -LiteralPath $SourceData -File | ForEach-Object {
     Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $TargetData $_.Name) -Force
   }
-  Copy-Item -LiteralPath (Join-Path $RepoRoot "app\data\theme-treasure.json") -Destination (Join-Path $TargetData "theme-treasure.json") -Force
+  Remove-PathIfPresent (Join-Path $TargetData "user-preferences.json")
 }
 
 function Overlay-LatestHistory([string]$Target) {
   $SourceHistory = Join-Path $SelfBase "数据历史"
   $TargetHistory = Join-Path $Target "数据历史"
+  Assert-OutputPath $TargetHistory
   if (-not (Test-Path -LiteralPath $SourceHistory -PathType Container)) {
     throw "最新公共历史目录不存在：$SourceHistory"
   }
   if (Test-Path -LiteralPath $TargetHistory) {
     Remove-Item -LiteralPath $TargetHistory -Recurse -Force
   }
-  Copy-Item -LiteralPath $SourceHistory -Destination $TargetHistory -Recurse -Force
+  Copy-ReleaseDirectory $SourceHistory $TargetHistory
+  Remove-PathIfPresent (Join-Path $TargetHistory "用户设置.json")
+}
+
+function Assert-OutputPath([string]$Path) {
+  $Resolved = [IO.Path]::GetFullPath($Path)
+  if (-not $Resolved.StartsWith($OutputRoot.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {
+    throw "拒绝修改发行暂存目录外的路径：$Resolved"
+  }
 }
 
 function Remove-PathIfPresent([string]$Path) {
+  Assert-OutputPath $Path
   if (Test-Path -LiteralPath $Path) {
     Remove-Item -LiteralPath $Path -Recurse -Force
   }
@@ -224,8 +248,11 @@ foreach ($Profile in $Profiles) {
   Overlay-LatestHistory $Target
   Set-EditionBoundary $Profile.Edition $Target
   if ($Profile.Edition -eq "Custom") {
+    # Preserve the already shipped custom history/day2 recovery patch.
+    Copy-Item -LiteralPath (Join-Path $CustomBase "程序\应用\backend\复盘同步服务.js") -Destination (Join-Path $Target "程序\应用\backend\复盘同步服务.js") -Force
     Build-CustomReviewHost $Target
   }
+  Remove-PathIfPresent (Join-Path $Target "程序\应用\backend\自动更新日志.txt")
   $Results += [ordered]@{
     edition = $Profile.Edition
     target = $Target

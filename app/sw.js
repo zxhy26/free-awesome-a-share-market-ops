@@ -1,4 +1,4 @@
-const CACHE_VERSION = "a-share-review-v101-cls-watch-direct";
+const CACHE_VERSION = "a-share-review-v102-workbench";
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const DATA_CACHE = `${CACHE_VERSION}-data`;
 const CORE_ASSETS = [
@@ -20,6 +20,7 @@ const CORE_ASSETS = [
   "/app/assets/css/derivatives-page.css",
   "/app/assets/css/upgrade.css",
   "/app/assets/css/membership.css",
+  "/app/assets/css/workbench.css",
   "/app/assets/css/internal-detail.css",
   "/app/assets/css/theme-treasure.css",
   "/app/assets/js/api.js",
@@ -39,6 +40,8 @@ const CORE_ASSETS = [
   "/app/assets/js/dialog.js",
   "/app/assets/js/pwa.js",
   "/app/assets/js/app.js",
+  "/app/assets/js/workbench.js",
+  "/app/assets/js/workbench-runtime.js",
   "/app/assets/js/table.js",
   "/app/assets/js/detail-page.js",
   "/app/assets/js/stock-search-page.js",

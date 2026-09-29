@@ -1,6 +1,6 @@
-import {checkAppUpdate, getAppUpdateStatus, getHealth, installAppUpdate, loadBoardIntradayTrend, loadBoardMinuteFlow, loadCoreData, loadIndexCatalog, loadIndexContributionData, loadIndexTrend, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260813-4";
+import {checkAppUpdate, getAppUpdateStatus, getHealth, installAppUpdate, loadBoardIntradayTrend, loadBoardMinuteFlow, loadCoreData, loadIndexCatalog, loadIndexContributionData, loadIndexTrend, loadLiveSectorFlows, logTechnicalError, openTdxStock, requestLiveSectorFlowRefresh, requestMarketSync} from "./api.js?v=20260929-1";
 import {analyzeMarket, buildMoneyMetrics, dataFreshness, finiteNumber, formatNumber, formatPercent, formatYi, signed, summarizeMoneyEffect, valueClass} from "./analysis.js?v=20260730-1";
-import {buildClsIndexAnnotationEvents, createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260813-4";
+import {buildClsIndexAnnotationEvents, createIndexCharts, createPlaybackController, marketMinuteToTime, updateIndexCharts, visiblePoints} from "./charts.js?v=20260929-1";
 import {createSummaryDialog} from "./dialog.js";
 import {createDisplaySettings} from "./display-settings.js?v=20260803-1";
 import {createIndexWorkspace, resolveIndexGridLayout} from "./index-workspace.js?v=20260731-1";
@@ -9,7 +9,9 @@ import {createSectorFlowChart} from "./sector-flow-chart.js?v=20260727-2";
 import {createCustomSectorWorkspace} from "./custom-sector-workspace.js?v=20260809-1";
 import {initializeTheme} from "./theme.js";
 import {inTradingWindow, shouldAppendRegularSessionSample} from "./market-session.js?v=20260730-1";
-import {createPersistentSettingsStorage} from "./persistent-settings.js?v=20260801-1";
+import {createPersistentSettingsStorage} from "./persistent-settings.js?v=20260929-1";
+import {createWorkbench} from "./workbench.js?v=20260929-1";
+import {refreshDelay} from "./workbench-runtime.js?v=20260929-1";
 
 const dom = {
   tradeDate: document.querySelector("#tradeDate"),
@@ -103,6 +105,11 @@ const state = {
   preferenceStorage: null,
   autoReloadTimer: 0,
   liveRefreshRunning: false,
+  coreRefreshPromise: null,
+  coreRefreshFailed: false,
+  syncing: false,
+  followingLive: true,
+  workbench: null,
   liveFlowTimer: 0,
   liveFlowRequestRunning: false,
   liveFlowSnapshot: null,
@@ -516,13 +523,13 @@ function applyLiveFlowSnapshot(snapshot, options = {}) {
 
   const previousMaximum = Number(dom.timeline.max) || 0;
   const previousValue = Number(dom.timeline.value) || 0;
-  const wasFollowingLive = previousValue >= previousMaximum - 0.05;
+  const wasFollowingLive = state.followingLive;
   const liveMinute = Math.max(0, Math.min(240, finiteNumber(snapshot.marketMinute) ?? previousMaximum));
   const nextMaximum = Math.max(previousMaximum, liveMinute);
   dom.timeline.max = String(nextMaximum);
   dom.timelineEnd.textContent = marketMinuteToTime(nextMaximum);
   if (options.forceFollow || wasFollowingLive) dom.timeline.value = liveMinute.toFixed(3);
-  const displayMinute = Number(dom.timeline.value) || liveMinute;
+  const displayMinute = Number(dom.timeline.value);
   if (state.charts.length) {
     updateIndexCharts(state.charts, displayMinute);
     renderIndexContribution(displayMinute);
@@ -531,7 +538,29 @@ function applyLiveFlowSnapshot(snapshot, options = {}) {
   renderFlow("concept", displayMinute);
   state.customSectorWorkspace?.render(displayMinute);
   dom.timelineTime.textContent = marketMinuteToTime(displayMinute, true);
+  updateWorkbench(displayMinute);
   return true;
+}
+
+function updateWorkbench(minute = Number(dom.timeline.value)) {
+  state.workbench?.update(state.charts.map((chart) => chart.data), indexAnnotationFeed(), minute, state.followingLive);
+}
+
+function seekReplay(minute) {
+  state.playback?.stop();
+  state.followingLive = false;
+  dom.timeline.value = String(Math.max(0, Math.min(Number(dom.timeline.max), minute)));
+  state.playback?.paint(performance.now(), Number(dom.timeline.value), true);
+  updateWorkbench();
+}
+
+function returnToLive() {
+  state.playback?.stop();
+  state.followingLive = true;
+  dom.timeline.value = dom.timeline.max;
+  state.playback?.paint(performance.now(), Number(dom.timeline.value), true);
+  updateWorkbench();
+  void refreshLiveFlow({allowClosed: true});
 }
 
 function flowGroupAtMinute(groupName, minute) {
@@ -906,10 +935,12 @@ function renderSelectedIndexCharts() {
   dom.indexGrid.dataset.indexRows = String(layout.rows);
   state.charts = createIndexCharts(dom.indexGrid, indices, indexAnnotationFeed(), {
     onRemove: (key) => state.indexWorkspace?.remove(key),
+    onFocus: (index) => state.workbench?.open(index, indexAnnotationFeed()),
     annotationEventsForIndex: (index) => indexTurningAttributions(index),
     annotationSource: "财联社盯盘公开板块事件",
   });
   updateIndexCharts(state.charts, Number(dom.timeline.value));
+  updateWorkbench();
 }
 
 function renderAll() {
@@ -954,6 +985,7 @@ function initializePlayback() {
       renderFlow("industry", minute);
       renderFlow("concept", minute);
       state.customSectorWorkspace?.render(minute);
+      updateWorkbench(minute);
     },
     onTime: (text) => { dom.timelineTime.textContent = text; },
   });
@@ -962,38 +994,46 @@ function initializePlayback() {
 async function checkService() {
   try {
     const health = await getHealth();
-    dom.syncButton.disabled = false;
+    dom.syncButton.disabled = state.syncing;
     dom.syncButton.title = `同步服务 ${health.version || ""} 正常`;
+    state.workbench?.connection(true);
     return true;
   } catch (error) {
-    dom.syncButton.disabled = true;
-    dom.syncButton.title = "同步服务未启动，请重新打开桌面软件。";
-    showNotice("本地同步服务没有启动。请重新打开软件启动程序后再试。", "error", true);
+    dom.syncButton.disabled = state.syncing;
+    dom.syncButton.title = "连接暂时中断，可重试同步；页面会自动重连。";
+    state.workbench?.connection(false);
     logTechnicalError(error, "健康检查");
     return false;
   }
 }
 
 async function syncMarket() {
+  if (state.syncing) return;
+  state.syncing = true;
   dom.syncButton.disabled = true;
+  dom.syncButton.setAttribute("aria-busy", "true");
   dom.syncButton.querySelector("span:last-child").textContent = "正在同步";
   try {
+    let flowUpdated = false;
     try {
       const liveSnapshot = await requestLiveSectorFlowRefresh();
-      applyLiveFlowSnapshot(liveSnapshot, {forceFollow: true});
+      flowUpdated = applyLiveFlowSnapshot(liveSnapshot);
     } catch (error) {
       logTechnicalError(error, "手动逐秒资金刷新");
     }
     await requestMarketSync((progress) => showNotice(`${progress.message || "正在同步"}${progress.percent ? ` ${progress.percent}%` : ""}`, "", true));
-    await refreshLiveData({force: true, forceFollow: true});
-    showNotice("同步成功，逐秒资金与完整复盘数据均已更新。", "success");
-    dom.syncButton.disabled = false;
-    dom.syncButton.querySelector("span:last-child").textContent = "同步市场";
+    await refreshLiveData({force: true, requireNetwork: true, throwOnError: true});
+    const syncedAt = state.data?.market?.syncedAt || "--";
+    showNotice(`完整复盘已读取：${syncedAt}。${flowUpdated ? "资金快照已同步。" : "资金快照暂未取得，保留原始时间，后台继续重试。"}`, flowUpdated ? "success" : "", !flowUpdated);
   } catch (error) {
     showNotice(error.message, "error", true);
     logTechnicalError(error, "手动同步");
+  } finally {
+    state.syncing = false;
     dom.syncButton.disabled = false;
+    dom.syncButton.removeAttribute("aria-busy");
     dom.syncButton.querySelector("span:last-child").textContent = "同步市场";
+    scheduleAutoReload();
   }
 }
 
@@ -1107,6 +1147,9 @@ function initializeAppUpdates() {
 
 function setupInteractions(preferenceStorage) {
   const storage = preferenceStorage?.storage || globalThis.localStorage;
+  state.workbench = createWorkbench({storage, onSeek: seekReplay, onLive: returnToLive});
+  dom.timeline.addEventListener("input", () => { state.followingLive = false; });
+  dom.playButton.addEventListener("click", () => { state.followingLive = false; updateWorkbench(); });
   initializeTheme();
   initializePwa();
   state.displaySettings = createDisplaySettings({
@@ -1267,7 +1310,7 @@ function dataStamp(data) {
 function applyCoreData(nextData, options = {}) {
   const previousMaximum = Number(dom.timeline.max) || 0;
   const previousValue = Number(dom.timeline.value) || 0;
-  const wasFollowingLive = !state.data || previousValue >= previousMaximum - 0.05;
+  const wasFollowingLive = state.followingLive;
   state.data = {...nextData, indexContribution: state.data?.indexContribution || null};
   const latestMinute = latestAshareMinute(nextData?.indices?.items || []);
   dom.timeline.max = String(latestMinute);
@@ -1292,30 +1335,46 @@ function applyCoreData(nextData, options = {}) {
 }
 
 async function refreshLiveData(options = {}) {
-  if (state.liveRefreshRunning) return false;
+  if (state.coreRefreshPromise) {
+    // A failed manual read must not reject the background recovery loop as well.
+    await state.coreRefreshPromise.catch(() => null);
+    if (!options.requireNetwork) return false;
+  }
   state.liveRefreshRunning = true;
+  const refresh = async () => {
   try {
-    const nextData = await loadCoreData();
+    const nextData = await loadCoreData({requireNetwork: options.requireNetwork});
     const changed = options.force || dataStamp(nextData) !== dataStamp(state.data);
     if (changed) applyCoreData(nextData, options);
+    if (!state.playback) initializePlayback();
+    state.coreRefreshFailed = false;
     if (state.membershipActive) await refreshIndexContributionData({silent: true});
     return changed;
   } catch (error) {
     if (options.force) showNotice("最新数据读取失败，页面继续保留上一份已验证数据。", "error", true);
     logTechnicalError(error, "盘中数据轮询");
+    state.coreRefreshFailed = true;
+    if (options.throwOnError) throw error;
     return false;
   } finally {
     state.liveRefreshRunning = false;
   }
+  };
+  state.coreRefreshPromise = refresh();
+  try { return await state.coreRefreshPromise; }
+  finally { state.coreRefreshPromise = null; }
 }
 
 function scheduleAutoReload() {
   clearTimeout(state.autoReloadTimer);
-  if (document.hidden || !inTradingWindow()) return;
+  const delay = refreshDelay({hidden: document.hidden, trading: inTradingWindow(), failed: state.coreRefreshFailed});
+  if (delay === null) return;
   state.autoReloadTimer = window.setTimeout(async () => {
-    await refreshLiveData();
-    scheduleAutoReload();
-  }, 15000);
+    try {
+      await refreshLiveData();
+      await checkService();
+    } finally { scheduleAutoReload(); }
+  }, delay);
 }
 
 function clearLiveFlowPolling() {
@@ -1373,7 +1432,7 @@ async function initialize() {
     logTechnicalError(error, "首页加载");
   }
   await checkService();
-  await refreshLiveFlow({allowClosed: true, forceFollow: true});
+  await refreshLiveFlow({allowClosed: true});
   scheduleAutoReload();
   scheduleLiveFlowPolling();
 }
@@ -1397,12 +1456,18 @@ document.addEventListener("visibilitychange", () => {
   } else {
     Promise.all([
       refreshLiveData({force: true}),
-      refreshLiveFlow({allowClosed: true, forceFollow: true}),
+      refreshLiveFlow({allowClosed: true}),
     ]).finally(() => {
       scheduleAutoReload();
       scheduleLiveFlowPolling();
     });
   }
+});
+window.addEventListener("online", () => {
+  void checkService();
+  void refreshLiveData({force: true});
+  scheduleAutoReload();
+  scheduleLiveFlowPolling();
 });
 window.addEventListener("pagehide", () => {
   state.preferenceStorage?.flush({beacon: true, keepalive: true});

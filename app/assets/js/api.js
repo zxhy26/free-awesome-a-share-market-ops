@@ -1,4 +1,5 @@
 import "./internal-navigation.js";
+import {pollSyncTask} from "./workbench-runtime.js?v=20260929-1";
 
 const runtimeLocation = globalThis.location || {protocol: "http:", origin: "http://127.0.0.1:18765"};
 const SERVICE_ORIGIN = runtimeLocation.protocol === "http:" || runtimeLocation.protocol === "https:"
@@ -141,11 +142,13 @@ async function loadDataModule(key, label, timeoutMs = 5000) {
   return fetchJson(DATA_URLS[key], {label, timeoutMs});
 }
 
-export async function loadCoreData() {
+export async function loadCoreData({requireNetwork = false} = {}) {
   let lastReason = "数据文件尚未形成同一快照";
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const coreKeys = ["market", "indices", "sectors", "analysis", "config"];
-    const entries = await Promise.all(coreKeys.map(async (key) => [key, await loadDataModule(key, `${key} 数据`)]));
+    const entries = await Promise.all(coreKeys.map(async (key) => [key, requireNetwork
+      ? await fetchJson(`${SERVICE_ORIGIN}/api/v1/data/${API_MODULE_NAMES[key]}`, {label: `${key} 数据`, allowSnapshot: false})
+      : await loadDataModule(key, `${key} 数据`)]));
     const data = Object.fromEntries(entries);
     const consistency = coreDataConsistency(data);
     if (consistency.ok) {
@@ -162,7 +165,7 @@ export async function loadCoreData() {
   try {
     const stored = globalThis.localStorage?.getItem(CORE_DATA_SNAPSHOT_KEY);
     const snapshot = stored ? JSON.parse(stored)?.data : null;
-    if (snapshot && coreDataConsistency(snapshot).ok) {
+    if (!requireNetwork && snapshot && coreDataConsistency(snapshot).ok) {
       console.info(`[完整快照] 发布切换期间沿用上一份已验证数据：${lastReason}`);
       return snapshot;
     }
@@ -433,17 +436,7 @@ function syncErrorMessage(payload) {
 }
 
 async function pollSync(onProgress, timeoutMs) {
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < timeoutMs) {
-    const status = await getSyncStatus();
-    onProgress?.(status.progress || {stage: "working", message: "正在同步", percent: 0});
-    if (!status.running) {
-      if (status.lastResult?.ok) return status.lastResult;
-      if (status.lastResult) throw new AppError(syncErrorMessage(status.lastResult), {code: status.lastResult.errorCode || "SYNC_FAILED", technical: status.lastResult.stderr || status.lastResult.stdout || ""});
-    }
-    await new Promise((resolve) => setTimeout(resolve, 900));
-  }
-  throw new AppError("同步等待超时，后台可能仍在处理，请稍后查看状态。", {code: "POLL_TIMEOUT"});
+  return pollSyncTask({readStatus: getSyncStatus, onProgress, timeoutMs, failureMessage: syncErrorMessage});
 }
 
 export function requestMarketSync(onProgress) {
@@ -453,7 +446,9 @@ export function requestMarketSync(onProgress) {
     try {
       try {
         response = await fetchJson(`${SERVICE_ORIGIN}/api/v1/sync`, {label: "同步请求", timeoutMs: 30000, method: "POST"});
-      } catch (_) {
+      } catch (error) {
+        // Only an older service without this route needs the legacy endpoint.
+        if (![404, 405].includes(error.status)) throw error;
         response = await fetchJson(`${SERVICE_ORIGIN}/refresh?async=1`, {label: "同步请求", timeoutMs: 30000, method: "POST"});
       }
     } catch (error) {

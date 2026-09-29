@@ -172,7 +172,7 @@ for (const edition of EDITIONS) {
     assert(service.includes("3.27.1-shortline-recovery"), "定制版服务版本未升级");
   }
   assert(
-    serviceWorker.includes(`a-share-review-v91-cross-platform-${edition.mode}`),
+    serviceWorker.includes(`a-share-review-v102-cross-platform-${edition.mode}`),
     `${edition.mode} 离线缓存版本未隔离`,
   );
 

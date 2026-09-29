@@ -48,6 +48,8 @@ function normalizeUserPreferences(value = {}) {
     selectedSectors: normalizeSectorSelections(input?.selectedSectors),
     zoom: normalizeZoom(input?.zoom),
     fontSize: FONT_CHOICES.has(fontSize) ? fontSize : "standard",
+    density: input?.density === "compact" ? "compact" : "comfortable",
+    annotations: input?.annotations !== false,
   };
 }
 

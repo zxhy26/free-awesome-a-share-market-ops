@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="assets/css/components.css?v=20260731-2">
   <link rel="stylesheet" href="assets/css/responsive.css?v=20260731-1">
   <link rel="stylesheet" href="assets/css/membership.css?v=20260802-1">
+  <link rel="stylesheet" href="assets/css/workbench.css?v=20260929-1">
 </head>
 <body>
   <div class="app-viewport" id="appViewport">
@@ -69,6 +70,14 @@
   <div id="dataAlert" class="data-alert" role="alert" hidden></div>
 
   <main class="app-main">
+    <div class="session-strip">
+      <div class="session-status"><strong id="viewMode" data-mode="live">最新行情</strong><span id="connectionStatus" data-state="connecting" role="status">正在连接行情服务</span></div>
+      <div class="workspace-settings">
+        <label><input id="annotationToggle" type="checkbox" checked> 板块标注</label>
+        <label>布局 <select id="densitySelect" aria-label="布局密度"><option value="comfortable">标准</option><option value="compact">紧凑</option></select></label>
+        <button class="button" id="returnLive" type="button" hidden>回到最新</button>
+      </div>
+    </div>
     <section class="overview-band" aria-labelledby="overviewTitle">
       <h2 id="overviewTitle" class="visually-hidden">市场复盘总览</h2>
       <div class="overview-lead">
@@ -89,7 +98,7 @@
       <div class="left-stack">
         <section class="work-panel index-panel" aria-labelledby="indicesTitle">
         <div class="panel-heading">
-          <div><h2 id="indicesTitle">主要指数分时</h2><p>自选主要指数 · 最多八个 · 数量自动排版 · 财联社盯盘原始板块事件</p></div>
+          <div><h2 id="indicesTitle">主要指数分时</h2><p>指数行情 · 财联社盯盘原始板块事件</p></div>
           <div class="index-panel-actions">
             <button class="button custom-sector-add index-add" id="indexAdd" type="button" aria-expanded="false" aria-controls="indexPicker">
               <span aria-hidden="true">＋</span>
@@ -131,6 +140,7 @@
           <input id="timeline" type="range" min="0" max="240" step="0.001" value="240" aria-label="分时时间轴">
           <span id="timelineEnd">15:00:00</span>
         </div>
+        <details class="watch-tape"><summary>财联社板块异动 <span id="watchEventCount">0 条</span></summary><div id="watchEvents" class="watch-events"></div></details>
         </section>
 
         <section class="work-panel custom-sector-panel" aria-labelledby="customSectorTitle" data-member-feature="自选板块分时">
@@ -275,6 +285,13 @@
   </div>
 
   <script type="module" src="assets/js/membership.js?v=20260802-1"></script>
-  <script type="module" src="assets/js/app.js?v=20260813-4"></script>
+  <dialog id="chartInspector" class="chart-inspector" aria-labelledby="inspectorTitle">
+    <header><h2 id="inspectorTitle">分时详情</h2><button class="icon-button" id="closeInspector" type="button" aria-label="关闭分时详情" title="关闭">×</button></header>
+    <output id="inspectorReadout" class="inspector-readout"></output>
+    <div id="inspectorChart" class="inspector-chart"></div>
+    <div class="inspector-axis"><span>09:30</span><span>11:30 / 13:00</span><span>15:00</span></div>
+    <p class="inspector-source">数值采用已发布的真实样本；连续连线不代表逐秒成交。标注来源于财联社板块异动，不构成指数涨跌的确定因果。</p>
+  </dialog>
+  <script type="module" src="assets/js/app.js?v=20260929-1"></script>
 </body>
 </html>

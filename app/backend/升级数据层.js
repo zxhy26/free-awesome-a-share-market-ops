@@ -598,7 +598,6 @@ function buildHealth(data, archiveCount = 0) {
     data.sectors?.tradeDate,
     data.stocks?.tradeDate,
     data.analysis?.tradeDate,
-    data.quant?.tradeDate,
   ]);
   const shanghai = (data.indices?.items || []).find((item) => item.name === "上证指数") || data.indices?.items?.[0];
   const currentMinute = latestMinute(shanghai?.points);
@@ -729,7 +728,13 @@ function buildHealth(data, archiveCount = 0) {
   }));
 
   const crossChecks = [];
-  crossChecks.push(crossCheckResult("trade-date", "模块交易日", dates.length === 1 ? "ok" : "error", dates.length === 1 ? `全部模块为${dates[0]}` : `交易日不一致：${dates.join(" / ")}`, {dates}));
+  crossChecks.push(crossCheckResult("trade-date", "盘中行情交易日", dates.length === 1 ? "ok" : "error", dates.length === 1 ? `盘中行情模块为${dates[0]}` : `交易日不一致：${dates.join(" / ")}`, {dates}));
+  if (data.quant?.tradeDate) {
+    const sameDate = data.quant.tradeDate === data.market?.tradeDate;
+    crossChecks.push(crossCheckResult("quant-date", "收盘量化批次", sameDate ? "ok" : "warning",
+      `量化批次 ${data.quant.tradeDate}${sameDate ? "" : "，与盘中行情分别标示；收盘扫描前沿用最近一次结果"}`,
+      {tradeDate: data.quant.tradeDate, marketDate: data.market?.tradeDate}));
+  }
   const indexPoint = finite(shanghai?.points?.at?.(-1)?.price);
   crossChecks.push(crossCheckResult("shanghai-timeline", "上证分时完整性", indexPoint !== null && currentMinute > 0 ? "ok" : "warning", indexPoint === null ? "缺少有效指数点位" : `最新点位${round(indexPoint, 2)}，最新样本${minuteText(currentMinute)}`, {indexPoint, latestMinute: currentMinute}));
   for (const item of ashareItems.filter((entry) => entry.crossCheck)) {

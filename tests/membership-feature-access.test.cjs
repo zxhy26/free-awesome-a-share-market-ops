@@ -54,7 +54,7 @@ test("core dashboard loads without protected contribution data", () => {
   const appSource = read("app", "assets", "js", "app.js");
   const serviceWorker = read("app", "sw.js");
   const componentsCss = read("app", "assets", "css", "components.css");
-  const coreLoader = apiSource.match(/export async function loadCoreData\(\)[\s\S]*?\n}\n\nfunction latestAshareMinute/)?.[0] || "";
+  const coreLoader = apiSource.match(/export async function loadCoreData\([^\n]*\)[\s\S]*?\n}\n\nfunction latestAshareMinute/)?.[0] || "";
 
   assert.ok(coreLoader);
   assert.doesNotMatch(coreLoader, /"indexContribution"/);
